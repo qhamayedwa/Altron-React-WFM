@@ -366,5 +366,5 @@ def schedules():
 @login_required
 def leave_management():
     """Leave management page"""
-    applications = LeaveApplication.query.filter_by(employee_id=current_user.id).order_by(LeaveApplication.created_at.desc()).all()
+    applications = LeaveApplication.query.filter_by(user_id=current_user.id).order_by(LeaveApplication.created_at.desc()).all()
     return render_template('leave_management.html', applications=applications)
