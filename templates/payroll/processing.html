@@ -180,9 +180,9 @@
                                     <td>{{ "%.2f"|format(employee.ot_15_hours) }}</td>
                                     <td>{{ "%.2f"|format(employee.ot_20_hours) }}</td>
                                     <td><strong>{{ "%.2f"|format(employee.total_hours) }}</strong></td>
-                                    <td class="text-success"><strong>${{ "%.2f"|format(employee.gross_pay) }}</strong></td>
-                                    <td class="text-warning">${{ "%.2f"|format(employee.deductions) }}</td>
-                                    <td class="text-primary"><strong>${{ "%.2f"|format(employee.net_pay) }}</strong></td>
+                                    <td class="text-success"><strong>{{ employee.gross_pay|currency }}</strong></td>
+                                    <td class="text-warning">{{ employee.deductions|currency }}</td>
+                                    <td class="text-primary"><strong>{{ employee.net_pay|currency }}</strong></td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-info" onclick="showPayCodeBreakdown({{ employee.employee_id }})">
                                             <i data-feather="eye" class="me-1"></i>Details
@@ -261,8 +261,8 @@ function showPayCodeBreakdown(employeeId) {
                 <tr>
                     <td>${code}</td>
                     <td>${data.hours.toFixed(2)}</td>
-                    <td>$${data.rate.toFixed(2)}</td>
-                    <td>$${data.amount.toFixed(2)}</td>
+                    <td>R${data.rate.toFixed(2)}</td>
+                    <td>R${data.amount.toFixed(2)}</td>
                 </tr>
             `;
         }
