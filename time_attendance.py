@@ -463,8 +463,8 @@ def reports():
     )
     
     if report_type == 'summary':
-        # Summary report by user - simplified approach
-        entries_query = TimeEntry.query.join(User).filter(
+        # Summary report by user - use direct queries
+        entries_query = TimeEntry.query.filter(
             and_(
                 TimeEntry.clock_in_time >= datetime.strptime(start_date, '%Y-%m-%d'),
                 TimeEntry.clock_in_time <= datetime.strptime(end_date, '%Y-%m-%d'),
@@ -475,7 +475,11 @@ def reports():
         # Calculate summary data in Python
         user_data = {}
         for entry in entries_query:
-            username = entry.employee.username
+            user = User.query.get(entry.user_id)
+            if not user:
+                continue
+                
+            username = user.username
             if username not in user_data:
                 user_data[username] = {
                     'username': username,
@@ -485,8 +489,8 @@ def reports():
                 }
             
             user_data[username]['total_entries'] += 1
-            user_data[username]['total_hours'] += entry.total_hours
-            user_data[username]['overtime_hours'] += entry.overtime_hours
+            user_data[username]['total_hours'] += entry.total_hours or 0
+            user_data[username]['overtime_hours'] += entry.overtime_hours or 0
         
         report_data = list(user_data.values())
     else:
