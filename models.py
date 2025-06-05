@@ -112,3 +112,91 @@ class Category(db.Model):
     
     def __repr__(self):
         return f'<Category {self.name}>'
+
+class TimeEntry(db.Model):
+    """Time Entry model for employee time tracking"""
+    
+    __tablename__ = 'time_entries'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    clock_in_time = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    clock_out_time = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(20), default='Open', nullable=False)  # 'Open', 'Closed', 'Exception'
+    notes = db.Column(db.Text, nullable=True)
+    approved_by_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    is_overtime_approved = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # GPS location data (optional for mobile tracking)
+    clock_in_latitude = db.Column(db.Float, nullable=True)
+    clock_in_longitude = db.Column(db.Float, nullable=True)
+    clock_out_latitude = db.Column(db.Float, nullable=True)
+    clock_out_longitude = db.Column(db.Float, nullable=True)
+    
+    # Break time tracking
+    break_start_time = db.Column(db.DateTime, nullable=True)
+    break_end_time = db.Column(db.DateTime, nullable=True)
+    total_break_minutes = db.Column(db.Integer, default=0)
+    
+    # Relationships
+    employee = db.relationship('User', foreign_keys=[user_id], backref='time_entries')
+    approved_by = db.relationship('User', foreign_keys=[approved_by_manager_id])
+    
+    # Indexes for better query performance
+    __table_args__ = (
+        db.Index('idx_time_entries_user_date', 'user_id', 'clock_in_time'),
+        db.Index('idx_time_entries_status', 'status'),
+        db.Index('idx_time_entries_approval', 'approved_by_manager_id'),
+    )
+    
+    @property
+    def total_hours(self):
+        """Calculate total hours worked"""
+        if not self.clock_out_time:
+            return 0
+        
+        total_time = self.clock_out_time - self.clock_in_time
+        total_minutes = total_time.total_seconds() / 60
+        
+        # Subtract break time
+        total_minutes -= self.total_break_minutes
+        
+        return round(total_minutes / 60, 2)
+    
+    @property
+    def is_overtime(self):
+        """Check if this entry qualifies as overtime (>8 hours)"""
+        return self.total_hours > 8
+    
+    @property
+    def overtime_hours(self):
+        """Calculate overtime hours"""
+        return max(0, self.total_hours - 8)
+    
+    @property
+    def regular_hours(self):
+        """Calculate regular hours (up to 8)"""
+        return min(8, self.total_hours)
+    
+    @property
+    def work_date(self):
+        """Get the work date (date of clock-in)"""
+        return self.clock_in_time.date()
+    
+    def can_be_approved_by(self, user):
+        """Check if a user can approve this time entry"""
+        # Super Users and Admins can approve any entry
+        if user.has_role('Super User') or user.has_role('Admin'):
+            return True
+        
+        # Managers can approve their team members' entries
+        # (This would require a team/department structure - simplified for now)
+        if user.has_role('Manager'):
+            return True
+        
+        return False
+    
+    def __repr__(self):
+        return f'<TimeEntry {self.employee.username} - {self.work_date}>'
