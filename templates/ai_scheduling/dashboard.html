@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}AI Scheduling - WFM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2">AI Scheduling Dashboard</h1>
+            <p class="text-muted">Intelligent workforce scheduling and optimization</p>
+        </div>
+        <div>
+            <a href="{{ url_for('ai_scheduling.generate_schedule') }}" class="btn btn-primary">
+                <i data-feather="zap" class="feather-sm me-2"></i>Generate AI Schedule
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-primary border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted small">Active Employees</div>
+                            <div class="h4 mb-0">{{ active_employees or 0 }}</div>
+                        </div>
+                        <div class="text-primary">
+                            <i data-feather="users" class="feather-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-success border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted small">AI Schedules Generated</div>
+                            <div class="h4 mb-0">{{ ai_schedules_count or 0 }}</div>
+                        </div>
+                        <div class="text-success">
+                            <i data-feather="cpu" class="feather-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-warning border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted small">Optimization Score</div>
+                            <div class="h4 mb-0">{{ optimization_score or 'N/A' }}%</div>
+                        </div>
+                        <div class="text-warning">
+                            <i data-feather="trending-up" class="feather-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-info border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted small">Coverage Efficiency</div>
+                            <div class="h4 mb-0">{{ coverage_efficiency or 'N/A' }}%</div>
+                        </div>
+                        <div class="text-info">
+                            <i data-feather="shield" class="feather-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Scheduling Tools -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">AI Scheduling Tools</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i data-feather="zap" class="feather-lg text-primary mb-2"></i>
+                                    <h6>Generate Optimized Schedule</h6>
+                                    <p class="text-muted small">Create AI-powered schedules based on availability and preferences</p>
+                                    <a href="{{ url_for('ai_scheduling.generate_schedule') }}" class="btn btn-sm btn-primary">Generate</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i data-feather="bar-chart-2" class="feather-lg text-success mb-2"></i>
+                                    <h6>Employee Analysis</h6>
+                                    <p class="text-muted small">Analyze individual employee availability patterns</p>
+                                    <button class="btn btn-sm btn-success" onclick="showEmployeeSelector()">Analyze</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i data-feather="clock" class="feather-lg text-warning mb-2"></i>
+                                    <h6>Optimization History</h6>
+                                    <p class="text-muted small">View past AI scheduling decisions and performance</p>
+                                    <a href="{{ url_for('ai_scheduling.optimization_history') }}" class="btn btn-sm btn-warning">View History</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <i data-feather="settings" class="feather-lg text-info mb-2"></i>
+                                    <h6>AI Configuration</h6>
+                                    <p class="text-muted small">Configure AI scheduling parameters and preferences</p>
+                                    <button class="btn btn-sm btn-info" disabled>Coming Soon</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent AI Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center py-4">
+                        <i data-feather="cpu" class="feather-lg text-muted mb-2"></i>
+                        <p class="text-muted">AI scheduling module ready</p>
+                        <p class="text-muted small">Generate your first AI schedule to see activity here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

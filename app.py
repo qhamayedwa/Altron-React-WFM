@@ -47,6 +47,7 @@ def create_app(config_class=Config):
     from payroll import payroll_bp
     from api import api_bp
     from automation_engine import automation_bp
+    from ai_scheduling import ai_scheduling_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(time_attendance_bp)
@@ -57,6 +58,7 @@ def create_app(config_class=Config):
     app.register_blueprint(payroll_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(automation_bp, url_prefix='/automation')
+    app.register_blueprint(ai_scheduling_bp)
     
     # Register time tracking routes
     from time_tracking_routes import time_tracking_bp
