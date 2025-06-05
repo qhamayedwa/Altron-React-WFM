@@ -32,9 +32,15 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     
+    # Initialize Flask-Login
+    from auth import init_login_manager
+    init_login_manager(app)
+    
     # Register blueprints/routes
     from routes import main_bp
+    from auth import auth_bp
     app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
     
     # Error handlers
     @app.errorhandler(404)
