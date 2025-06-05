@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Absences{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Absence Management</h1>
+        <a href="{{ url_for('pay_codes.log_absence') }}" class="btn btn-primary">
+            <i data-feather="plus-circle" class="me-2"></i>Log New Absence
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Employee</label>
+                    <select name="employee_id" class="form-select">
+                        <option value="">All Employees</option>
+                        {% for employee in employees %}
+                        <option value="{{ employee.id }}" {% if employee_filter == employee.id %}selected{% endif %}>
+                            {{ employee.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending Approval</option>
+                        <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ date_filter or '' }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary">Filter</button>
+                    <a href="{{ url_for('pay_codes.manage_absences') }}" class="btn btn-outline-secondary ms-2">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Absences Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Employee Absences ({{ absences.total }} total)</h5>
+        </div>
+        <div class="card-body">
+            {% if absences.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>Pay Code</th>
+                            <th>Hours</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for absence in absences.items %}
+                        <tr>
+                            <td>
+                                <strong>{{ absence.employee.username }}</strong>
+                                <br>
+                                <small class="text-muted">{{ absence.employee.email or 'No email' }}</small>
+                            </td>
+                            <td>{{ absence.clock_in_time.strftime('%Y-%m-%d') if absence.clock_in_time else 'N/A' }}</td>
+                            <td>
+                                {% if absence.absence_pay_code_id %}
+                                    {% set pay_code = absence.absence_pay_code %}
+                                    <span class="badge bg-info">{{ pay_code.code if pay_code else 'Unknown' }}</span>
+                                    {% if pay_code %}
+                                        <br><small class="text-muted">{{ pay_code.description }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">No code</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ "%.1f"|format(absence.total_hours) }} hrs</td>
+                            <td>
+                                {% if absence.absence_reason %}
+                                    <span title="{{ absence.absence_reason }}">
+                                        {{ absence.absence_reason[:50] }}{% if absence.absence_reason|length > 50 %}...{% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">No reason provided</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if absence.absence_approved_at %}
+                                    <span class="badge bg-success">Approved</span>
+                                    <br>
+                                    <small class="text-muted">
+                                        by {{ absence.absence_approved_by.username if absence.absence_approved_by else 'System' }}
+                                        <br>
+                                        {{ absence.absence_approved_at.strftime('%m/%d/%Y') }}
+                                    </small>
+                                {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not absence.absence_approved_at and current_user.has_role('Super User') %}
+                                <form method="post" action="{{ url_for('pay_codes.approve_absence', entry_id=absence.id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success" 
+                                            onclick="return confirm('Approve this absence entry?')">
+                                        <i data-feather="check"></i> Approve
+                                    </button>
+                                </form>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if absences.pages > 1 %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if absences.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('pay_codes.manage_absences', page=absences.prev_num, employee_id=employee_filter, status=status_filter, date=date_filter) }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in absences.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != absences.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('pay_codes.manage_absences', page=page_num, employee_id=employee_filter, status=status_filter, date=date_filter) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">…</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if absences.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('pay_codes.manage_absences', page=absences.next_num, employee_id=employee_filter, status=status_filter, date=date_filter) }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-4">
+                <i data-feather="user-x" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                <h5 class="text-muted">No absences found</h5>
+                <p class="text-muted">No employee absences match your current filters.</p>
+                <a href="{{ url_for('pay_codes.log_absence') }}" class="btn btn-primary">
+                    <i data-feather="plus-circle" class="me-2"></i>Log New Absence
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
