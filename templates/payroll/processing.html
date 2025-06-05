@@ -91,7 +91,7 @@
                     <i data-feather="dollar-sign" class="mb-2" style="width: 32px; height: 32px; color: #dc3545;"></i>
                     <h5 class="card-title">Total Gross Pay</h5>
                     {% set total_gross = payroll_data | sum(attribute='gross_pay') %}
-                    <h3 class="text-danger">${{ "%.2f"|format(total_gross) }}</h3>
+                    <h3 class="text-danger">{{ total_gross|currency }}</h3>
                 </div>
             </div>
         </div>

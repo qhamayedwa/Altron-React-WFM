@@ -252,10 +252,10 @@ def export_payroll():
                     if code in pay_code_data:
                         row.extend([
                             round(pay_code_data[code]['hours'], 2),
-                            f"${pay_code_data[code]['amount']:.2f}"
+                            f"R{pay_code_data[code]['amount']:.2f}"
                         ])
                     else:
-                        row.extend([0, "$0.00"])
+                        row.extend([0, "R0.00"])
             
             writer.writerow(row)
         
