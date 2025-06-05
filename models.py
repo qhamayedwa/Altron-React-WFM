@@ -286,3 +286,139 @@ class Schedule(db.Model):
     
     def __repr__(self):
         return f'<Schedule {self.employee.username} on {self.start_time.strftime("%Y-%m-%d")}>'
+
+
+class LeaveType(db.Model):
+    """Leave Type model for defining types of leave"""
+    
+    __tablename__ = 'leave_types'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    default_accrual_rate = db.Column(db.Float, nullable=True)  # Hours per month/year
+    description = db.Column(db.String(255))
+    is_active = db.Column(db.Boolean, default=True)
+    requires_approval = db.Column(db.Boolean, default=True)
+    max_consecutive_days = db.Column(db.Integer, nullable=True)  # Maximum consecutive days allowed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    leave_applications = db.relationship('LeaveApplication', backref='leave_type', lazy='dynamic')
+    leave_balances = db.relationship('LeaveBalance', backref='leave_type', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<LeaveType {self.name}>'
+
+
+class LeaveApplication(db.Model):
+    """Leave Application model for employee leave requests"""
+    
+    __tablename__ = 'leave_applications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    leave_type_id = db.Column(db.Integer, db.ForeignKey('leave_types.id'), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    reason = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='Pending', nullable=False)  # 'Pending', 'Approved', 'Rejected', 'Cancelled'
+    is_hourly = db.Column(db.Boolean, default=False)
+    hours_requested = db.Column(db.Float, nullable=True)  # For hourly leave requests
+    manager_approved_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    manager_comments = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships
+    employee = db.relationship('User', foreign_keys=[user_id], backref='leave_applications')
+    manager_approved = db.relationship('User', foreign_keys=[manager_approved_id])
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_leave_applications_user_date', 'user_id', 'start_date'),
+        db.Index('idx_leave_applications_status', 'status'),
+        db.Index('idx_leave_applications_manager', 'manager_approved_id'),
+        db.Index('idx_leave_applications_type', 'leave_type_id'),
+    )
+    
+    def total_days(self):
+        """Calculate total days requested"""
+        if self.is_hourly and self.hours_requested:
+            return self.hours_requested / 8  # Assuming 8-hour workday
+        return (self.end_date - self.start_date).days + 1
+    
+    def total_hours(self):
+        """Calculate total hours requested"""
+        if self.is_hourly and self.hours_requested:
+            return self.hours_requested
+        return self.total_days() * 8  # Assuming 8-hour workday
+    
+    def is_past_due(self):
+        """Check if application start date has passed"""
+        return self.start_date < datetime.utcnow().date()
+    
+    def can_be_cancelled(self):
+        """Check if application can be cancelled by employee"""
+        return (self.status in ['Pending', 'Approved'] and 
+                not self.is_past_due())
+    
+    def overlaps_with(self, other_application):
+        """Check if this application overlaps with another"""
+        return (self.start_date <= other_application.end_date and 
+                self.end_date >= other_application.start_date)
+    
+    def __repr__(self):
+        return f'<LeaveApplication {self.employee.username} - {self.leave_type.name} ({self.start_date} to {self.end_date})>'
+
+
+class LeaveBalance(db.Model):
+    """Leave Balance model for tracking employee leave balances"""
+    
+    __tablename__ = 'leave_balances'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    leave_type_id = db.Column(db.Integer, db.ForeignKey('leave_types.id'), nullable=False)
+    balance = db.Column(db.Float, nullable=False, default=0.0)  # Available hours/days
+    accrued_this_year = db.Column(db.Float, default=0.0)  # Total accrued this year
+    used_this_year = db.Column(db.Float, default=0.0)  # Total used this year
+    last_accrual_date = db.Column(db.Date, nullable=True)
+    year = db.Column(db.Integer, nullable=False, default=lambda: datetime.utcnow().year)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    employee = db.relationship('User', foreign_keys=[user_id], backref='leave_balances')
+    
+    # Unique constraint
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'leave_type_id', 'year', name='uq_user_leave_type_year'),
+        db.Index('idx_leave_balances_user', 'user_id'),
+        db.Index('idx_leave_balances_type', 'leave_type_id'),
+        db.Index('idx_leave_balances_year', 'year'),
+    )
+    
+    def add_accrual(self, hours):
+        """Add accrued leave hours"""
+        self.balance += hours
+        self.accrued_this_year += hours
+        self.last_accrual_date = datetime.utcnow().date()
+    
+    def deduct_usage(self, hours):
+        """Deduct used leave hours"""
+        if self.balance >= hours:
+            self.balance -= hours
+            self.used_this_year += hours
+            return True
+        return False
+    
+    def adjust_balance(self, new_balance, reason="Manual adjustment"):
+        """Manually adjust balance (admin function)"""
+        old_balance = self.balance
+        self.balance = new_balance
+        # Log the adjustment (could be expanded to include audit trail)
+        return f"Balance adjusted from {old_balance} to {new_balance}. Reason: {reason}"
+    
+    def __repr__(self):
+        return f'<LeaveBalance {self.employee.username} - {self.leave_type.name}: {self.balance} hours>'

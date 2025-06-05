@@ -50,6 +50,12 @@
                             My Schedule
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('leave_management.my_leave') }}">
+                            <i data-feather="umbrella" class="me-1"></i>
+                            My Leave
+                        </a>
+                    </li>
                     {% if current_user.has_role('Manager') or current_user.has_role('Admin') or current_user.has_role('Super User') %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="timeManagementDropdown" role="button" data-bs-toggle="dropdown">
@@ -77,6 +83,15 @@
                             <li><a class="dropdown-item" href="{{ url_for('scheduling.shift_types') }}">
                                 <i data-feather="clock" class="me-2"></i>
                                 Shift Types
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('leave_management.team_applications') }}">
+                                <i data-feather="umbrella" class="me-2"></i>
+                                Leave Applications
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('leave_management.apply_for_employee') }}">
+                                <i data-feather="user-plus" class="me-2"></i>
+                                Apply Leave for Employee
                             </a></li>
                         </ul>
                     </li>
@@ -111,6 +126,15 @@
                             <li><a class="dropdown-item" href="{{ url_for('time_attendance.manual_entry') }}">
                                 <i data-feather="edit" class="me-2"></i>
                                 Manual Time Entry
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('leave_management.manage_leave_types') }}">
+                                <i data-feather="tag" class="me-2"></i>
+                                Leave Types
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('leave_management.manage_leave_balances') }}">
+                                <i data-feather="trending-up" class="me-2"></i>
+                                Leave Balances
                             </a></li>
                         </ul>
                     </li>

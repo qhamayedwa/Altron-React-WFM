@@ -41,10 +41,12 @@ def create_app(config_class=Config):
     from auth_simple import auth_bp
     from time_attendance import time_attendance_bp
     from scheduling import scheduling_bp
+    from leave_management import leave_management_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(time_attendance_bp)
     app.register_blueprint(scheduling_bp)
+    app.register_blueprint(leave_management_bp)
     
     # Error handlers
     @app.errorhandler(404)
