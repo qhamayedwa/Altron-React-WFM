@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, func, case
 from app import db
 from models import TimeEntry, User
 from auth_simple import role_required, super_user_required
@@ -463,23 +463,32 @@ def reports():
     )
     
     if report_type == 'summary':
-        # Summary report by user
-        report_data = db.session.query(
-            User.username,
-            func.count(TimeEntry.id).label('total_entries'),
-            func.sum(func.extract('epoch', TimeEntry.clock_out_time - TimeEntry.clock_in_time) / 3600).label('total_hours'),
-            func.sum(func.case(
-                [(func.extract('epoch', TimeEntry.clock_out_time - TimeEntry.clock_in_time) / 3600 > 8, 
-                 func.extract('epoch', TimeEntry.clock_out_time - TimeEntry.clock_in_time) / 3600 - 8)],
-                else_=0
-            )).label('overtime_hours')
-        ).join(TimeEntry).filter(
+        # Summary report by user - simplified approach
+        entries_query = TimeEntry.query.join(User).filter(
             and_(
                 TimeEntry.clock_in_time >= datetime.strptime(start_date, '%Y-%m-%d'),
                 TimeEntry.clock_in_time <= datetime.strptime(end_date, '%Y-%m-%d'),
                 TimeEntry.clock_out_time.isnot(None)
             )
-        ).group_by(User.username).all()
+        ).all()
+        
+        # Calculate summary data in Python
+        user_data = {}
+        for entry in entries_query:
+            username = entry.employee.username
+            if username not in user_data:
+                user_data[username] = {
+                    'username': username,
+                    'total_entries': 0,
+                    'total_hours': 0.0,
+                    'overtime_hours': 0.0
+                }
+            
+            user_data[username]['total_entries'] += 1
+            user_data[username]['total_hours'] += entry.total_hours
+            user_data[username]['overtime_hours'] += entry.overtime_hours
+        
+        report_data = list(user_data.values())
     else:
         report_data = query.all()
     
