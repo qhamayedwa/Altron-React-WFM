@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Generate AI Schedule - WFM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2">Generate AI-Optimized Schedule</h1>
+            <p class="text-muted">Create intelligent schedules based on employee availability and preferences</p>
+        </div>
+        <div>
+            <a href="{{ url_for('ai_scheduling.ai_dashboard') }}" class="btn btn-secondary">
+                <i data-feather="arrow-left" class="feather-sm me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Schedule Generation Parameters</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="start_date" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date" 
+                                           value="{{ (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d') }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="end_date" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date" 
+                                           value="{{ (datetime.now() + timedelta(days=14)).strftime('%Y-%m-%d') }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="department_id" class="form-label">Department (Optional)</label>
+                            <select class="form-select" id="department_id" name="department_id">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Leave blank to generate schedules for all employees</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">AI Optimization Options</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="availability_optimization" name="availability_optimization" checked>
+                                <label class="form-check-label" for="availability_optimization">
+                                    Optimize based on employee availability patterns
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="preference_optimization" name="preference_optimization" checked>
+                                <label class="form-check-label" for="preference_optimization">
+                                    Consider employee shift preferences
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="coverage_optimization" name="coverage_optimization" checked>
+                                <label class="form-check-label" for="coverage_optimization">
+                                    Ensure optimal coverage across all shifts
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="zap" class="feather-sm me-2"></i>
+                                Generate AI Schedule
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">AI Scheduling Features</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i data-feather="brain" class="feather-sm text-primary me-2"></i>
+                            <h6 class="mb-0">Smart Analysis</h6>
+                        </div>
+                        <p class="text-muted small">Analyzes historical patterns and employee preferences to create optimal schedules.</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i data-feather="users" class="feather-sm text-success me-2"></i>
+                            <h6 class="mb-0">Availability Matching</h6>
+                        </div>
+                        <p class="text-muted small">Considers leave applications, time-off requests, and availability constraints.</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i data-feather="trending-up" class="feather-sm text-warning me-2"></i>
+                            <h6 class="mb-0">Performance Optimization</h6>
+                        </div>
+                        <p class="text-muted small">Maximizes schedule efficiency while maintaining work-life balance.</p>
+                    </div>
+
+                    <div class="mb-0">
+                        <div class="d-flex align-items-center mb-2">
+                            <i data-feather="shield" class="feather-sm text-info me-2"></i>
+                            <h6 class="mb-0">Coverage Assurance</h6>
+                        </div>
+                        <p class="text-muted small">Ensures adequate staffing across all shifts and departments.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Generation Tips</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i data-feather="check-circle" class="feather-sm text-success me-2"></i>
+                            <small>Generate schedules 1-2 weeks in advance for best results</small>
+                        </li>
+                        <li class="mb-2">
+                            <i data-feather="check-circle" class="feather-sm text-success me-2"></i>
+                            <small>Review and approve leave applications before generating</small>
+                        </li>
+                        <li class="mb-2">
+                            <i data-feather="check-circle" class="feather-sm text-success me-2"></i>
+                            <small>Consider department-specific needs and requirements</small>
+                        </li>
+                        <li class="mb-0">
+                            <i data-feather="check-circle" class="feather-sm text-success me-2"></i>
+                            <small>Review AI recommendations before final approval</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set minimum date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('start_date').min = today;
+    document.getElementById('end_date').min = today;
+    
+    // Update end date when start date changes
+    document.getElementById('start_date').addEventListener('change', function() {
+        const startDate = new Date(this.value);
+        const minEndDate = new Date(startDate);
+        minEndDate.setDate(startDate.getDate() + 1);
+        document.getElementById('end_date').min = minEndDate.toISOString().split('T')[0];
+    });
+});
+</script>
+{% endblock %}
