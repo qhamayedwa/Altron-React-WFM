@@ -140,6 +140,9 @@ class TimeEntry(db.Model):
     break_end_time = db.Column(db.DateTime, nullable=True)
     total_break_minutes = db.Column(db.Integer, default=0)
     
+    # Pay code for this time entry
+    pay_code_id = db.Column(db.Integer, db.ForeignKey('pay_codes.id'), nullable=True)
+    
     # Absence tracking
     absence_pay_code_id = db.Column(db.Integer, db.ForeignKey('pay_codes.id'), nullable=True)
     absence_reason = db.Column(db.Text, nullable=True)
