@@ -62,6 +62,10 @@ def create_app(config_class=Config):
     from time_tracking_routes import time_tracking_bp
     app.register_blueprint(time_tracking_bp, url_prefix='/time')
     
+    # Register pulse survey routes
+    from pulse_survey import pulse_survey_bp
+    app.register_blueprint(pulse_survey_bp, url_prefix='/pulse')
+    
     # Error handlers
     @app.errorhandler(404)
     def not_found_error(error):
