@@ -37,7 +37,8 @@ def my_leave():
                          leave_balances=leave_balances,
                          leave_types=leave_types,
                          recent_applications=recent_applications,
-                         balance_dict=balance_dict)
+                         balance_dict=balance_dict,
+                         datetime=datetime)
 
 @leave_management_bp.route('/apply', methods=['GET', 'POST'])
 @login_required
@@ -140,7 +141,9 @@ def apply_leave():
     
     return render_template('leave_management/apply_leave.html',
                          leave_types=leave_types,
-                         balance_dict=balance_dict)
+                         balance_dict=balance_dict,
+                         datetime=datetime,
+                         timedelta=timedelta)
 
 @leave_management_bp.route('/my-applications')
 @login_required
@@ -427,7 +430,8 @@ def manage_leave_balances():
                          leave_types=leave_types,
                          user_filter=user_filter,
                          leave_type_filter=leave_type_filter,
-                         year=year)
+                         year=year,
+                         datetime=datetime)
 
 @leave_management_bp.route('/admin/leave-balances/<int:balance_id>/adjust', methods=['POST'])
 @role_required('Admin', 'Super User')
