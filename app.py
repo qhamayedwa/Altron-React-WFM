@@ -33,12 +33,12 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     
     # Initialize Flask-Login
-    from auth import init_login_manager
+    from auth_simple import init_login_manager
     init_login_manager(app)
     
     # Register blueprints/routes
     from routes import main_bp
-    from auth import auth_bp
+    from auth_simple import auth_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     

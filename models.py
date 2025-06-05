@@ -52,6 +52,8 @@ class User(UserMixin, db.Model):
     
     def has_role(self, role_name):
         """Check if user has a specific role"""
+        if not self.roles:
+            return False
         return any(role.name == role_name for role in self.roles)
     
     def add_role(self, role):

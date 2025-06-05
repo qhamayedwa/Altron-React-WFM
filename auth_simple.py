@@ -1,11 +1,10 @@
 from datetime import datetime
 from functools import wraps
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from urllib.parse import urlparse
 from app import db
 from models import User, Role
-from forms import LoginForm, RegistrationForm, EditUserForm, ChangePasswordForm
 
 # Create authentication blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -61,11 +60,14 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
     
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        remember_me = bool(request.form.get('remember_me'))
         
-        if user is None or not user.check_password(form.password.data):
+        user = User.query.filter_by(username=username).first()
+        
+        if user is None or not user.check_password(password):
             flash('Invalid username or password', 'danger')
             return redirect(url_for('auth.login'))
         
@@ -77,7 +79,7 @@ def login():
         user.last_login = datetime.utcnow()
         db.session.commit()
         
-        login_user(user, remember=form.remember_me.data)
+        login_user(user, remember=remember_me)
         
         # Redirect to intended page or home
         next_page = request.args.get('next')
@@ -87,7 +89,7 @@ def login():
         flash(f'Welcome back, {user.full_name}!', 'success')
         return redirect(next_page)
     
-    return render_template('auth/login.html', title='Sign In', form=form)
+    return render_template('auth/login.html', title='Sign In')
 
 @auth_bp.route('/logout')
 @login_required
@@ -101,23 +103,35 @@ def logout():
 @super_user_required
 def register():
     """User registration route (Super User only)"""
-    form = RegistrationForm()
-    
-    if form.validate_on_submit():
-        user = User(
-            username=form.username.data,
-            email=form.email.data,
-            first_name=form.first_name.data,
-            last_name=form.last_name.data
-        )
-        user.set_password(form.password.data)
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        role_ids = request.form.getlist('roles')
+        
+        # Check if user already exists
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists', 'danger')
+            return redirect(url_for('auth.register'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists', 'danger')
+            return redirect(url_for('auth.register'))
+        
+        user = User()
+        user.username = username
+        user.email = email
+        user.first_name = first_name
+        user.last_name = last_name
+        user.set_password(password)
         
         # Add selected roles
-        if form.roles.data:
-            for role_id in form.roles.data:
-                role = Role.query.get(role_id)
-                if role:
-                    user.add_role(role)
+        for role_id in role_ids:
+            role = Role.query.get(int(role_id))
+            if role:
+                user.add_role(role)
         
         db.session.add(user)
         db.session.commit()
@@ -125,7 +139,8 @@ def register():
         flash(f'User {user.username} has been registered successfully!', 'success')
         return redirect(url_for('auth.user_management'))
     
-    return render_template('auth/register.html', title='Register User', form=form)
+    roles = Role.query.all()
+    return render_template('auth/register.html', title='Register User', roles=roles)
 
 @auth_bp.route('/users')
 @super_user_required
@@ -142,70 +157,11 @@ def user_management():
                          title='User Management', 
                          users=users)
 
-@auth_bp.route('/user/<int:user_id>/edit', methods=['GET', 'POST'])
-@super_user_required
-def edit_user(user_id):
-    """Edit user route (Super User only)"""
-    user = User.query.get_or_404(user_id)
-    form = EditUserForm(user.username, user.email)
-    
-    if form.validate_on_submit():
-        user.username = form.username.data
-        user.email = form.email.data
-        user.first_name = form.first_name.data
-        user.last_name = form.last_name.data
-        user.is_active = form.is_active.data
-        
-        # Update roles
-        user.roles.clear()
-        if form.roles.data:
-            for role_id in form.roles.data:
-                role = Role.query.get(role_id)
-                if role:
-                    user.add_role(role)
-        
-        db.session.commit()
-        flash(f'User {user.username} has been updated!', 'success')
-        return redirect(url_for('auth.user_management'))
-    
-    elif request.method == 'GET':
-        form.username.data = user.username
-        form.email.data = user.email
-        form.first_name.data = user.first_name
-        form.last_name.data = user.last_name
-        form.is_active.data = user.is_active
-        form.roles.data = [role.id for role in user.roles]
-    
-    return render_template('auth/edit_user.html', 
-                         title=f'Edit User - {user.username}', 
-                         form=form, user=user)
-
 @auth_bp.route('/profile')
 @login_required
 def profile():
     """User profile page"""
     return render_template('auth/profile.html', title='My Profile')
-
-@auth_bp.route('/change-password', methods=['GET', 'POST'])
-@login_required
-def change_password():
-    """Change password route"""
-    form = ChangePasswordForm()
-    
-    if form.validate_on_submit():
-        if not current_user.check_password(form.current_password.data):
-            flash('Invalid current password', 'danger')
-            return redirect(url_for('auth.change_password'))
-        
-        current_user.set_password(form.password.data)
-        db.session.commit()
-        
-        flash('Your password has been changed successfully!', 'success')
-        return redirect(url_for('auth.profile'))
-    
-    return render_template('auth/change_password.html', 
-                         title='Change Password', 
-                         form=form)
 
 @auth_bp.route('/user/<int:user_id>/delete')
 @super_user_required
