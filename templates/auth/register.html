@@ -28,38 +28,98 @@
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="first_name" class="form-label">First Name</label>
-                                <input type="text" class="form-control" id="first_name" name="first_name">
+                                <label for="first_name" class="form-label">First Name *</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="last_name" class="form-label">Last Name</label>
-                                <input type="text" class="form-control" id="last_name" name="last_name">
+                                <label for="last_name" class="form-label">Last Name *</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                        </div>
+
+                        <!-- Employee Information Section -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i data-feather="briefcase" class="me-2"></i>Employee Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="employee_id" class="form-label">Employee ID</label>
+                                        <input type="text" class="form-control" id="employee_id" name="employee_id" 
+                                               placeholder="e.g., EMP001">
+                                        <small class="text-muted">Unique identifier for the employee</small>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="department" class="form-label">Department</label>
+                                        <input type="text" class="form-control" id="department" name="department" 
+                                               placeholder="e.g., Operations, HR, IT">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="position" class="form-label">Position/Job Title</label>
+                                        <input type="text" class="form-control" id="position" name="position" 
+                                               placeholder="e.g., Staff Member, Manager">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Password *</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                            <small class="text-muted">Minimum 6 characters</small>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password *</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <small class="text-muted">Minimum 6 characters</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="password2" class="form-label">Confirm Password *</label>
+                                <input type="password" class="form-control" id="password2" name="password2" required>
+                            </div>
                         </div>
                         
-                        <div class="mb-4">
-                            <label class="form-label">Assign Roles</label>
-                            <div class="row">
-                                {% for role in roles %}
-                                <div class="col-md-6 mb-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" 
-                                               value="{{ role.id }}" id="role_{{ role.id }}" name="roles">
-                                        <label class="form-check-label" for="role_{{ role.id }}">
-                                            {{ role.name }}
-                                            {% if role.description %}
-                                            <small class="text-muted d-block">{{ role.description }}</small>
-                                            {% endif %}
-                                        </label>
+                        <!-- Role Assignment Section -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i data-feather="shield" class="me-2"></i>Role Assignment</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {{ form.roles(class="form-control") }}
+                                    {% for role in form.roles.choices %}
+                                    <div class="col-md-6 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   value="{{ role[0] }}" id="role_{{ role[0] }}" name="roles">
+                                            <label class="form-check-label" for="role_{{ role[0] }}">
+                                                <strong>{{ role[1] }}</strong>
+                                                {% if role[1] == 'User' %}
+                                                <small class="text-muted d-block">Basic employee access (recommended for regular employees)</small>
+                                                {% elif role[1] == 'Manager' %}
+                                                <small class="text-muted d-block">Team management and approval permissions</small>
+                                                {% elif role[1] == 'Admin' %}
+                                                <small class="text-muted d-block">System administration access</small>
+                                                {% elif role[1] == 'Super User' %}
+                                                <small class="text-muted d-block">Complete system control</small>
+                                                {% endif %}
+                                            </label>
+                                        </div>
                                     </div>
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
+                                <div class="alert alert-info mt-3">
+                                    <small><i data-feather="info" class="me-1"></i>
+                                    <strong>Tip:</strong> For regular employees, select only "User" role for restricted access to personal information only.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Status -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.is_active(class="form-check-input", checked=true) }}
+                                <label class="form-check-label" for="is_active">
+                                    Active User Account
+                                    <small class="text-muted d-block">Uncheck to create inactive account</small>
+                                </label>
                             </div>
                         </div>
                         

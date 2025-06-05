@@ -108,7 +108,11 @@ def register():
             username=form.username.data,
             email=form.email.data,
             first_name=form.first_name.data,
-            last_name=form.last_name.data
+            last_name=form.last_name.data,
+            employee_id=form.employee_id.data if form.employee_id.data else None,
+            department=form.department.data if form.department.data else None,
+            position=form.position.data if form.position.data else None,
+            is_active=form.is_active.data
         )
         user.set_password(form.password.data)
         
@@ -118,6 +122,11 @@ def register():
                 role = Role.query.get(role_id)
                 if role:
                     user.add_role(role)
+        else:
+            # Default to User role if no roles selected
+            user_role = Role.query.filter_by(name='User').first()
+            if user_role:
+                user.add_role(user_role)
         
         db.session.add(user)
         db.session.commit()

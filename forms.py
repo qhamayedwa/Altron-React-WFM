@@ -23,8 +23,14 @@ class RegistrationForm(FlaskForm):
         Length(min=3, max=64, message='Username must be between 3 and 64 characters')
     ])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    first_name = StringField('First Name', validators=[Length(max=64)])
-    last_name = StringField('Last Name', validators=[Length(max=64)])
+    first_name = StringField('First Name', validators=[DataRequired(), Length(max=64)])
+    last_name = StringField('Last Name', validators=[DataRequired(), Length(max=64)])
+    
+    # Employee-specific fields
+    employee_id = StringField('Employee ID', validators=[Length(max=20)])
+    department = StringField('Department', validators=[Length(max=64)])
+    position = StringField('Position/Job Title', validators=[Length(max=64)])
+    
     password = PasswordField('Password', validators=[
         DataRequired(),
         Length(min=6, message='Password must be at least 6 characters long')
@@ -34,6 +40,7 @@ class RegistrationForm(FlaskForm):
         EqualTo('password', message='Passwords must match')
     ])
     roles = MultiCheckboxField('Roles', coerce=int)
+    is_active = BooleanField('Active User', default=True)
     submit = SubmitField('Register')
     
     def __init__(self, *args, **kwargs):
