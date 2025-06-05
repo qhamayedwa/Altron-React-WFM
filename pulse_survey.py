@@ -397,18 +397,8 @@ def one_click_survey():
 # Create database tables
 def create_pulse_survey_tables():
     """Create pulse survey tables"""
-    with db.engine.connect() as conn:
-        # Check if tables exist
-        result = conn.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
-            AND table_name IN ('pulse_surveys', 'pulse_survey_responses')
-        """)
-        existing_tables = [row[0] for row in result]
-        
-        if 'pulse_surveys' not in existing_tables:
-            PulseSurvey.__table__.create(db.engine)
-        
-        if 'pulse_survey_responses' not in existing_tables:
-            PulseSurveyResponse.__table__.create(db.engine)
+    try:
+        # Create tables if they don't exist
+        db.create_all()
+    except Exception as e:
+        print(f"Error creating pulse survey tables: {e}")
