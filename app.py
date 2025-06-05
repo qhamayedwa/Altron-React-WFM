@@ -45,6 +45,7 @@ def create_app(config_class=Config):
     from pay_rules import pay_rules_bp
     from pay_codes import pay_codes_bp
     from payroll import payroll_bp
+    from api import api_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(time_attendance_bp)
@@ -53,6 +54,7 @@ def create_app(config_class=Config):
     app.register_blueprint(pay_rules_bp)
     app.register_blueprint(pay_codes_bp)
     app.register_blueprint(payroll_bp)
+    app.register_blueprint(api_bp)
     
     # Error handlers
     @app.errorhandler(404)
