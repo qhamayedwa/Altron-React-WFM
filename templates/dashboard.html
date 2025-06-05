@@ -20,7 +20,11 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <div class="text-muted small">Total Employees</div>
+                            {% if current_user.has_role('Manager') or current_user.has_role('Admin') or current_user.has_role('Super User') %}
+                                <div class="text-muted small">Total Employees</div>
+                            {% else %}
+                                <div class="text-muted small">My Profile</div>
+                            {% endif %}
                             <div class="h4 mb-0">{{ total_employees }}</div>
                         </div>
                         <div class="text-primary">
@@ -36,7 +40,11 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <div class="text-muted small">Currently Clocked In</div>
+                            {% if current_user.has_role('Manager') or current_user.has_role('Admin') or current_user.has_role('Super User') %}
+                                <div class="text-muted small">Currently Clocked In</div>
+                            {% else %}
+                                <div class="text-muted small">My Clock Status</div>
+                            {% endif %}
                             <div class="h4 mb-0">{{ clocked_in_now }}</div>
                         </div>
                         <div class="text-success">
@@ -52,7 +60,11 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <div class="text-muted small">Pending Leave</div>
+                            {% if current_user.has_role('Manager') or current_user.has_role('Admin') or current_user.has_role('Super User') %}
+                                <div class="text-muted small">Pending Leave</div>
+                            {% else %}
+                                <div class="text-muted small">My Pending Leave</div>
+                            {% endif %}
                             <div class="h4 mb-0">{{ pending_leave }}</div>
                         </div>
                         <div class="text-warning">
@@ -68,7 +80,11 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <div class="text-muted small">Weekly Hours</div>
+                            {% if current_user.has_role('Manager') or current_user.has_role('Admin') or current_user.has_role('Super User') %}
+                                <div class="text-muted small">Weekly Hours</div>
+                            {% else %}
+                                <div class="text-muted small">My Weekly Hours</div>
+                            {% endif %}
                             <div class="h4 mb-0">{{ "%.1f"|format(weekly_hours or 0) }}</div>
                         </div>
                         <div class="text-info">

@@ -16,35 +16,85 @@ main_bp = Blueprint('main', __name__)
 def index():
     """Main dashboard for Time & Attendance system"""
     try:
-        # System Statistics
-        total_employees = User.query.filter_by(is_active=True).count()
-        try:
-            active_schedules = Schedule.query.filter(
-                Schedule.start_time >= datetime.now().date()
+        # Check if user has manager/admin roles for organization-wide data
+        is_manager_or_admin = (hasattr(current_user, 'has_role') and 
+                              (current_user.has_role('Manager') or 
+                               current_user.has_role('Admin') or 
+                               current_user.has_role('Super User')))
+        
+        if is_manager_or_admin:
+            # Organization-wide statistics for managers/admins
+            total_employees = User.query.filter_by(is_active=True).count()
+            try:
+                active_schedules = Schedule.query.filter(
+                    Schedule.start_time >= datetime.now().date()
+                ).count()
+            except:
+                active_schedules = 0
+            
+            # Time Entry Statistics (Today) - Organization-wide
+            today = datetime.now().date()
+            today_entries = TimeEntry.query.filter(
+                func.date(TimeEntry.clock_in_time) == today
             ).count()
-        except:
-            active_schedules = 0
-        
-        # Time Entry Statistics (Today)
-        today = datetime.now().date()
-        today_entries = TimeEntry.query.filter(
-            func.date(TimeEntry.clock_in_time) == today
-        ).count()
-        
-        clocked_in_now = TimeEntry.query.filter(
-            and_(
-                func.date(TimeEntry.clock_in_time) == today,
-                TimeEntry.clock_out_time.is_(None)
-            )
-        ).count()
-        
-        # Leave Applications (Pending)
-        pending_leave = LeaveApplication.query.filter_by(status='pending').count()
-        
-        # Recent Activity (Last 5 entries)
-        recent_entries = TimeEntry.query.filter(
-            TimeEntry.clock_in_time >= datetime.now() - timedelta(days=7)
-        ).order_by(TimeEntry.clock_in_time.desc()).limit(5).all()
+            
+            clocked_in_now = TimeEntry.query.filter(
+                and_(
+                    func.date(TimeEntry.clock_in_time) == today,
+                    TimeEntry.clock_out_time.is_(None)
+                )
+            ).count()
+            
+            # Leave Applications (Pending) - Organization-wide
+            pending_leave = LeaveApplication.query.filter_by(status='pending').count()
+            
+            # Recent Activity (Last 5 entries) - Organization-wide
+            recent_entries = TimeEntry.query.filter(
+                TimeEntry.clock_in_time >= datetime.now() - timedelta(days=7)
+            ).order_by(TimeEntry.clock_in_time.desc()).limit(5).all()
+        else:
+            # Personal statistics only for basic users/employees
+            total_employees = 1  # Just the current user
+            try:
+                active_schedules = Schedule.query.filter(
+                    and_(
+                        Schedule.user_id == current_user.id,
+                        Schedule.start_time >= datetime.now().date()
+                    )
+                ).count()
+            except:
+                active_schedules = 0
+            
+            # Personal Time Entry Statistics (Today)
+            today = datetime.now().date()
+            today_entries = TimeEntry.query.filter(
+                and_(
+                    TimeEntry.user_id == current_user.id,
+                    func.date(TimeEntry.clock_in_time) == today
+                )
+            ).count()
+            
+            clocked_in_now = TimeEntry.query.filter(
+                and_(
+                    TimeEntry.user_id == current_user.id,
+                    func.date(TimeEntry.clock_in_time) == today,
+                    TimeEntry.clock_out_time.is_(None)
+                )
+            ).count()
+            
+            # Personal Leave Applications (Pending)
+            pending_leave = LeaveApplication.query.filter_by(
+                user_id=current_user.id,
+                status='pending'
+            ).count()
+            
+            # Personal Recent Activity (Last 5 entries)
+            recent_entries = TimeEntry.query.filter(
+                and_(
+                    TimeEntry.user_id == current_user.id,
+                    TimeEntry.clock_in_time >= datetime.now() - timedelta(days=7)
+                )
+            ).order_by(TimeEntry.clock_in_time.desc()).limit(5).all()
         
         # Pay Rules Count
         active_pay_rules = PayRule.query.filter_by(is_active=True).count()
