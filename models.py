@@ -140,9 +140,16 @@ class TimeEntry(db.Model):
     break_end_time = db.Column(db.DateTime, nullable=True)
     total_break_minutes = db.Column(db.Integer, default=0)
     
+    # Absence tracking
+    absence_pay_code_id = db.Column(db.Integer, db.ForeignKey('pay_codes.id'), nullable=True)
+    absence_reason = db.Column(db.Text, nullable=True)
+    absence_approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    absence_approved_at = db.Column(db.DateTime, nullable=True)
+    
     # Relationships
     employee = db.relationship('User', foreign_keys=[user_id], backref='time_entries')
     approved_by = db.relationship('User', foreign_keys=[approved_by_manager_id])
+    absence_approved_by = db.relationship('User', foreign_keys=[absence_approved_by_id])
     
     # Indexes for better query performance
     __table_args__ = (
@@ -615,3 +622,164 @@ class PayCalculation(db.Model):
     
     def __repr__(self):
         return f'<PayCalculation {self.employee.username} ({self.pay_period_start} to {self.pay_period_end})>'
+
+
+class PayCode(db.Model):
+    """Pay Code model for standardized payroll and absence codes"""
+    
+    __tablename__ = 'pay_codes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    description = db.Column(db.String(255), nullable=False)
+    is_absence_code = db.Column(db.Boolean, default=False, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Pay code configuration (JSON for flexibility)
+    configuration = db.Column(db.Text, nullable=True)  # JSON string for code-specific settings
+    
+    # Relationships
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_pay_codes_active', 'is_active'),
+        db.Index('idx_pay_codes_absence', 'is_absence_code'),
+        db.Index('idx_pay_codes_created_by', 'created_by_id'),
+    )
+    
+    def get_configuration(self):
+        """Parse and return configuration as dictionary"""
+        import json
+        try:
+            return json.loads(self.configuration) if self.configuration else {}
+        except json.JSONDecodeError:
+            return {}
+    
+    def set_configuration(self, config_dict):
+        """Set configuration from dictionary"""
+        import json
+        self.configuration = json.dumps(config_dict)
+    
+    def is_paid_absence(self):
+        """Check if this is a paid absence code"""
+        if not self.is_absence_code:
+            return False
+        config = self.get_configuration()
+        return config.get('is_paid', False)
+    
+    def get_pay_rate_factor(self):
+        """Get pay rate factor for this code (1.0 = normal rate)"""
+        config = self.get_configuration()
+        return config.get('pay_rate_factor', 1.0)
+    
+    def requires_approval(self):
+        """Check if this code requires manager approval"""
+        config = self.get_configuration()
+        return config.get('requires_approval', True)
+    
+    def max_hours_per_day(self):
+        """Get maximum hours allowed per day for this code"""
+        config = self.get_configuration()
+        return config.get('max_hours_per_day')
+    
+    def max_consecutive_days(self):
+        """Get maximum consecutive days allowed for this code"""
+        config = self.get_configuration()
+        return config.get('max_consecutive_days')
+    
+    def deducts_from_leave_balance(self):
+        """Check if this code deducts from leave balance"""
+        if not self.is_absence_code:
+            return False
+        config = self.get_configuration()
+        return config.get('deducts_from_balance', False)
+    
+    def get_linked_leave_type_id(self):
+        """Get linked leave type ID for balance deduction"""
+        config = self.get_configuration()
+        return config.get('leave_type_id')
+    
+    @staticmethod
+    def get_default_codes():
+        """Get standard pay codes that should exist in the system"""
+        return [
+            {
+                'code': 'NORMAL',
+                'description': 'Normal Working Hours',
+                'is_absence_code': False,
+                'configuration': {'pay_rate_factor': 1.0}
+            },
+            {
+                'code': 'OT1.5',
+                'description': 'Overtime 1.5x Rate',
+                'is_absence_code': False,
+                'configuration': {'pay_rate_factor': 1.5}
+            },
+            {
+                'code': 'OT2.0',
+                'description': 'Double Time Overtime',
+                'is_absence_code': False,
+                'configuration': {'pay_rate_factor': 2.0}
+            },
+            {
+                'code': 'SICK_PAY',
+                'description': 'Paid Sick Leave',
+                'is_absence_code': True,
+                'configuration': {
+                    'is_paid': True,
+                    'pay_rate_factor': 1.0,
+                    'requires_approval': True,
+                    'deducts_from_balance': True,
+                    'max_consecutive_days': 5
+                }
+            },
+            {
+                'code': 'VACATION',
+                'description': 'Paid Vacation Time',
+                'is_absence_code': True,
+                'configuration': {
+                    'is_paid': True,
+                    'pay_rate_factor': 1.0,
+                    'requires_approval': True,
+                    'deducts_from_balance': True
+                }
+            },
+            {
+                'code': 'UNPAID_LEAVE',
+                'description': 'Unpaid Leave of Absence',
+                'is_absence_code': True,
+                'configuration': {
+                    'is_paid': False,
+                    'requires_approval': True,
+                    'max_consecutive_days': 30
+                }
+            },
+            {
+                'code': 'HOLIDAY',
+                'description': 'Holiday Pay',
+                'is_absence_code': True,
+                'configuration': {
+                    'is_paid': True,
+                    'pay_rate_factor': 1.0,
+                    'requires_approval': False
+                }
+            },
+            {
+                'code': 'BEREAVEMENT',
+                'description': 'Bereavement Leave',
+                'is_absence_code': True,
+                'configuration': {
+                    'is_paid': True,
+                    'pay_rate_factor': 1.0,
+                    'requires_approval': True,
+                    'max_consecutive_days': 3
+                }
+            }
+        ]
+    
+    def __repr__(self):
+        return f'<PayCode {self.code} - {self.description}>'
