@@ -422,3 +422,196 @@ class LeaveBalance(db.Model):
     
     def __repr__(self):
         return f'<LeaveBalance {self.employee.username} - {self.leave_type.name}: {self.balance} hours>'
+
+
+class PayRule(db.Model):
+    """Pay Rule model for configurable payroll calculations"""
+    
+    __tablename__ = 'pay_rules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    description = db.Column(db.Text, nullable=True)
+    conditions = db.Column(db.Text, nullable=False)  # JSON string for rule conditions
+    actions = db.Column(db.Text, nullable=False)  # JSON string for rule actions
+    priority = db.Column(db.Integer, default=100, nullable=False)  # Lower number = higher priority
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Relationships
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_pay_rules_active', 'is_active'),
+        db.Index('idx_pay_rules_priority', 'priority'),
+        db.Index('idx_pay_rules_created_by', 'created_by_id'),
+    )
+    
+    def get_conditions(self):
+        """Parse and return conditions as dictionary"""
+        import json
+        try:
+            return json.loads(self.conditions) if self.conditions else {}
+        except json.JSONDecodeError:
+            return {}
+    
+    def set_conditions(self, conditions_dict):
+        """Set conditions from dictionary"""
+        import json
+        self.conditions = json.dumps(conditions_dict)
+    
+    def get_actions(self):
+        """Parse and return actions as dictionary"""
+        import json
+        try:
+            return json.loads(self.actions) if self.actions else {}
+        except json.JSONDecodeError:
+            return {}
+    
+    def set_actions(self, actions_dict):
+        """Set actions from dictionary"""
+        import json
+        self.actions = json.dumps(actions_dict)
+    
+    def matches_conditions(self, time_entry, context=None):
+        """Check if a time entry matches this rule's conditions"""
+        conditions = self.get_conditions()
+        if not conditions:
+            return False
+        
+        # Day of week condition (0=Monday, 6=Sunday)
+        if 'day_of_week' in conditions:
+            entry_day = time_entry.clock_in_time.weekday()
+            if entry_day not in conditions['day_of_week']:
+                return False
+        
+        # Time of day condition (hour range)
+        if 'time_range' in conditions:
+            start_hour = conditions['time_range'].get('start', 0)
+            end_hour = conditions['time_range'].get('end', 24)
+            entry_hour = time_entry.clock_in_time.hour
+            if not (start_hour <= entry_hour < end_hour):
+                return False
+        
+        # Overtime threshold condition
+        if 'overtime_threshold' in conditions:
+            daily_hours = time_entry.total_hours()
+            threshold = conditions['overtime_threshold']
+            if daily_hours <= threshold:
+                return False
+        
+        # Employee condition (specific users)
+        if 'employee_ids' in conditions:
+            if time_entry.user_id not in conditions['employee_ids']:
+                return False
+        
+        # Role condition
+        if 'roles' in conditions and context and 'user' in context:
+            user_roles = [role.name for role in context['user'].roles]
+            if not any(role in user_roles for role in conditions['roles']):
+                return False
+        
+        return True
+    
+    def apply_actions(self, time_entry, context=None):
+        """Apply this rule's actions to calculate pay components"""
+        actions = self.get_actions()
+        if not actions:
+            return {}
+        
+        total_hours = time_entry.total_hours()
+        pay_components = {}
+        
+        # Pay multiplier action
+        if 'pay_multiplier' in actions:
+            multiplier = actions['pay_multiplier']
+            component_name = actions.get('component_name', f'{self.name}_hours')
+            
+            # Calculate applicable hours based on rule type
+            if 'overtime_threshold' in self.get_conditions():
+                threshold = self.get_conditions()['overtime_threshold']
+                applicable_hours = max(0, total_hours - threshold)
+            else:
+                applicable_hours = total_hours
+            
+            pay_components[component_name] = {
+                'hours': applicable_hours,
+                'multiplier': multiplier,
+                'rule_name': self.name
+            }
+        
+        # Flat allowance action
+        if 'flat_allowance' in actions:
+            allowance = actions['flat_allowance']
+            component_name = actions.get('allowance_name', f'{self.name}_allowance')
+            pay_components[component_name] = {
+                'amount': allowance,
+                'type': 'allowance',
+                'rule_name': self.name
+            }
+        
+        # Shift differential action
+        if 'shift_differential' in actions:
+            differential = actions['shift_differential']
+            component_name = actions.get('differential_name', f'{self.name}_differential')
+            pay_components[component_name] = {
+                'hours': total_hours,
+                'differential': differential,
+                'rule_name': self.name
+            }
+        
+        return pay_components
+    
+    def __repr__(self):
+        return f'<PayRule {self.name} (Priority: {self.priority})>'
+
+
+class PayCalculation(db.Model):
+    """Pay Calculation model to store calculated pay results"""
+    
+    __tablename__ = 'pay_calculations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    time_entry_id = db.Column(db.Integer, db.ForeignKey('time_entries.id'), nullable=False)
+    pay_period_start = db.Column(db.Date, nullable=False)
+    pay_period_end = db.Column(db.Date, nullable=False)
+    pay_components = db.Column(db.Text, nullable=False)  # JSON string for pay breakdown
+    total_hours = db.Column(db.Float, default=0.0)
+    regular_hours = db.Column(db.Float, default=0.0)
+    overtime_hours = db.Column(db.Float, default=0.0)
+    double_time_hours = db.Column(db.Float, default=0.0)
+    total_allowances = db.Column(db.Float, default=0.0)
+    calculated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    calculated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Relationships
+    employee = db.relationship('User', foreign_keys=[user_id], backref='pay_calculations')
+    time_entry = db.relationship('TimeEntry', foreign_keys=[time_entry_id])
+    calculated_by = db.relationship('User', foreign_keys=[calculated_by_id])
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_pay_calculations_user_period', 'user_id', 'pay_period_start', 'pay_period_end'),
+        db.Index('idx_pay_calculations_time_entry', 'time_entry_id'),
+        db.Index('idx_pay_calculations_calculated_at', 'calculated_at'),
+    )
+    
+    def get_pay_components(self):
+        """Parse and return pay components as dictionary"""
+        import json
+        try:
+            return json.loads(self.pay_components) if self.pay_components else {}
+        except json.JSONDecodeError:
+            return {}
+    
+    def set_pay_components(self, components_dict):
+        """Set pay components from dictionary"""
+        import json
+        self.pay_components = json.dumps(components_dict)
+    
+    def __repr__(self):
+        return f'<PayCalculation {self.employee.username} ({self.pay_period_start} to {self.pay_period_end})>'
