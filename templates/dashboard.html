@@ -353,6 +353,54 @@
 // Initialize Feather Icons
 feather.replace();
 
+// Clock In Function
+function clockIn() {
+    fetch('/api/clock-in', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Clock in successful!');
+            location.reload();
+        } else {
+            alert('Clock in failed: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Clock in failed. Please try again.');
+    });
+}
+
+// Clock Out Function
+function clockOut() {
+    fetch('/api/clock-out', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Clock out successful!');
+            location.reload();
+        } else {
+            alert('Clock out failed: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Clock out failed. Please try again.');
+    });
+}
+
 // Auto-refresh dashboard every 5 minutes
 setTimeout(function() {
     location.reload();

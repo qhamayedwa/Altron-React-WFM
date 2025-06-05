@@ -20,7 +20,7 @@ def index():
         total_employees = User.query.filter_by(is_active=True).count()
         try:
             active_schedules = Schedule.query.filter(
-                Schedule.date >= datetime.now().date()
+                Schedule.start_time >= datetime.now().date()
             ).count()
         except:
             active_schedules = 0
@@ -359,7 +359,7 @@ def schedules():
     """Employee schedules page"""
     from datetime import date
     today = date.today()
-    schedules = Schedule.query.filter(Schedule.date >= today).order_by(Schedule.date).limit(30).all()
+    schedules = Schedule.query.filter(Schedule.start_time >= today).order_by(Schedule.start_time).limit(30).all()
     return render_template('schedules.html', schedules=schedules)
 
 @main_bp.route('/leave-management')
