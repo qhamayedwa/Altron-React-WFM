@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Time Exceptions - Flask PostgreSQL App{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i data-feather="alert-triangle" class="me-2"></i>
+            Time Card Exceptions
+        </h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('time_attendance.team_timecard') }}" class="btn btn-outline-primary">
+                <i data-feather="users" class="me-2"></i>
+                Team Timecard
+            </a>
+            <a href="{{ url_for('time_attendance.admin_dashboard') }}" class="btn btn-outline-secondary">
+                <i data-feather="arrow-left" class="me-2"></i>
+                Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if exceptions %}
+    <div class="alert alert-warning">
+        <i data-feather="info" class="me-2"></i>
+        <strong>{{ exceptions|length }} exception(s) found</strong> that require manager attention.
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>Issue</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Hours</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in exceptions %}
+                        <tr class="{% if entry.status == 'Exception' %}table-warning{% endif %}">
+                            <td>
+                                <strong>{{ entry.employee.username }}</strong>
+                                <br><small class="text-muted">{{ entry.employee.full_name }}</small>
+                            </td>
+                            <td>{{ entry.work_date.strftime('%b %d, %Y') }}</td>
+                            <td>
+                                {% if entry.status == 'Exception' %}
+                                <span class="badge bg-warning">Manual Exception</span>
+                                {% elif not entry.clock_out_time %}
+                                <span class="badge bg-danger">Missed Clock-Out</span>
+                                {% elif entry.total_hours > 10 %}
+                                <span class="badge bg-info">Long Shift ({{ "%.1f"|format(entry.total_hours) }}h)</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ entry.clock_in_time.strftime('%I:%M %p') }}</td>
+                            <td>
+                                {% if entry.clock_out_time %}
+                                {{ entry.clock_out_time.strftime('%I:%M %p') }}
+                                {% else %}
+                                <span class="text-danger">Missing</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if entry.total_hours > 0 %}
+                                {{ "%.2f"|format(entry.total_hours) }}
+                                {% if entry.total_hours > 8 %}
+                                <span class="text-warning">({{ "%.1f"|format(entry.overtime_hours) }} OT)</span>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ entry.notes or '-' }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {% if not entry.approved_by_manager_id %}
+                                    <button class="btn btn-outline-success" onclick="approveException({{ entry.id }})"
+                                            title="Approve Exception">
+                                        <i data-feather="check"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if not entry.clock_out_time %}
+                                    <button class="btn btn-outline-primary" onclick="addClockOut({{ entry.id }})"
+                                            title="Add Clock Out">
+                                        <i data-feather="clock"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if entry.is_overtime and not entry.is_overtime_approved %}
+                                    <button class="btn btn-outline-warning" onclick="approveOvertime({{ entry.id }})"
+                                            title="Approve Overtime">
+                                        <i data-feather="trending-up"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-outline-info" onclick="addNote({{ entry.id }})"
+                                            title="Add Note">
+                                        <i data-feather="message-square"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i data-feather="check-circle" class="text-success mb-3" width="64" height="64"></i>
+            <h5 class="text-success">No Exceptions Found</h5>
+            <p class="text-muted">All time entries are properly completed and approved.</p>
+            <a href="{{ url_for('time_attendance.team_timecard') }}" class="btn btn-primary">
+                <i data-feather="users" class="me-2"></i>
+                View Team Timecard
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Clock Out Modal -->
+<div class="modal fade" id="clockOutModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Clock Out Time</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="clockOutForm">
+                    <input type="hidden" id="entryId" name="entry_id">
+                    <div class="mb-3">
+                        <label for="clockOutTime" class="form-label">Clock Out Time</label>
+                        <input type="datetime-local" class="form-control" id="clockOutTime" name="clock_out_time" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="clockOutNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="clockOutNotes" name="notes" rows="3"
+                                  placeholder="Reason for manual clock out..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitClockOut()">Save Clock Out</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Note Modal -->
+<div class="modal fade" id="noteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Note to Time Entry</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="noteForm">
+                    <input type="hidden" id="noteEntryId" name="entry_id">
+                    <div class="mb-3">
+                        <label for="additionalNote" class="form-label">Additional Note</label>
+                        <textarea class="form-control" id="additionalNote" name="note" rows="4"
+                                  placeholder="Add manager notes about this time entry..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitNote()">Add Note</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    feather.replace();
+
+    async function approveException(entryId) {
+        if (!confirm('Are you sure you want to approve this exception?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/time/approve-entry/${entryId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error approving exception', 'danger');
+        }
+    }
+
+    async function approveOvertime(entryId) {
+        if (!confirm('Are you sure you want to approve overtime for this entry?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/time/approve-overtime/${entryId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error approving overtime', 'danger');
+        }
+    }
+
+    function addClockOut(entryId) {
+        document.getElementById('entryId').value = entryId;
+        
+        // Set default clock out time to end of business day
+        const now = new Date();
+        now.setHours(17, 0, 0, 0); // 5:00 PM
+        document.getElementById('clockOutTime').value = now.toISOString().slice(0, 16);
+        
+        new bootstrap.Modal(document.getElementById('clockOutModal')).show();
+    }
+
+    function addNote(entryId) {
+        document.getElementById('noteEntryId').value = entryId;
+        document.getElementById('additionalNote').value = '';
+        
+        new bootstrap.Modal(document.getElementById('noteModal')).show();
+    }
+
+    async function submitClockOut() {
+        const entryId = document.getElementById('entryId').value;
+        const clockOutTime = document.getElementById('clockOutTime').value;
+        const notes = document.getElementById('clockOutNotes').value;
+
+        if (!clockOutTime) {
+            alert('Please enter a clock out time');
+            return;
+        }
+
+        try {
+            // This would need a backend endpoint to handle manual clock out
+            // For now, we'll show a success message
+            flashMessages.show('Clock out time would be updated (endpoint not implemented)', 'info');
+            bootstrap.Modal.getInstance(document.getElementById('clockOutModal')).hide();
+        } catch (error) {
+            flashMessages.show('Error updating clock out time', 'danger');
+        }
+    }
+
+    async function submitNote() {
+        const entryId = document.getElementById('noteEntryId').value;
+        const note = document.getElementById('additionalNote').value;
+
+        if (!note.trim()) {
+            alert('Please enter a note');
+            return;
+        }
+
+        try {
+            // This would need a backend endpoint to handle adding notes
+            // For now, we'll show a success message
+            flashMessages.show('Note would be added (endpoint not implemented)', 'info');
+            bootstrap.Modal.getInstance(document.getElementById('noteModal')).hide();
+        } catch (error) {
+            flashMessages.show('Error adding note', 'danger');
+        }
+    }
+</script>
+{% endblock %}

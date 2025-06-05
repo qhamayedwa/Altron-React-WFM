@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Import Clock Data - Flask PostgreSQL App{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i data-feather="upload" class="me-2"></i>
+            Import Clock Data
+        </h2>
+        <a href="{{ url_for('time_attendance.admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i data-feather="arrow-left" class="me-2"></i>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Upload Time Data</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label for="import_file" class="form-label">Select File</label>
+                            <input type="file" class="form-control" id="import_file" name="import_file" 
+                                   accept=".csv,.xlsx,.xls" required>
+                            <small class="text-muted">Supported formats: CSV, Excel (.xlsx, .xls)</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="import_type" class="form-label">Import Type</label>
+                            <select class="form-select" id="import_type" name="import_type" required>
+                                <option value="">Select import type</option>
+                                <option value="time_entries">Time Entries</option>
+                                <option value="schedule">Employee Schedule</option>
+                                <option value="corrections">Time Corrections</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="validate_only" name="validate_only">
+                                <label class="form-check-label" for="validate_only">
+                                    Validate only (don't import)
+                                </label>
+                            </div>
+                            <small class="text-muted">Check this to validate the file without importing the data</small>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i data-feather="info" class="me-2"></i>
+                            <strong>Note:</strong> This is a placeholder for future import functionality. 
+                            The system will be designed to support importing from external time clock systems, 
+                            payroll systems, and CSV exports.
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" disabled>
+                                <i data-feather="upload" class="me-2"></i>
+                                Import Data (Coming Soon)
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Import Requirements</h6>
+                </div>
+                <div class="card-body">
+                    <h6>CSV Format Requirements:</h6>
+                    <ul class="small">
+                        <li>Employee ID or Username</li>
+                        <li>Clock In DateTime</li>
+                        <li>Clock Out DateTime (optional)</li>
+                        <li>Date (YYYY-MM-DD format)</li>
+                        <li>Notes (optional)</li>
+                    </ul>
+
+                    <h6 class="mt-3">Sample CSV Header:</h6>
+                    <code class="small">
+                        username,date,clock_in,clock_out,notes
+                    </code>
+
+                    <h6 class="mt-3">Supported Systems:</h6>
+                    <ul class="small">
+                        <li>External time clocks</li>
+                        <li>Payroll system exports</li>
+                        <li>Manual CSV data</li>
+                        <li>Biometric systems</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Recent Imports</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted text-center">No recent imports</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    feather.replace();
+
+    // File upload preview
+    document.getElementById('import_file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            const fileType = file.type;
+            
+            console.log(`Selected file: ${file.name} (${fileSize} MB, ${fileType})`);
+            
+            // Basic validation
+            const maxSize = 10; // 10MB
+            if (fileSize > maxSize) {
+                alert(`File size (${fileSize} MB) exceeds maximum limit of ${maxSize} MB`);
+                this.value = '';
+                return;
+            }
+            
+            // Enable submit button when file is selected
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-feather="upload" class="me-2"></i>Import Data';
+                feather.replace();
+            }
+        }
+    });
+
+    // Form submission
+    document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const file = document.getElementById('import_file').files[0];
+        const importType = document.getElementById('import_type').value;
+        
+        if (!file || !importType) {
+            alert('Please select a file and import type');
+            return;
+        }
+        
+        // Show progress
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+        
+        // Simulate processing
+        setTimeout(() => {
+            alert('Import functionality will be implemented in future updates');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i data-feather="upload" class="me-2"></i>Import Data';
+            feather.replace();
+        }, 2000);
+    });
+</script>
+{% endblock %}
