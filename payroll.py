@@ -7,7 +7,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from app import db
 from models import User, TimeEntry, PayCode, PayRule, LeaveApplication, Schedule
-from auth import role_required
+from auth import role_required, super_user_required
 # Import will be handled when PayrollEngine is available
 # from pay_rule_engine_service import PayrollEngine
 from datetime import datetime, timedelta
@@ -274,7 +274,7 @@ def export_payroll():
 
 @payroll_bp.route('/reports/time-summary')
 @login_required
-@role_required(['Super User', 'Manager'])
+@super_user_required
 def time_summary_report():
     """Time worked summary report"""
     try:
@@ -372,7 +372,7 @@ def leave_summary_report():
 
 @payroll_bp.route('/reports/overtime-summary')
 @login_required
-@role_required(['Super User', 'Manager'])
+@super_user_required
 def overtime_summary_report():
     """Overtime summary report"""
     try:
