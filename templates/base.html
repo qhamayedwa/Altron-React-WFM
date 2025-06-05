@@ -136,6 +136,15 @@
                                 <i data-feather="trending-up" class="me-2"></i>
                                 Leave Balances
                             </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('pay_rules.manage_pay_rules') }}">
+                                <i data-feather="dollar-sign" class="me-2"></i>
+                                Pay Rules Engine
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('pay_rules.calculate_pay') }}">
+                                <i data-feather="calculator" class="me-2"></i>
+                                Calculate Pay
+                            </a></li>
                         </ul>
                     </li>
                     {% endif %}
