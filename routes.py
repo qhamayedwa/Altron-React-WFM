@@ -134,7 +134,16 @@ def reports():
             days_worked = len(user_entries)
             user_total_hours = days_worked * 8  # Simplified: 8 hours per entry
             avg_hours = user_total_hours / days_worked if days_worked > 0 else 0
-            attendance_summary.append((user.username, days_worked, user_total_hours, avg_hours))
+            
+            # Create object-like dictionary for template access
+            user_summary = {
+                'username': user.username,
+                'email': user.email,
+                'total_days': days_worked,
+                'total_hours': user_total_hours,
+                'avg_hours': avg_hours
+            }
+            attendance_summary.append(user_summary)
         
         # Leave applications in period
         leave_applications = LeaveApplication.query.filter(
