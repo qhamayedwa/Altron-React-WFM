@@ -36,6 +36,10 @@ def create_app(config_class=Config):
     from auth_simple import init_login_manager
     init_login_manager(app)
     
+    # Register currency formatter for templates
+    from currency_formatter import currency_filter
+    app.jinja_env.filters['currency'] = currency_filter
+    
     # Register blueprints/routes
     from routes import main_bp
     from auth_simple import auth_bp

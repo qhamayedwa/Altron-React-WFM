@@ -107,9 +107,9 @@ def payroll_processing():
                     'ot_20_hours': ot_20_hours,
                     'total_hours': total_hours,
                     'pay_code_breakdown': pay_code_breakdown,
-                    'gross_pay': pay_calculation.get('gross_pay', 0) if pay_calculation else total_hours * 15.0,
-                    'net_pay': pay_calculation.get('net_pay', 0) if pay_calculation else total_hours * 15.0 * 0.8,  # Simplified net pay
-                    'deductions': pay_calculation.get('deductions', 0) if pay_calculation else total_hours * 15.0 * 0.2
+                    'gross_pay': pay_calculation.get('gross_pay', 0) if pay_calculation else total_hours * 150.0,
+                    'net_pay': pay_calculation.get('net_pay', 0) if pay_calculation else total_hours * 150.0 * 0.8,  # Simplified net pay
+                    'deductions': pay_calculation.get('deductions', 0) if pay_calculation else total_hours * 150.0 * 0.2
                 }
                 
                 payroll_data.append(employee_payroll)

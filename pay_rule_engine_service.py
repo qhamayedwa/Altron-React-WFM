@@ -351,7 +351,7 @@ EXAMPLE_PAY_RULES = {
     },
     'weekend_differential': {
         'name': 'Weekend Differential',
-        'description': '$2/hour differential for weekend work',
+        'description': 'R2/hour differential for weekend work',
         'conditions': {'day_of_week': [5, 6]},  # Saturday, Sunday
         'actions': {'shift_differential': 2.0, 'differential_name': 'weekend_diff'},
         'priority': 20

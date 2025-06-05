@@ -128,7 +128,7 @@
                                     </td>
                                     <td>
                                         {% if rule.rate_type == 'fixed' %}
-                                            ${{ "%.2f"|format(rule.rate_value) }}
+                                            R{{ "%.2f"|format(rule.rate_value) }}
                                         {% elif rule.rate_type == 'multiplier' %}
                                             {{ rule.rate_value }}x Base Rate
                                         {% else %}
@@ -302,7 +302,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Base Rate</label>
-                    <input type="number" class="form-control" id="testBaseRate" value="15.00" step="0.01">
+                    <input type="number" class="form-control" id="testBaseRate" value="150.00" step="0.01">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Test Results</label>
