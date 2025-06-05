@@ -59,6 +59,26 @@ def index():
         ).count()
         weekly_hours = weekly_entries * 8  # Simplified: assume 8 hours per entry
         
+        # Get current user's time tracking status for user empowerment features
+        current_status = {'is_clocked_in': False, 'clock_in_time': None}
+        active_entry = TimeEntry.query.filter(
+            and_(
+                TimeEntry.user_id == current_user.id,
+                TimeEntry.clock_out_time.is_(None)
+            )
+        ).first()
+        
+        if active_entry:
+            current_status = {
+                'is_clocked_in': True,
+                'clock_in_time': active_entry.clock_in_time.strftime('%I:%M %p')
+            }
+        
+        # Get pending approvals count for managers
+        pending_approvals = 0
+        if hasattr(current_user, 'has_role') and (current_user.has_role('Manager') or current_user.has_role('Super User')):
+            pending_approvals = LeaveApplication.query.filter_by(status='Pending').count()
+        
         return render_template('dashboard.html',
                              total_employees=total_employees,
                              active_schedules=active_schedules,
@@ -68,7 +88,9 @@ def index():
                              recent_entries=recent_entries,
                              active_pay_rules=active_pay_rules,
                              active_pay_codes=active_pay_codes,
-                             weekly_hours=weekly_hours)
+                             weekly_hours=weekly_hours,
+                             current_status=current_status,
+                             pending_approvals=pending_approvals)
     except Exception as e:
         logging.error(f"Error in dashboard route: {e}")
         flash("An error occurred while loading the dashboard.", "error")
