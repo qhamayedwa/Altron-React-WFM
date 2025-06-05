@@ -39,8 +39,36 @@
                     </li>
                     {% if current_user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.users') }}">
+                        <a class="nav-link" href="{{ url_for('time_attendance.my_timecard') }}">
+                            <i data-feather="clock" class="me-1"></i>
+                            My Timecard
+                        </a>
+                    </li>
+                    {% if current_user.has_role('Manager') or current_user.has_role('Admin') or current_user.has_role('Super User') %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="timeManagementDropdown" role="button" data-bs-toggle="dropdown">
                             <i data-feather="users" class="me-1"></i>
+                            Time Management
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('time_attendance.team_timecard') }}">
+                                <i data-feather="users" class="me-2"></i>
+                                Team Timecard
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('time_attendance.exceptions') }}">
+                                <i data-feather="alert-triangle" class="me-2"></i>
+                                Exceptions
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('time_attendance.reports') }}">
+                                <i data-feather="bar-chart-2" class="me-2"></i>
+                                Reports
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.users') }}">
+                            <i data-feather="database" class="me-1"></i>
                             Users
                         </a>
                     </li>
@@ -51,11 +79,25 @@
                         </a>
                     </li>
                     {% if current_user.has_role('Super User') %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('auth.user_management') }}">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
                             <i data-feather="shield" class="me-1"></i>
-                            User Management
+                            Administration
                         </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.user_management') }}">
+                                <i data-feather="users" class="me-2"></i>
+                                User Management
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('time_attendance.admin_dashboard') }}">
+                                <i data-feather="clock" class="me-2"></i>
+                                Time Attendance Admin
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('time_attendance.manual_entry') }}">
+                                <i data-feather="edit" class="me-2"></i>
+                                Manual Time Entry
+                            </a></li>
+                        </ul>
                     </li>
                     {% endif %}
                     {% endif %}

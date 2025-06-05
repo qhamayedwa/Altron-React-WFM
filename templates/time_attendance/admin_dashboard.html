@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Time Attendance Admin - Flask PostgreSQL App{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i data-feather="shield" class="me-2"></i>
+            Time Attendance Administration
+        </h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('time_attendance.manual_entry') }}" class="btn btn-primary">
+                <i data-feather="edit" class="me-2"></i>
+                Manual Entry
+            </a>
+            <a href="{{ url_for('time_attendance.import_clock_data') }}" class="btn btn-outline-secondary">
+                <i data-feather="upload" class="me-2"></i>
+                Import Data
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i data-feather="calendar" class="text-primary mb-2" width="32" height="32"></i>
+                    <h3 class="text-primary">{{ stats.total_entries_today }}</h3>
+                    <p class="text-muted mb-0">Entries Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i data-feather="play" class="text-success mb-2" width="32" height="32"></i>
+                    <h3 class="text-success">{{ stats.open_entries }}</h3>
+                    <p class="text-muted mb-0">Currently Clocked In</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i data-feather="alert-triangle" class="text-warning mb-2" width="32" height="32"></i>
+                    <h3 class="text-warning">{{ stats.exceptions_count }}</h3>
+                    <p class="text-muted mb-0">Exceptions</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i data-feather="clock" class="text-info mb-2" width="32" height="32"></i>
+                    <h3 class="text-info">{{ "%.1f"|format(stats.week_total_hours) }}</h3>
+                    <p class="text-muted mb-0">Week Total Hours</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('time_attendance.team_timecard') }}" class="btn btn-outline-primary">
+                            <i data-feather="users" class="me-2"></i>
+                            View All Timecards
+                        </a>
+                        <a href="{{ url_for('time_attendance.exceptions') }}" class="btn btn-outline-warning">
+                            <i data-feather="alert-triangle" class="me-2"></i>
+                            Review Exceptions
+                        </a>
+                        <a href="{{ url_for('time_attendance.reports') }}" class="btn btn-outline-info">
+                            <i data-feather="bar-chart-2" class="me-2"></i>
+                            Generate Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">System Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Time Tracking</span>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>GPS Tracking</span>
+                        <span class="badge bg-info">Optional</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Break Tracking</span>
+                        <span class="badge bg-success">Enabled</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Overtime Calculation</span>
+                        <span class="badge bg-success">Automatic</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Entries -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Recent Time Entries</h5>
+        </div>
+        <div class="card-body">
+            {% if recent_entries %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Hours</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in recent_entries %}
+                        <tr>
+                            <td>{{ entry.employee.username }}</td>
+                            <td>{{ entry.work_date.strftime('%m/%d') }}</td>
+                            <td>{{ entry.clock_in_time.strftime('%I:%M %p') }}</td>
+                            <td>
+                                {% if entry.clock_out_time %}
+                                {{ entry.clock_out_time.strftime('%I:%M %p') }}
+                                {% else %}
+                                <span class="badge bg-success">Active</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ "%.2f"|format(entry.total_hours) }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if entry.status == 'Closed' else 'primary' if entry.status == 'Open' else 'warning' }}">
+                                    {{ entry.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {% if entry.status == 'Exception' %}
+                                    <button class="btn btn-outline-success" onclick="approveEntry({{ entry.id }})">
+                                        <i data-feather="check"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if entry.is_overtime and not entry.is_overtime_approved %}
+                                    <button class="btn btn-outline-warning" onclick="approveOvertime({{ entry.id }})">
+                                        <i data-feather="clock"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center">No recent entries found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    feather.replace();
+
+    async function approveEntry(entryId) {
+        try {
+            const response = await fetch(`/time/approve-entry/${entryId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error approving entry', 'danger');
+        }
+    }
+
+    async function approveOvertime(entryId) {
+        try {
+            const response = await fetch(`/time/approve-overtime/${entryId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error approving overtime', 'danger');
+        }
+    }
+</script>
+{% endblock %}

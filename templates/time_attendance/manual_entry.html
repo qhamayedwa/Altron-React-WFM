@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Manual Time Entry - Flask PostgreSQL App{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i data-feather="edit" class="me-2"></i>
+            Manual Time Entry
+        </h2>
+        <a href="{{ url_for('time_attendance.admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i data-feather="arrow-left" class="me-2"></i>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Create Manual Time Entry</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="user_id" class="form-label">Employee *</label>
+                                <select class="form-select" id="user_id" name="user_id" required>
+                                    <option value="">Select Employee</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.username }} - {{ user.full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="work_date" class="form-label">Work Date *</label>
+                                <input type="date" class="form-control" id="work_date" name="work_date" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="clock_in_time" class="form-label">Clock In Time *</label>
+                                <input type="datetime-local" class="form-control" id="clock_in_time" name="clock_in_time" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="clock_out_time" class="form-label">Clock Out Time</label>
+                                <input type="datetime-local" class="form-control" id="clock_out_time" name="clock_out_time">
+                                <small class="text-muted">Leave empty for open time entry</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Enter any notes about this time entry..."></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="approve_overtime" name="approve_overtime">
+                                    <label class="form-check-label" for="approve_overtime">
+                                        Pre-approve overtime (if applicable)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i data-feather="info" class="me-2"></i>
+                            <strong>Note:</strong> Manual entries are automatically approved by the system administrator.
+                            Ensure accuracy before submitting as this will affect payroll calculations.
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('time_attendance.admin_dashboard') }}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="save" class="me-2"></i>
+                                Create Entry
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    feather.replace();
+
+    // Set default work date to today
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('work_date').value = today;
+        
+        // Set default clock in time to 9:00 AM today
+        const clockInDefault = new Date();
+        clockInDefault.setHours(9, 0, 0, 0);
+        document.getElementById('clock_in_time').value = clockInDefault.toISOString().slice(0, 16);
+    });
+
+    // Auto-set clock out time when work date or clock in changes
+    document.getElementById('work_date').addEventListener('change', updateDefaultTimes);
+    document.getElementById('clock_in_time').addEventListener('change', updateDefaultTimes);
+
+    function updateDefaultTimes() {
+        const workDate = document.getElementById('work_date').value;
+        const clockInTime = document.getElementById('clock_in_time').value;
+        
+        if (workDate && clockInTime) {
+            // Set default clock out to 8 hours after clock in
+            const clockIn = new Date(clockInTime);
+            const clockOut = new Date(clockIn.getTime() + (8 * 60 * 60 * 1000)); // Add 8 hours
+            
+            document.getElementById('clock_out_time').value = clockOut.toISOString().slice(0, 16);
+        }
+    }
+
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const clockInTime = new Date(document.getElementById('clock_in_time').value);
+        const clockOutTime = document.getElementById('clock_out_time').value;
+        
+        if (clockOutTime) {
+            const clockOut = new Date(clockOutTime);
+            
+            if (clockOut <= clockInTime) {
+                e.preventDefault();
+                alert('Clock out time must be after clock in time.');
+                return false;
+            }
+            
+            const hoursWorked = (clockOut - clockInTime) / (1000 * 60 * 60);
+            if (hoursWorked > 24) {
+                e.preventDefault();
+                if (!confirm('This entry shows more than 24 hours worked. Are you sure this is correct?')) {
+                    return false;
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

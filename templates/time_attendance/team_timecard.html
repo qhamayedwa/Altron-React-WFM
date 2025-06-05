@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Team Timecard - Flask PostgreSQL App{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i data-feather="users" class="me-2"></i>
+            Team Timecard Management
+        </h2>
+        <a href="{{ url_for('time_attendance.exceptions') }}" class="btn btn-warning">
+            <i data-feather="alert-triangle" class="me-2"></i>
+            View Exceptions
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="user_id" class="form-label">Employee</label>
+                    <select class="form-select" id="user_id" name="user_id">
+                        <option value="">All Employees</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if user.id == selected_user_id %}selected{% endif %}>
+                            {{ user.username }} - {{ user.full_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" 
+                           value="{{ start_date or '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" 
+                           value="{{ end_date or '' }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">Filter</button>
+                    <a href="{{ url_for('time_attendance.team_timecard') }}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Time Entries Table -->
+    <div class="card">
+        <div class="card-body">
+            {% if time_entries.items %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Break Time</th>
+                            <th>Total Hours</th>
+                            <th>Overtime</th>
+                            <th>Status</th>
+                            <th>Approved By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in time_entries.items %}
+                        <tr>
+                            <td>
+                                <strong>{{ entry.employee.username }}</strong>
+                                <br><small class="text-muted">{{ entry.employee.full_name }}</small>
+                            </td>
+                            <td>{{ entry.work_date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ entry.clock_in_time.strftime('%I:%M %p') }}</td>
+                            <td>
+                                {% if entry.clock_out_time %}
+                                {{ entry.clock_out_time.strftime('%I:%M %p') }}
+                                {% else %}
+                                <span class="badge bg-success">Active</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ entry.total_break_minutes }} min</td>
+                            <td>{{ "%.2f"|format(entry.total_hours) }}</td>
+                            <td>
+                                {% if entry.overtime_hours > 0 %}
+                                <span class="text-warning">{{ "%.2f"|format(entry.overtime_hours) }}</span>
+                                {% if entry.is_overtime_approved %}
+                                <i data-feather="check" class="text-success ms-1" title="Approved"></i>
+                                {% else %}
+                                <i data-feather="clock" class="text-warning ms-1" title="Pending Approval"></i>
+                                {% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if entry.status == 'Closed' else 'primary' if entry.status == 'Open' else 'warning' }}">
+                                    {{ entry.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if entry.approved_by %}
+                                {{ entry.approved_by.username }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {% if entry.status == 'Exception' %}
+                                    <button class="btn btn-outline-success" onclick="approveEntry({{ entry.id }})" 
+                                            title="Approve Entry">
+                                        <i data-feather="check"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if entry.is_overtime and not entry.is_overtime_approved %}
+                                    <button class="btn btn-outline-warning" onclick="approveOvertime({{ entry.id }})"
+                                            title="Approve Overtime">
+                                        <i data-feather="clock"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-outline-info" onclick="viewDetails({{ entry.id }})"
+                                            title="View Details">
+                                        <i data-feather="eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if time_entries.pages > 1 %}
+            <nav aria-label="Team timecard pagination">
+                <ul class="pagination justify-content-center mt-3">
+                    {% if time_entries.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('time_attendance.team_timecard', page=time_entries.prev_num, user_id=selected_user_id, start_date=start_date, end_date=end_date) }}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in time_entries.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != time_entries.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('time_attendance.team_timecard', page=page_num, user_id=selected_user_id, start_date=start_date, end_date=end_date) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if time_entries.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('time_attendance.team_timecard', page=time_entries.next_num, user_id=selected_user_id, start_date=start_date, end_date=end_date) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-4">
+                <i data-feather="clock" class="text-muted mb-3" width="64" height="64"></i>
+                <h5>No Time Entries Found</h5>
+                <p class="text-muted">No time entries match the current filters.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Time Entry Details Modal -->
+<div class="modal fade" id="entryDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Time Entry Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="entryDetailsContent">
+                <!-- Content loaded via JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    feather.replace();
+
+    async function approveEntry(entryId) {
+        if (!confirm('Are you sure you want to approve this time entry?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/time/approve-entry/${entryId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error approving entry', 'danger');
+        }
+    }
+
+    async function approveOvertime(entryId) {
+        if (!confirm('Are you sure you want to approve overtime for this entry?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/time/approve-overtime/${entryId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error approving overtime', 'danger');
+        }
+    }
+
+    function viewDetails(entryId) {
+        // This would typically fetch detailed information about the time entry
+        // For now, we'll show a placeholder modal
+        document.getElementById('entryDetailsContent').innerHTML = `
+            <div class="text-center">
+                <i data-feather="clock" class="text-muted mb-3" width="48" height="48"></i>
+                <h5>Time Entry Details</h5>
+                <p class="text-muted">Detailed view functionality will be implemented in future updates.</p>
+                <p>Entry ID: ${entryId}</p>
+            </div>
+        `;
+        
+        feather.replace();
+        new bootstrap.Modal(document.getElementById('entryDetailsModal')).show();
+    }
+
+    // Set default date range to current week
+    document.addEventListener('DOMContentLoaded', function() {
+        const startDateInput = document.getElementById('start_date');
+        const endDateInput = document.getElementById('end_date');
+        
+        if (!startDateInput.value && !endDateInput.value) {
+            const today = new Date();
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+            
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6); // End of week (Saturday)
+            
+            startDateInput.value = weekStart.toISOString().split('T')[0];
+            endDateInput.value = weekEnd.toISOString().split('T')[0];
+        }
+    });
+</script>
+{% endblock %}

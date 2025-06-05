@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}My Timecard - Flask PostgreSQL App{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i data-feather="clock" class="me-2"></i>
+            My Timecard
+        </h2>
+        <div class="d-flex gap-2">
+            <button id="clock-in-btn" class="btn btn-success" onclick="clockIn()">
+                <i data-feather="play" class="me-2"></i>
+                Clock In
+            </button>
+            <button id="clock-out-btn" class="btn btn-danger" onclick="clockOut()" style="display: none;">
+                <i data-feather="stop" class="me-2"></i>
+                Clock Out
+            </button>
+            <button id="break-btn" class="btn btn-warning" onclick="toggleBreak()" style="display: none;">
+                <i data-feather="pause" class="me-2"></i>
+                Start Break
+            </button>
+        </div>
+    </div>
+
+    <!-- Current Status Card -->
+    <div class="card mb-4" id="status-card">
+        <div class="card-body">
+            <h5 class="card-title">Current Status</h5>
+            <div id="status-display">
+                <p class="text-muted">Loading status...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" 
+                           value="{{ start_date or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" 
+                           value="{{ end_date or '' }}">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">Filter</button>
+                    <a href="{{ url_for('time_attendance.my_timecard') }}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ "%.2f"|format(total_hours) }}</h3>
+                    <p class="text-muted mb-0">Total Hours</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ "%.2f"|format(total_overtime) }}</h3>
+                    <p class="text-muted mb-0">Overtime Hours</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Entries Table -->
+    <div class="card">
+        <div class="card-body">
+            {% if time_entries.items %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Break Time</th>
+                            <th>Total Hours</th>
+                            <th>Overtime</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in time_entries.items %}
+                        <tr>
+                            <td>{{ entry.work_date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ entry.clock_in_time.strftime('%I:%M %p') }}</td>
+                            <td>
+                                {% if entry.clock_out_time %}
+                                {{ entry.clock_out_time.strftime('%I:%M %p') }}
+                                {% else %}
+                                <span class="badge bg-success">Active</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ entry.total_break_minutes }} min</td>
+                            <td>{{ "%.2f"|format(entry.total_hours) }}</td>
+                            <td>
+                                {% if entry.overtime_hours > 0 %}
+                                <span class="text-warning">{{ "%.2f"|format(entry.overtime_hours) }}</span>
+                                {% if entry.is_overtime_approved %}
+                                <i data-feather="check" class="text-success ms-1" title="Approved"></i>
+                                {% else %}
+                                <i data-feather="clock" class="text-warning ms-1" title="Pending Approval"></i>
+                                {% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if entry.status == 'Closed' else 'primary' if entry.status == 'Open' else 'warning' }}">
+                                    {{ entry.status }}
+                                </span>
+                            </td>
+                            <td>{{ entry.notes or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if time_entries.pages > 1 %}
+            <nav aria-label="Timecard pagination">
+                <ul class="pagination justify-content-center mt-3">
+                    {% if time_entries.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('time_attendance.my_timecard', page=time_entries.prev_num, start_date=start_date, end_date=end_date) }}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in time_entries.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != time_entries.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('time_attendance.my_timecard', page=page_num, start_date=start_date, end_date=end_date) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if time_entries.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('time_attendance.my_timecard', page=time_entries.next_num, start_date=start_date, end_date=end_date) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-4">
+                <i data-feather="clock" class="text-muted mb-3" width="64" height="64"></i>
+                <h5>No Time Entries Found</h5>
+                <p class="text-muted">Start by clocking in to begin tracking your time.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentStatus = null;
+    let statusInterval = null;
+
+    // Load current status on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        loadCurrentStatus();
+        statusInterval = setInterval(loadCurrentStatus, 30000); // Update every 30 seconds
+    });
+
+    async function loadCurrentStatus() {
+        try {
+            const response = await fetch('/time/status');
+            const data = await response.json();
+            
+            currentStatus = data;
+            updateStatusDisplay(data);
+            updateButtons(data);
+        } catch (error) {
+            console.error('Error loading status:', error);
+        }
+    }
+
+    function updateStatusDisplay(status) {
+        const display = document.getElementById('status-display');
+        
+        if (status.status === 'clocked_out') {
+            display.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-secondary me-2">Clocked Out</span>
+                    <span class="text-muted">Ready to clock in</span>
+                </div>
+            `;
+        } else {
+            const clockInTime = new Date(status.clock_in_time).toLocaleTimeString();
+            display.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="badge bg-success me-2">Clocked In</span>
+                        <span>Since ${clockInTime}</span>
+                        ${status.on_break ? '<span class="badge bg-warning ms-2">On Break</span>' : ''}
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted">Time Elapsed:</small>
+                        <div id="elapsed-time" class="fw-bold"></div>
+                    </div>
+                </div>
+            `;
+            
+            // Start elapsed time counter
+            startElapsedTimeCounter(status.clock_in_time);
+        }
+    }
+
+    function updateButtons(status) {
+        const clockInBtn = document.getElementById('clock-in-btn');
+        const clockOutBtn = document.getElementById('clock-out-btn');
+        const breakBtn = document.getElementById('break-btn');
+        
+        if (status.status === 'clocked_out') {
+            clockInBtn.style.display = 'block';
+            clockOutBtn.style.display = 'none';
+            breakBtn.style.display = 'none';
+        } else {
+            clockInBtn.style.display = 'none';
+            clockOutBtn.style.display = 'block';
+            breakBtn.style.display = 'block';
+            
+            if (status.on_break) {
+                breakBtn.innerHTML = '<i data-feather="play" class="me-2"></i>End Break';
+                breakBtn.className = 'btn btn-success';
+            } else {
+                breakBtn.innerHTML = '<i data-feather="pause" class="me-2"></i>Start Break';
+                breakBtn.className = 'btn btn-warning';
+            }
+        }
+        
+        feather.replace();
+    }
+
+    function startElapsedTimeCounter(clockInTime) {
+        const startTime = new Date(clockInTime);
+        
+        setInterval(function() {
+            const now = new Date();
+            const elapsed = now - startTime;
+            const hours = Math.floor(elapsed / (1000 * 60 * 60));
+            const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+            
+            const elapsedElement = document.getElementById('elapsed-time');
+            if (elapsedElement) {
+                elapsedElement.textContent = `${hours}h ${minutes}m`;
+            }
+        }, 1000);
+    }
+
+    async function clockIn() {
+        try {
+            const response = await fetch('/time/clock-in', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                loadCurrentStatus();
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error clocking in', 'danger');
+        }
+    }
+
+    async function clockOut() {
+        try {
+            const response = await fetch('/time/clock-out', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                loadCurrentStatus();
+                setTimeout(() => location.reload(), 2000); // Reload to show updated timecard
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error clocking out', 'danger');
+        }
+    }
+
+    async function toggleBreak() {
+        const endpoint = currentStatus.on_break ? '/time/end-break' : '/time/start-break';
+        
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                flashMessages.show(data.message, 'success');
+                loadCurrentStatus();
+            } else {
+                flashMessages.show(data.message, 'danger');
+            }
+        } catch (error) {
+            flashMessages.show('Error managing break', 'danger');
+        }
+    }
+</script>
+{% endblock %}
