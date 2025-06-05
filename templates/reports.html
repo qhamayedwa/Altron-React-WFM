@@ -219,26 +219,26 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary" disabled>
-                                    <i data-feather="file-text" class="me-2"></i>Export to CSV
-                                </button>
-                                <button class="btn btn-outline-success" disabled>
-                                    <i data-feather="file" class="me-2"></i>Export to Excel
-                                </button>
+                                <a href="{{ url_for('main.export_csv', start_date=start_date, end_date=end_date) }}" class="btn btn-outline-primary">
+                                    <i data-feather="file-text" class="me-2"></i>Export Attendance to CSV
+                                </a>
+                                <a href="{{ url_for('main.export_payroll_csv', start_date=start_date, end_date=end_date) }}" class="btn btn-outline-success">
+                                    <i data-feather="dollar-sign" class="me-2"></i>Export Payroll to CSV
+                                </a>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="d-grid gap-2">
-                                <button class="btn btn-outline-danger" disabled>
-                                    <i data-feather="file-text" class="me-2"></i>Export to PDF
+                                <button class="btn btn-outline-secondary" onclick="window.print()">
+                                    <i data-feather="printer" class="me-2"></i>Print Report
                                 </button>
-                                <button class="btn btn-outline-info" disabled>
-                                    <i data-feather="mail" class="me-2"></i>Email Report
+                                <button class="btn btn-outline-info" onclick="generateDetailedReport()">
+                                    <i data-feather="bar-chart-2" class="me-2"></i>Detailed Analysis
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <small class="text-muted">Export functionality will be available in future updates.</small>
+                    <small class="text-muted">Click the buttons above to export reports or generate detailed analysis.</small>
                 </div>
             </div>
         </div>
@@ -257,6 +257,30 @@ if (!document.getElementById('start_date').value) {
     
     document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
     document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
+}
+
+// Detailed analysis function
+function generateDetailedReport() {
+    // Show summary statistics in alert
+    const totalEmployees = {{ attendance_summary|length if attendance_summary else 0 }};
+    const totalHours = {{ total_hours or 0 }};
+    const overtimeHours = {{ overtime_hours or 0 }};
+    
+    let analysisText = `Detailed Analysis Summary:\n\n`;
+    analysisText += `Total Active Employees: ${totalEmployees}\n`;
+    analysisText += `Total Hours Worked: ${totalHours}\n`;
+    analysisText += `Overtime Hours: ${overtimeHours}\n`;
+    analysisText += `Average Hours per Employee: ${totalEmployees > 0 ? (totalHours/totalEmployees).toFixed(1) : 0}\n\n`;
+    
+    if (totalHours > 0) {
+        analysisText += `Performance Insights:\n`;
+        if (overtimeHours > 0) {
+            analysisText += `• ${((overtimeHours/totalHours)*100).toFixed(1)}% of total hours are overtime\n`;
+        }
+        analysisText += `• Average productivity level: ${totalHours > 160 ? 'High' : totalHours > 80 ? 'Normal' : 'Low'}\n`;
+    }
+    
+    alert(analysisText);
 }
 </script>
 {% endblock %}

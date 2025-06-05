@@ -1,10 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response
 from flask_login import login_required, current_user
 from app import db
 from models import User, TimeEntry, Schedule, LeaveApplication, PayRule, PayCode
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
 import logging
+import csv
+import io
 
 # Create blueprint for main routes
 main_bp = Blueprint('main', __name__)
@@ -153,18 +155,168 @@ def reports():
             )
         ).count()
         
+        # Add pay period summary data
+        pay_period_summary = []
+        if attendance_summary:
+            for user_data in attendance_summary:
+                pay_period = {
+                    'period_start': start_date,
+                    'period_end': end_date,
+                    'regular_hours': min(user_data['total_hours'], 40),
+                    'overtime_hours': max(0, user_data['total_hours'] - 40),
+                    'total_hours': user_data['total_hours'],
+                    'gross_pay': user_data['total_hours'] * 15.0  # $15/hour base rate
+                }
+                pay_period_summary.append(pay_period)
+
         return render_template('reports.html',
                              start_date=start_date,
                              end_date=end_date,
                              total_hours=total_hours,
                              overtime_hours=overtime_hours,
                              attendance_summary=attendance_summary,
+                             pay_period_summary=pay_period_summary,
                              leave_applications=leave_applications)
         
     except Exception as e:
         logging.error(f"Error in reports route: {e}")
         flash("An error occurred while generating reports.", "error")
         return redirect(url_for('main.index'))
+
+@main_bp.route('/export-csv')
+@login_required
+def export_csv():
+    """Export attendance report to CSV"""
+    try:
+        # Get the same data as reports page
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        if not start_date or not end_date:
+            today = datetime.now().date()
+            start_date = today.replace(day=1)
+            end_date = today
+        else:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Get attendance data
+        users_with_entries = db.session.query(User).join(
+            TimeEntry, User.id == TimeEntry.user_id
+        ).filter(
+            and_(
+                TimeEntry.clock_in_time >= start_date,
+                TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+            )
+        ).distinct().all()
+
+        # Create CSV content
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['Employee', 'Email', 'Total Days', 'Total Hours', 'Average Hours/Day'])
+        
+        # Write data rows
+        for user in users_with_entries:
+            user_entries = TimeEntry.query.filter(
+                and_(
+                    TimeEntry.user_id == user.id,
+                    TimeEntry.clock_in_time >= start_date,
+                    TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+                )
+            ).all()
+            
+            days_worked = len(user_entries)
+            total_hours = days_worked * 8  # Simplified calculation
+            avg_hours = total_hours / days_worked if days_worked > 0 else 0
+            
+            writer.writerow([user.username, user.email, days_worked, total_hours, round(avg_hours, 2)])
+
+        # Create response
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=attendance_report_{start_date}_{end_date}.csv'
+        
+        return response
+        
+    except Exception as e:
+        logging.error(f"Error exporting CSV: {e}")
+        flash("Error generating CSV export.", "error")
+        return redirect(url_for('main.reports'))
+
+@main_bp.route('/export-payroll-csv')
+@login_required
+def export_payroll_csv():
+    """Export payroll report to CSV"""
+    try:
+        # Get the same data as reports page
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        if not start_date or not end_date:
+            today = datetime.now().date()
+            start_date = today.replace(day=1)
+            end_date = today
+        else:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Get attendance data
+        users_with_entries = db.session.query(User).join(
+            TimeEntry, User.id == TimeEntry.user_id
+        ).filter(
+            and_(
+                TimeEntry.clock_in_time >= start_date,
+                TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+            )
+        ).distinct().all()
+
+        # Create CSV content
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['Employee', 'Period Start', 'Period End', 'Regular Hours', 'Overtime Hours', 'Total Hours', 'Gross Pay'])
+        
+        # Write data rows
+        for user in users_with_entries:
+            user_entries = TimeEntry.query.filter(
+                and_(
+                    TimeEntry.user_id == user.id,
+                    TimeEntry.clock_in_time >= start_date,
+                    TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+                )
+            ).all()
+            
+            total_hours = len(user_entries) * 8  # Simplified calculation
+            regular_hours = min(total_hours, 40)
+            overtime_hours = max(0, total_hours - 40)
+            gross_pay = total_hours * 15.0  # $15/hour base rate
+            
+            writer.writerow([
+                user.username, 
+                start_date.strftime('%Y-%m-%d'), 
+                end_date.strftime('%Y-%m-%d'), 
+                regular_hours, 
+                overtime_hours, 
+                total_hours, 
+                f"${gross_pay:.2f}"
+            ])
+
+        # Create response
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=payroll_report_{start_date}_{end_date}.csv'
+        
+        return response
+        
+    except Exception as e:
+        logging.error(f"Error exporting payroll CSV: {e}")
+        flash("Error generating payroll CSV export.", "error")
+        return redirect(url_for('main.reports'))
 
 @main_bp.route('/quick-actions')
 @login_required
