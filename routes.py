@@ -50,13 +50,12 @@ def index():
         # Pay Codes Count
         active_pay_codes = PayCode.query.filter_by(is_active=True).count()
         
-        # Weekly Hours Summary
+        # Weekly Hours Summary - calculate from clock times
         week_start = datetime.now().date() - timedelta(days=datetime.now().weekday())
-        weekly_hours = db.session.query(
-            func.sum(TimeEntry.total_hours)
-        ).filter(
+        weekly_entries = TimeEntry.query.filter(
             TimeEntry.clock_in_time >= week_start
-        ).scalar() or 0
+        ).all()
+        weekly_hours = sum([entry.calculate_total_hours() for entry in weekly_entries if entry.calculate_total_hours()]) or 0
         
         return render_template('dashboard.html',
                              total_employees=total_employees,
@@ -100,38 +99,39 @@ def reports():
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
         
-        # Total hours worked in period
-        total_hours = db.session.query(
-            func.sum(TimeEntry.total_hours)
-        ).filter(
+        # Total hours worked in period - calculate from entries
+        period_entries = TimeEntry.query.filter(
             and_(
                 TimeEntry.clock_in_time >= start_date,
                 TimeEntry.clock_in_time <= end_date + timedelta(days=1)
             )
-        ).scalar() or 0
+        ).all()
         
-        # Overtime hours
-        overtime_hours = db.session.query(
-            func.sum(TimeEntry.overtime_hours)
-        ).filter(
-            and_(
-                TimeEntry.clock_in_time >= start_date,
-                TimeEntry.clock_in_time <= end_date + timedelta(days=1)
-            )
-        ).scalar() or 0
+        total_hours = sum([entry.calculate_total_hours() for entry in period_entries if entry.calculate_total_hours()]) or 0
+        overtime_hours = sum([entry.calculate_overtime_hours() for entry in period_entries if entry.calculate_overtime_hours()]) or 0
         
-        # Employee attendance summary
-        attendance_summary = db.session.query(
-            User.username,
-            func.count(TimeEntry.id).label('days_worked'),
-            func.sum(TimeEntry.total_hours).label('total_hours'),
-            func.avg(TimeEntry.total_hours).label('avg_hours')
-        ).join(TimeEntry).filter(
+        # Employee attendance summary - manual calculation
+        users_with_entries = db.session.query(User).join(TimeEntry).filter(
             and_(
                 TimeEntry.clock_in_time >= start_date,
                 TimeEntry.clock_in_time <= end_date + timedelta(days=1)
             )
-        ).group_by(User.id, User.username).all()
+        ).distinct().all()
+        
+        attendance_summary = []
+        for user in users_with_entries:
+            user_entries = TimeEntry.query.filter(
+                and_(
+                    TimeEntry.user_id == user.id,
+                    TimeEntry.clock_in_time >= start_date,
+                    TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+                )
+            ).all()
+            
+            days_worked = len(user_entries)
+            user_total_hours = sum([entry.calculate_total_hours() for entry in user_entries if entry.calculate_total_hours()]) or 0
+            avg_hours = user_total_hours / days_worked if days_worked > 0 else 0
+            attendance_summary.append((user.username, days_worked, user_total_hours, avg_hours))
         
         # Leave applications in period
         leave_applications = LeaveApplication.query.filter(
@@ -159,3 +159,26 @@ def reports():
 def quick_actions():
     """Quick actions page for common tasks"""
     return render_template('quick_actions.html')
+
+@main_bp.route('/time-entries')
+@login_required
+def time_entries():
+    """Time entries management page"""
+    entries = TimeEntry.query.filter_by(user_id=current_user.id).order_by(TimeEntry.clock_in_time.desc()).limit(50).all()
+    return render_template('time_entries.html', entries=entries)
+
+@main_bp.route('/schedules')
+@login_required
+def schedules():
+    """Employee schedules page"""
+    from datetime import date
+    today = date.today()
+    schedules = Schedule.query.filter(Schedule.date >= today).order_by(Schedule.date).limit(30).all()
+    return render_template('schedules.html', schedules=schedules)
+
+@main_bp.route('/leave-management')
+@login_required
+def leave_management():
+    """Leave management page"""
+    applications = LeaveApplication.query.filter_by(employee_id=current_user.id).order_by(LeaveApplication.created_at.desc()).all()
+    return render_template('leave_management.html', applications=applications)

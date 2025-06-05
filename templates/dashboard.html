@@ -90,14 +90,14 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="#" class="btn btn-primary">
-                            <i data-feather="clock" class="me-2"></i>Clock In/Out
+                        <a href="{{ url_for('main.time_entries') }}" class="btn btn-primary">
+                            <i data-feather="clock" class="me-2"></i>Time Entries
                         </a>
-                        <a href="#" class="btn btn-outline-primary">
+                        <a href="{{ url_for('main.schedules') }}" class="btn btn-outline-primary">
                             <i data-feather="calendar" class="me-2"></i>View Schedule
                         </a>
-                        <a href="#" class="btn btn-outline-secondary">
-                            <i data-feather="file-text" class="me-2"></i>Apply for Leave
+                        <a href="{{ url_for('main.leave_management') }}" class="btn btn-outline-secondary">
+                            <i data-feather="file-text" class="me-2"></i>Leave Management
                         </a>
                         <a href="{{ url_for('main.reports') }}" class="btn btn-outline-info">
                             <i data-feather="bar-chart-2" class="me-2"></i>View Reports
@@ -229,17 +229,17 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3 mb-2">
-                            <a href="#" class="btn btn-outline-primary btn-sm w-100">
+                            <a href="{{ url_for('main.time_entries') }}" class="btn btn-outline-primary btn-sm w-100">
                                 <i data-feather="clock" class="me-2"></i>Time Entries
                             </a>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <a href="#" class="btn btn-outline-primary btn-sm w-100">
+                            <a href="{{ url_for('main.schedules') }}" class="btn btn-outline-primary btn-sm w-100">
                                 <i data-feather="calendar" class="me-2"></i>Schedules
                             </a>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <a href="#" class="btn btn-outline-primary btn-sm w-100">
+                            <a href="{{ url_for('main.leave_management') }}" class="btn btn-outline-primary btn-sm w-100">
                                 <i data-feather="file-text" class="me-2"></i>Leave Management
                             </a>
                         </div>
@@ -263,13 +263,13 @@
                             </a>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <a href="#" class="btn btn-outline-secondary btn-sm w-100">
-                                <i data-feather="users" class="me-2"></i>User Management
+                            <a href="{{ url_for('main.reports') }}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i data-feather="users" class="me-2"></i>User Analytics
                             </a>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <a href="#" class="btn btn-outline-secondary btn-sm w-100">
-                                <i data-feather="settings" class="me-2"></i>System Settings
+                            <a href="{{ url_for('main.quick_actions') }}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i data-feather="settings" class="me-2"></i>Quick Actions
                             </a>
                         </div>
                     </div>
