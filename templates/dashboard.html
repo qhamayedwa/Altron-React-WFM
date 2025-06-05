@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Time & Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">Dashboard</h1>
+        <div>
+            <span class="text-muted">{{ current_user.username }}</span>
+            <span class="text-muted ms-3">{{ moment().format('MMMM DD, YYYY') }}</span>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-primary border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted small">Total Employees</div>
+                            <div class="h4 mb-0">{{ total_employees }}</div>
+                        </div>
+                        <div class="text-primary">
+                            <i data-feather="users" class="feather-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-success border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted small">Currently Clocked In</div>
+                            <div class="h4 mb-0">{{ clocked_in_now }}</div>
+                        </div>
+                        <div class="text-success">
+                            <i data-feather="clock" class="feather-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-warning border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted small">Pending Leave</div>
+                            <div class="h4 mb-0">{{ pending_leave }}</div>
+                        </div>
+                        <div class="text-warning">
+                            <i data-feather="calendar" class="feather-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-info border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-muted small">Weekly Hours</div>
+                            <div class="h4 mb-0">{{ "%.1f"|format(weekly_hours or 0) }}</div>
+                        </div>
+                        <div class="text-info">
+                            <i data-feather="trending-up" class="feather-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Recent Activity -->
+    <div class="row">
+        <!-- Quick Actions -->
+        <div class="col-xl-4 col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('time_attendance.clock_in_out') }}" class="btn btn-primary">
+                            <i data-feather="clock" class="me-2"></i>Time Entry
+                        </a>
+                        <a href="{{ url_for('scheduling.view_schedule') }}" class="btn btn-outline-primary">
+                            <i data-feather="calendar" class="me-2"></i>View Schedule
+                        </a>
+                        <a href="{{ url_for('leave_management.apply_leave') }}" class="btn btn-outline-secondary">
+                            <i data-feather="file-text" class="me-2"></i>Apply for Leave
+                        </a>
+                        {% if current_user.has_role('Manager') or current_user.has_role('Super User') %}
+                        <a href="{{ url_for('main.reports') }}" class="btn btn-outline-info">
+                            <i data-feather="bar-chart-2" class="me-2"></i>View Reports
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-xl-8 col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Recent Time Entries</h6>
+                    <a href="{{ url_for('time_attendance.time_entries') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_entries %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Date</th>
+                                    <th>Clock In</th>
+                                    <th>Clock Out</th>
+                                    <th>Hours</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in recent_entries %}
+                                <tr>
+                                    <td>{{ entry.employee.username }}</td>
+                                    <td>{{ entry.clock_in_time.strftime('%m/%d') if entry.clock_in_time else 'N/A' }}</td>
+                                    <td>{{ entry.clock_in_time.strftime('%H:%M') if entry.clock_in_time else 'N/A' }}</td>
+                                    <td>
+                                        {% if entry.clock_out_time %}
+                                            {{ entry.clock_out_time.strftime('%H:%M') }}
+                                        {% else %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ "%.1f"|format(entry.total_hours or 0) }}</td>
+                                    <td>
+                                        {% if entry.status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif entry.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ entry.status|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i data-feather="inbox" class="mb-2"></i>
+                        <p>No recent time entries</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="row">
+        <!-- Today's Statistics -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Today's Activity</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <div class="h4 text-primary">{{ today_entries }}</div>
+                                <div class="text-muted small">Clock-ins Today</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 text-success">{{ clocked_in_now }}</div>
+                            <div class="text-muted small">Currently Active</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Configuration -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">System Configuration</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="h5 text-info">{{ active_pay_rules }}</div>
+                            <div class="text-muted small">Pay Rules</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="h5 text-warning">{{ active_pay_codes }}</div>
+                            <div class="text-muted small">Pay Codes</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="h5 text-secondary">{{ active_schedules }}</div>
+                            <div class="text-muted small">Schedules</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Administrative Links (For Managers and Super Users) -->
+    {% if current_user.has_role('Manager') or current_user.has_role('Super User') %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Administrative Functions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('time_attendance.manage_time_entries') }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i data-feather="clock" class="me-2"></i>Manage Time Entries
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('scheduling.manage_schedules') }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i data-feather="calendar" class="me-2"></i>Manage Schedules
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('leave_management.team_applications') }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i data-feather="file-text" class="me-2"></i>Leave Approvals
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('main.reports') }}" class="btn btn-outline-info btn-sm w-100">
+                                <i data-feather="bar-chart-2" class="me-2"></i>Reports
+                            </a>
+                        </div>
+                    </div>
+                    
+                    {% if current_user.has_role('Super User') %}
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('pay_rules.manage_pay_rules') }}" class="btn btn-outline-warning btn-sm w-100">
+                                <i data-feather="dollar-sign" class="me-2"></i>Pay Rules
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('pay_codes.manage_pay_codes') }}" class="btn btn-outline-warning btn-sm w-100">
+                                <i data-feather="tag" class="me-2"></i>Pay Codes
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('auth.user_management') }}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i data-feather="users" class="me-2"></i>User Management
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('leave_management.manage_leave_types') }}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i data-feather="settings" class="me-2"></i>Leave Types
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Initialize Feather Icons
+feather.replace();
+
+// Auto-refresh dashboard every 5 minutes
+setTimeout(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

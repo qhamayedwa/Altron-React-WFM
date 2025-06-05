@@ -1,149 +1,158 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import login_required, current_user
 from app import db
-from models import User, Post, Category
+from models import User, TimeEntry, Schedule, LeaveApplication, PayRule, PayCode
+from datetime import datetime, timedelta
+from sqlalchemy import func, and_, or_
 import logging
 
 # Create blueprint for main routes
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
+@login_required
 def index():
-    """Home page route"""
+    """Main dashboard for Time & Attendance system"""
     try:
-        # Get some basic statistics from the database
-        user_count = User.query.count()
-        post_count = Post.query.count()
-        category_count = Category.query.count()
+        # System Statistics
+        total_employees = User.query.filter_by(is_active=True).count()
+        active_schedules = Schedule.query.filter(
+            Schedule.date >= datetime.now().date()
+        ).count()
         
-        # Get recent posts
-        recent_posts = Post.query.filter_by(published=True)\
-                              .order_by(Post.created_at.desc())\
-                              .limit(5)\
-                              .all()
+        # Time Entry Statistics (Today)
+        today = datetime.now().date()
+        today_entries = TimeEntry.query.filter(
+            func.date(TimeEntry.clock_in_time) == today
+        ).count()
         
-        return render_template('index.html',
-                             user_count=user_count,
-                             post_count=post_count,
-                             category_count=category_count,
-                             recent_posts=recent_posts)
+        clocked_in_now = TimeEntry.query.filter(
+            and_(
+                func.date(TimeEntry.clock_in_time) == today,
+                TimeEntry.clock_out_time.is_(None)
+            )
+        ).count()
+        
+        # Leave Applications (Pending)
+        pending_leave = LeaveApplication.query.filter_by(status='pending').count()
+        
+        # Recent Activity (Last 5 entries)
+        recent_entries = TimeEntry.query.filter(
+            TimeEntry.clock_in_time >= datetime.now() - timedelta(days=7)
+        ).order_by(TimeEntry.clock_in_time.desc()).limit(5).all()
+        
+        # Pay Rules Count
+        active_pay_rules = PayRule.query.filter_by(is_active=True).count()
+        
+        # Pay Codes Count
+        active_pay_codes = PayCode.query.filter_by(is_active=True).count()
+        
+        # Weekly Hours Summary
+        week_start = datetime.now().date() - timedelta(days=datetime.now().weekday())
+        weekly_hours = db.session.query(
+            func.sum(TimeEntry.total_hours)
+        ).filter(
+            TimeEntry.clock_in_time >= week_start
+        ).scalar() or 0
+        
+        return render_template('dashboard.html',
+                             total_employees=total_employees,
+                             active_schedules=active_schedules,
+                             today_entries=today_entries,
+                             clocked_in_now=clocked_in_now,
+                             pending_leave=pending_leave,
+                             recent_entries=recent_entries,
+                             active_pay_rules=active_pay_rules,
+                             active_pay_codes=active_pay_codes,
+                             weekly_hours=weekly_hours)
     except Exception as e:
-        logging.error(f"Error in index route: {e}")
-        flash("An error occurred while loading the page.", "error")
-        return render_template('index.html',
-                             user_count=0,
-                             post_count=0,
-                             category_count=0,
-                             recent_posts=[])
+        logging.error(f"Error in dashboard route: {e}")
+        flash("An error occurred while loading the dashboard.", "error")
+        return render_template('dashboard.html',
+                             total_employees=0,
+                             active_schedules=0,
+                             today_entries=0,
+                             clocked_in_now=0,
+                             pending_leave=0,
+                             recent_entries=[],
+                             active_pay_rules=0,
+                             active_pay_codes=0,
+                             weekly_hours=0)
 
-@main_bp.route('/users')
-def users():
-    """List all users"""
+@main_bp.route('/reports')
+@login_required
+def reports():
+    """Reports dashboard"""
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = 10
+        # Time range from request
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
         
-        users = User.query.filter_by(is_active=True)\
-                         .order_by(User.created_at.desc())\
-                         .paginate(page=page, per_page=per_page, error_out=False)
+        # Default to current month if no dates provided
+        if not start_date or not end_date:
+            today = datetime.now().date()
+            start_date = today.replace(day=1)
+            end_date = today
+        else:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
         
-        return render_template('users.html', users=users)
+        # Total hours worked in period
+        total_hours = db.session.query(
+            func.sum(TimeEntry.total_hours)
+        ).filter(
+            and_(
+                TimeEntry.clock_in_time >= start_date,
+                TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+            )
+        ).scalar() or 0
+        
+        # Overtime hours
+        overtime_hours = db.session.query(
+            func.sum(TimeEntry.overtime_hours)
+        ).filter(
+            and_(
+                TimeEntry.clock_in_time >= start_date,
+                TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+            )
+        ).scalar() or 0
+        
+        # Employee attendance summary
+        attendance_summary = db.session.query(
+            User.username,
+            func.count(TimeEntry.id).label('days_worked'),
+            func.sum(TimeEntry.total_hours).label('total_hours'),
+            func.avg(TimeEntry.total_hours).label('avg_hours')
+        ).join(TimeEntry).filter(
+            and_(
+                TimeEntry.clock_in_time >= start_date,
+                TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+            )
+        ).group_by(User.id, User.username).all()
+        
+        # Leave applications in period
+        leave_applications = LeaveApplication.query.filter(
+            and_(
+                LeaveApplication.start_date >= start_date,
+                LeaveApplication.start_date <= end_date
+            )
+        ).count()
+        
+        return render_template('reports.html',
+                             start_date=start_date,
+                             end_date=end_date,
+                             total_hours=total_hours,
+                             overtime_hours=overtime_hours,
+                             attendance_summary=attendance_summary,
+                             leave_applications=leave_applications)
+        
     except Exception as e:
-        logging.error(f"Error in users route: {e}")
-        flash("An error occurred while loading users.", "error")
+        logging.error(f"Error in reports route: {e}")
+        flash("An error occurred while generating reports.", "error")
         return redirect(url_for('main.index'))
 
-@main_bp.route('/posts')
-def posts():
-    """List all published posts"""
-    try:
-        page = request.args.get('page', 1, type=int)
-        per_page = 10
-        
-        posts = Post.query.filter_by(published=True)\
-                         .order_by(Post.created_at.desc())\
-                         .paginate(page=page, per_page=per_page, error_out=False)
-        
-        return render_template('posts.html', posts=posts)
-    except Exception as e:
-        logging.error(f"Error in posts route: {e}")
-        flash("An error occurred while loading posts.", "error")
-        return redirect(url_for('main.index'))
-
-@main_bp.route('/db-status')
-def db_status():
-    """Check database connection status"""
-    try:
-        # Try to execute a simple query
-        result = db.session.execute(db.text('SELECT 1'))
-        result.fetchone()
-        
-        # Get table information
-        tables_info = {}
-        tables_info['users'] = User.query.count()
-        tables_info['posts'] = Post.query.count()
-        tables_info['categories'] = Category.query.count()
-        
-        return jsonify({
-            'status': 'connected',
-            'message': 'Database connection successful',
-            'tables': tables_info
-        })
-    except Exception as e:
-        logging.error(f"Database connection error: {e}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-
-@main_bp.route('/create-sample-data')
-def create_sample_data():
-    """Create sample data for testing (development only)"""
-    try:
-        # Check if we already have data
-        if User.query.count() > 0:
-            return jsonify({
-                'status': 'info',
-                'message': 'Sample data already exists'
-            })
-        
-        # Create sample user
-        user = User(username='testuser', email='test@example.com')
-        user.set_password('password123')
-        db.session.add(user)
-        db.session.flush()  # Get the user ID
-        
-        # Create sample category
-        category = Category(name='Technology', description='Technology related posts')
-        db.session.add(category)
-        
-        # Create sample posts
-        post1 = Post(
-            title='Welcome to Flask PostgreSQL App',
-            content='This is a sample post to test the database integration.',
-            published=True,
-            user_id=user.id
-        )
-        
-        post2 = Post(
-            title='Database Migration Success',
-            content='Flask-Migrate has been successfully configured.',
-            published=True,
-            user_id=user.id
-        )
-        
-        db.session.add(post1)
-        db.session.add(post2)
-        db.session.commit()
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Sample data created successfully'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Error creating sample data: {e}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+@main_bp.route('/quick-actions')
+@login_required
+def quick_actions():
+    """Quick actions page for common tasks"""
+    return render_template('quick_actions.html')

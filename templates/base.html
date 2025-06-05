@@ -97,17 +97,12 @@
                     </li>
                     {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.users') }}">
-                            <i data-feather="database" class="me-1"></i>
-                            Users
+                        <a class="nav-link" href="{{ url_for('main.reports') }}">
+                            <i data-feather="bar-chart-2" class="me-1"></i>
+                            Reports
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.posts') }}">
-                            <i data-feather="file-text" class="me-1"></i>
-                            Posts
-                        </a>
-                    </li>
+
                     {% if current_user.has_role('Super User') %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
