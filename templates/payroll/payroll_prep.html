@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}Payroll Preparation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Payroll Preparation</h2>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success" onclick="processPayroll()">
+                        <i data-feather="play" class="me-2"></i>Process Payroll
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="exportPayroll()">
+                        <i data-feather="download" class="me-2"></i>Export Data
+                    </button>
+                    <a href="{{ url_for('payroll.time_summary_report') }}" class="btn btn-outline-info">
+                        <i data-feather="bar-chart-2" class="me-2"></i>View Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pay Period Selection -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Pay Period Selection</h6>
+                </div>
+                <div class="card-body">
+                    <form id="payPeriodForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="startDate" name="start_date" value="{{ pay_period.start_date if pay_period else '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="endDate" name="end_date" value="{{ pay_period.end_date if pay_period else '' }}">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="loadPayrollData()">
+                            <i data-feather="refresh-cw" class="me-2"></i>Load Payroll Data
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Payroll Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <strong>{{ payroll_summary.total_employees or 0 }}</strong><br>
+                            <small class="text-muted">Employees</small>
+                        </div>
+                        <div class="col-3">
+                            <strong>{{ payroll_summary.total_hours or 0 }}</strong><br>
+                            <small class="text-muted">Total Hours</small>
+                        </div>
+                        <div class="col-3">
+                            <strong>{{ payroll_summary.overtime_hours or 0 }}</strong><br>
+                            <small class="text-muted">OT Hours</small>
+                        </div>
+                        <div class="col-3">
+                            <strong>${{ "%.2f"|format(payroll_summary.gross_pay or 0) }}</strong><br>
+                            <small class="text-muted">Gross Pay</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Payroll Data -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Employee Payroll Data</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="selectAllEmployees()">
+                            <i data-feather="check-square"></i> Select All
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="flagExceptions()">
+                            <i data-feather="alert-triangle"></i> Flag Exceptions
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="payrollTable">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                    </th>
+                                    <th>Employee</th>
+                                    <th>Regular Hours</th>
+                                    <th>Overtime Hours</th>
+                                    <th>Base Rate</th>
+                                    <th>Regular Pay</th>
+                                    <th>Overtime Pay</th>
+                                    <th>Gross Pay</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for employee_data in payroll_data %}
+                                <tr class="{% if employee_data.has_exceptions %}table-warning{% endif %}">
+                                    <td>
+                                        <input type="checkbox" class="employee-checkbox" value="{{ employee_data.employee_id }}">
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm me-2">
+                                                <span class="badge bg-primary">{{ employee_data.employee.first_name[0] }}{{ employee_data.employee.last_name[0] }}</span>
+                                            </div>
+                                            <div>
+                                                <strong>{{ employee_data.employee.first_name }} {{ employee_data.employee.last_name }}</strong><br>
+                                                <small class="text-muted">{{ employee_data.employee.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ "%.2f"|format(employee_data.regular_hours) }}</td>
+                                    <td>{{ "%.2f"|format(employee_data.overtime_hours) }}</td>
+                                    <td>${{ "%.2f"|format(employee_data.base_rate) }}</td>
+                                    <td>${{ "%.2f"|format(employee_data.regular_pay) }}</td>
+                                    <td>${{ "%.2f"|format(employee_data.overtime_pay) }}</td>
+                                    <td><strong>${{ "%.2f"|format(employee_data.gross_pay) }}</strong></td>
+                                    <td>
+                                        {% if employee_data.has_exceptions %}
+                                            <span class="badge bg-warning">Exception</span>
+                                        {% elif employee_data.is_approved %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="viewDetails({{ employee_data.employee_id }})">
+                                                <i data-feather="eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-warning" onclick="editPayroll({{ employee_data.employee_id }})">
+                                                <i data-feather="edit"></i>
+                                            </button>
+                                            {% if not employee_data.is_approved %}
+                                            <button class="btn btn-outline-success" onclick="approvePayroll({{ employee_data.employee_id }})">
+                                                <i data-feather="check"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="10" class="text-center text-muted">No payroll data available for selected period</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pay Code Breakdown -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Pay Code Breakdown</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for pay_code in pay_code_summary %}
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="text-primary">{{ "%.1f"|format(pay_code.total_hours) }}</h5>
+                                    <small class="text-muted">{{ pay_code.name }} Hours</small><br>
+                                    <small class="text-success">${{ "%.2f"|format(pay_code.total_amount) }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Details Modal -->
+<div class="modal fade" id="employeeDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Employee Payroll Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="employeeDetailsContent">
+                Loading employee details...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="exportEmployeeData()">Export Details</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Processing Modal -->
+<div class="modal fade" id="processingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Processing Payroll</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p id="processingStatus">Initializing payroll processing...</p>
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 0%" id="processingProgress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentEmployeeId = null;
+
+function loadPayrollData() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!startDate || !endDate) {
+        alert('Please select both start and end dates');
+        return;
+    }
+    
+    const params = new URLSearchParams();
+    params.append('start_date', startDate);
+    params.append('end_date', endDate);
+    
+    window.location.href = '?' + params.toString();
+}
+
+function processPayroll() {
+    const selectedEmployees = Array.from(document.querySelectorAll('.employee-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    if (selectedEmployees.length === 0) {
+        alert('Please select at least one employee to process');
+        return;
+    }
+    
+    if (confirm(`Process payroll for ${selectedEmployees.length} employees?`)) {
+        const modal = new bootstrap.Modal(document.getElementById('processingModal'));
+        modal.show();
+        
+        // Simulate processing steps
+        let progress = 0;
+        const steps = [
+            'Validating time entries...',
+            'Calculating regular hours...',
+            'Processing overtime...',
+            'Applying pay rules...',
+            'Generating payroll records...',
+            'Finalizing calculations...'
+        ];
+        
+        function updateProgress() {
+            if (progress < steps.length) {
+                document.getElementById('processingStatus').textContent = steps[progress];
+                document.getElementById('processingProgress').style.width = `${((progress + 1) / steps.length) * 100}%`;
+                progress++;
+                setTimeout(updateProgress, 1000);
+            } else {
+                document.getElementById('processingStatus').textContent = 'Payroll processing completed successfully!';
+                setTimeout(() => {
+                    modal.hide();
+                    location.reload();
+                }, 2000);
+            }
+        }
+        
+        updateProgress();
+    }
+}
+
+function viewDetails(employeeId) {
+    currentEmployeeId = employeeId;
+    const modal = new bootstrap.Modal(document.getElementById('employeeDetailsModal'));
+    
+    fetch(`/payroll/employee-details/${employeeId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('employeeDetailsContent').innerHTML = formatEmployeeDetails(data);
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error loading employee details:', error);
+        });
+}
+
+function editPayroll(employeeId) {
+    window.location.href = `/payroll/edit/${employeeId}`;
+}
+
+function approvePayroll(employeeId) {
+    if (confirm('Approve payroll for this employee?')) {
+        fetch(`/payroll/approve/${employeeId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error approving payroll: ' + data.message);
+            }
+        });
+    }
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.employee-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+function selectAllEmployees() {
+    document.getElementById('selectAll').checked = true;
+    toggleSelectAll();
+}
+
+function flagExceptions() {
+    const exceptionRows = document.querySelectorAll('.table-warning');
+    exceptionRows.forEach(row => {
+        const checkbox = row.querySelector('.employee-checkbox');
+        if (checkbox) checkbox.checked = true;
+    });
+}
+
+function exportPayroll() {
+    const selectedEmployees = Array.from(document.querySelectorAll('.employee-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    const params = new URLSearchParams();
+    params.append('start_date', startDate);
+    params.append('end_date', endDate);
+    if (selectedEmployees.length > 0) {
+        params.append('employees', selectedEmployees.join(','));
+    }
+    
+    window.location.href = '/payroll/export?' + params.toString();
+}
+
+function exportEmployeeData() {
+    if (currentEmployeeId) {
+        window.location.href = `/payroll/export-employee/${currentEmployeeId}`;
+    }
+}
+
+function formatEmployeeDetails(employee) {
+    return `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Employee Information</h6>
+                <strong>Name:</strong> ${employee.name}<br>
+                <strong>Employee ID:</strong> ${employee.id}<br>
+                <strong>Department:</strong> ${employee.department}<br>
+                <strong>Base Rate:</strong> $${employee.base_rate}
+            </div>
+            <div class="col-md-6">
+                <h6>Pay Period Summary</h6>
+                <strong>Regular Hours:</strong> ${employee.regular_hours}<br>
+                <strong>Overtime Hours:</strong> ${employee.overtime_hours}<br>
+                <strong>Total Hours:</strong> ${employee.total_hours}<br>
+                <strong>Gross Pay:</strong> $${employee.gross_pay}
+            </div>
+        </div>
+        <hr>
+        <h6>Time Entries</h6>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Clock In</th>
+                        <th>Clock Out</th>
+                        <th>Hours</th>
+                        <th>Pay Code</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${employee.time_entries.map(entry => `
+                        <tr>
+                            <td>${entry.date}</td>
+                            <td>${entry.clock_in}</td>
+                            <td>${entry.clock_out}</td>
+                            <td>${entry.hours}</td>
+                            <td>${entry.pay_code}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default dates to current pay period
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    if (!document.getElementById('startDate').value) {
+        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    }
+    if (!document.getElementById('endDate').value) {
+        document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+    }
+    
+    feather.replace();
+});
+</script>
+{% endblock %}
