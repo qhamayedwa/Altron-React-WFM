@@ -11,7 +11,7 @@ import logging
 import json
 
 from app import db
-from models import User, TimeEntry, Schedule, LeaveApplication, PayCode, PayRule, LeaveType, LeaveBalance, ShiftType
+from models import User, TimeEntry, Schedule, LeaveApplication, PayCode, PayRule, LeaveType, LeaveBalance, ShiftType, Role
 from auth import role_required, super_user_required
 
 # Create API blueprint
@@ -617,10 +617,11 @@ def api_users():
         # Build query
         query = User.query.filter(User.is_active == True)
         
-        # Apply role filter if specified
+        # Apply role filter if specified - for now, get all active users
+        # TODO: Implement proper role filtering once role system is clarified
         if role_filter:
-            roles = [r.strip() for r in role_filter.split(',')]
-            query = query.filter(User.role.in_(roles))
+            # Skip role filtering for now - return all active users for manager selection
+            pass
         
         # Apply search filter if specified
         if search_term:
@@ -639,14 +640,17 @@ def api_users():
         # Format user data for API response
         users_data = []
         for user in users:
+            # Get primary role name or default
+            primary_role = user.roles[0].name if user.roles else 'Employee'
+            
             users_data.append({
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
                 'first_name': getattr(user, 'first_name', ''),
                 'last_name': getattr(user, 'last_name', ''),
-                'phone': getattr(user, 'phone', ''),
-                'role': user.role,
+                'phone': getattr(user, 'phone_number', '') or getattr(user, 'mobile_number', ''),
+                'role': primary_role,
                 'department': getattr(user, 'department', ''),
                 'employee_id': getattr(user, 'employee_id', '')
             })
