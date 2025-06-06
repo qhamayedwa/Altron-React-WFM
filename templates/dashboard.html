@@ -1117,90 +1117,123 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add click handlers to existing charts
     setTimeout(() => {
-        // Daily Attendance Chart Click Handler
-        const dailyChart = Chart.getChart('dailyAttendanceChart');
-        if (dailyChart) {
-            dailyChart.options.onClick = (event, elements) => {
-                if (elements.length > 0) {
-                    const index = elements[0].index;
-                    const date = analyticsData.daily_attendance.labels[index];
-                    const count = analyticsData.daily_attendance.data[index];
-                    drillDownDailyAttendance(date, count);
-                }
-            };
-            dailyChart.options.onHover = (event, elements) => {
-                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-            };
-            dailyChart.update();
+        try {
+            // Ensure analytics data exists
+            if (typeof analyticsData === 'undefined') {
+                console.log('Analytics data not loaded yet');
+                return;
+            }
+            
+            // Daily Attendance Chart Click Handler
+            const dailyChart = Chart.getChart('dailyAttendanceChart');
+            if (dailyChart && analyticsData.daily_attendance) {
+                dailyChart.options.onClick = (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const date = analyticsData.daily_attendance.labels[index];
+                        const count = analyticsData.daily_attendance.data[index];
+                        drillDownDailyAttendance(date, count);
+                    }
+                };
+                dailyChart.options.onHover = (event, elements) => {
+                    if (event.native && event.native.target) {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    }
+                };
+                dailyChart.update();
+            }
+        
+            // Weekly Hours Chart Click Handler
+            const weeklyChart = Chart.getChart('weeklyHoursChart');
+            if (weeklyChart && analyticsData.weekly_hours) {
+                weeklyChart.options.onClick = (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const week = analyticsData.weekly_hours.labels[index];
+                        const hours = analyticsData.weekly_hours.data[index];
+                        drillDownWeeklyHours(week, hours);
+                    }
+                };
+                weeklyChart.options.onHover = (event, elements) => {
+                    if (event.native && event.native.target) {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    }
+                };
+                weeklyChart.update();
+            }
+            
+            // Leave Status Chart Click Handler
+            const leaveChart = Chart.getChart('leaveStatusChart');
+            if (leaveChart && analyticsData.leave_distribution) {
+                leaveChart.options.onClick = (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const status = analyticsData.leave_distribution.labels[index];
+                        const count = analyticsData.leave_distribution.data[index];
+                        drillDownLeaveStatus(status, count);
+                    }
+                };
+                leaveChart.options.onHover = (event, elements) => {
+                    if (event.native && event.native.target) {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    }
+                };
+                leaveChart.update();
+            }
+            
+            // Hourly Patterns Chart Click Handler
+            const hourlyChart = Chart.getChart('hourlyPatternsChart');
+            if (hourlyChart && analyticsData.hourly_patterns) {
+                hourlyChart.options.onClick = (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const hour = analyticsData.hourly_patterns.labels[index];
+                        const count = analyticsData.hourly_patterns.data[index];
+                        drillDownHourlyPattern(hour, count);
+                    }
+                };
+                hourlyChart.options.onHover = (event, elements) => {
+                    if (event.native && event.native.target) {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    }
+                };
+                hourlyChart.update();
+            }
+            
+            // Productivity Chart Click Handler
+            const productivityChart = Chart.getChart('productivityChart');
+            if (productivityChart && analyticsData.productivity_insights && analyticsData.productivity_insights.length > 0) {
+                productivityChart.options.onClick = (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const employee = analyticsData.productivity_insights[index];
+                        drillDownProductivity(employee.name, employee.hours);
+                    }
+                };
+                productivityChart.options.onHover = (event, elements) => {
+                    if (event.native && event.native.target) {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    }
+                };
+                productivityChart.update();
+            }
+        } catch (error) {
+            console.error('Error setting up chart interactions:', error);
         }
         
-        // Weekly Hours Chart Click Handler
-        const weeklyChart = Chart.getChart('weeklyHoursChart');
-        if (weeklyChart) {
-            weeklyChart.options.onClick = (event, elements) => {
-                if (elements.length > 0) {
-                    const index = elements[0].index;
-                    const week = analyticsData.weekly_hours.labels[index];
-                    const hours = analyticsData.weekly_hours.data[index];
-                    drillDownWeeklyHours(week, hours);
-                }
-            };
-            weeklyChart.options.onHover = (event, elements) => {
-                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-            };
-            weeklyChart.update();
-        }
-        
-        // Leave Status Chart Click Handler
-        const leaveChart = Chart.getChart('leaveStatusChart');
-        if (leaveChart) {
-            leaveChart.options.onClick = (event, elements) => {
-                if (elements.length > 0) {
-                    const index = elements[0].index;
-                    const status = analyticsData.leave_distribution.labels[index];
-                    const count = analyticsData.leave_distribution.data[index];
-                    drillDownLeaveStatus(status, count);
-                }
-            };
-            leaveChart.options.onHover = (event, elements) => {
-                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-            };
-            leaveChart.update();
-        }
-        
-        // Hourly Patterns Chart Click Handler
-        const hourlyChart = Chart.getChart('hourlyPatternsChart');
-        if (hourlyChart) {
-            hourlyChart.options.onClick = (event, elements) => {
-                if (elements.length > 0) {
-                    const index = elements[0].index;
-                    const hour = analyticsData.hourly_patterns.labels[index];
-                    const count = analyticsData.hourly_patterns.data[index];
-                    drillDownHourlyPattern(hour, count);
-                }
-            };
-            hourlyChart.options.onHover = (event, elements) => {
-                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-            };
-            hourlyChart.update();
-        }
-        
-        // Productivity Chart Click Handler
-        const productivityChart = Chart.getChart('productivityChart');
-        if (productivityChart && analyticsData.productivity_insights.length > 0) {
-            productivityChart.options.onClick = (event, elements) => {
-                if (elements.length > 0) {
-                    const index = elements[0].index;
-                    const employee = analyticsData.productivity_insights[index];
-                    drillDownProductivity(employee.name, employee.hours);
-                }
-            };
-            productivityChart.options.onHover = (event, elements) => {
-                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-            };
-            productivityChart.update();
-        }
-    }, 1000);
+        // Add visual indicators for interactive charts
+        const chartContainers = document.querySelectorAll('.chart-container');
+        chartContainers.forEach(container => {
+            if (!container.querySelector('.chart-interactive-hint')) {
+                const hint = document.createElement('div');
+                hint.className = 'chart-interactive-hint';
+                hint.style.cssText = 'position: absolute; top: 5px; right: 5px; background: rgba(0,123,255,0.1); color: #007bff; padding: 2px 6px; border-radius: 3px; font-size: 10px; pointer-events: none;';
+                hint.textContent = 'Click for details';
+                container.style.position = 'relative';
+                container.appendChild(hint);
+            }
+        });
+    }, 2000);
 });
 </script>
 {% endblock %}
