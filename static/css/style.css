@@ -3,9 +3,9 @@
 
 :root {
     /* Primary Brand Colors */
-    --primary-gradient: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-    --primary-dark: #1e40af;
-    --primary-light: #3b82f6;
+    --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    --primary-dark: #4338ca;
+    --primary-light: #6366f1;
     
     /* Accent Colors */
     --accent-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -61,7 +61,7 @@
     --app-info: #06b6d4;
     --app-warning: #f59e0b;
     --app-danger: #ef4444;
-    --bs-primary: var(--primary-light);
+    --bs-primary: #6366f1;
     --bs-secondary: var(--neutral-500);
     --bs-success: #10b981;
     --bs-info: #06b6d4;
@@ -104,7 +104,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.9) 0%, rgba(30, 64, 175, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.9) 0%, rgba(99, 102, 241, 0.95) 100%);
     z-index: -1;
 }
 
@@ -274,7 +274,7 @@ body {
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+    background: linear-gradient(135deg, #4338ca 0%, #5b21b6 100%);
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
     color: white;
