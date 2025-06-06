@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Organization - System Administration{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Create New Organization</h1>
+                <a href="{{ url_for('tenant.admin_organization_list') }}" class="btn btn-outline-secondary">
+                    <i data-feather="arrow-left"></i> Back to Organizations
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Organization Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.name.label(class="form-label") }}
+                                    {{ form.name(class="form-control") }}
+                                    {% if form.name.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.name.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.subdomain.label(class="form-label") }}
+                                    <div class="input-group">
+                                        {{ form.subdomain(class="form-control") }}
+                                        <span class="input-group-text">.wfm.app</span>
+                                    </div>
+                                    {% if form.subdomain.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.subdomain.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <small class="text-muted">Used for organization-specific access</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.admin_email.label(class="form-label") }}
+                                    {{ form.admin_email(class="form-control") }}
+                                    {% if form.admin_email.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.admin_email.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.phone.label(class="form-label") }}
+                                    {{ form.phone(class="form-control") }}
+                                    {% if form.phone.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.phone.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.domain.label(class="form-label") }}
+                            {{ form.domain(class="form-control") }}
+                            {% if form.domain.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.domain.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="text-muted">Optional: Custom domain for this organization</small>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.address.label(class="form-label") }}
+                            {{ form.address(class="form-control", rows="3") }}
+                            {% if form.address.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.address.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    {{ form.subscription_plan.label(class="form-label") }}
+                                    {{ form.subscription_plan(class="form-select") }}
+                                    {% if form.subscription_plan.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.subscription_plan.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    {{ form.max_users.label(class="form-label") }}
+                                    {{ form.max_users(class="form-control") }}
+                                    {% if form.max_users.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.max_users.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <div class="form-check">
+                                        {{ form.is_active(class="form-check-input") }}
+                                        {{ form.is_active.label(class="form-check-label") }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.timezone.label(class="form-label") }}
+                                    {{ form.timezone(class="form-select") }}
+                                    {% if form.timezone.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.timezone.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.currency.label(class="form-label") }}
+                                    {{ form.currency(class="form-select") }}
+                                    {% if form.currency.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.currency.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('tenant.admin_organization_list') }}" class="btn btn-secondary">
+                                <i data-feather="x"></i> Cancel
+                            </a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Organization Setup</h5>
+                </div>
+                <div class="card-body">
+                    <h6>What happens next?</h6>
+                    <ol class="text-muted">
+                        <li>Organization will be created with default settings</li>
+                        <li>You can then create a tenant admin for this organization</li>
+                        <li>The tenant admin can manage users within their organization</li>
+                        <li>All data will be completely isolated per organization</li>
+                    </ol>
+                    
+                    <h6 class="mt-4">Data Isolation</h6>
+                    <p class="text-muted small">Each organization has completely separate:</p>
+                    <ul class="text-muted small">
+                        <li>Users and authentication</li>
+                        <li>Time tracking records</li>
+                        <li>Schedules and shifts</li>
+                        <li>Leave applications</li>
+                        <li>Payroll data</li>
+                        <li>Custom settings and branding</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize Feather icons
+feather.replace();
+</script>
+{% endblock %}

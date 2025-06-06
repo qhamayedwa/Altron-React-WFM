@@ -248,6 +248,52 @@
                             </ul>
                         </li>
                         
+                        <!-- System Super Admin Section -->
+                        {% if current_user.is_system_super_admin() %}
+                        <li class="dropdown-submenu">
+                            <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                                <i data-feather="globe" class="me-2"></i>
+                                System Administration
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('tenant.admin_organization_list') }}">
+                                    <i data-feather="building" class="me-2"></i>
+                                    Organization Management
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tenant.admin_create_organization') }}">
+                                    <i data-feather="plus" class="me-2"></i>
+                                    Create Organization
+                                </a></li>
+                            </ul>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        {% endif %}
+                        
+                        <!-- Organization Admin Section -->
+                        {% if current_user.is_tenant_admin() %}
+                        <li class="dropdown-submenu">
+                            <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                                <i data-feather="building" class="me-2"></i>
+                                Organization
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('tenant.tenant_dashboard') }}">
+                                    <i data-feather="activity" class="me-2"></i>
+                                    Organization Dashboard
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tenant.tenant_settings') }}">
+                                    <i data-feather="settings" class="me-2"></i>
+                                    Organization Settings
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tenant.tenant_users') }}">
+                                    <i data-feather="users" class="me-2"></i>
+                                    Organization Users
+                                </a></li>
+                            </ul>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        {% endif %}
+
                         <!-- Super User Administration Section as Sub-dropdown -->
                         {% if current_user.has_role('Super User') %}
                         <li class="dropdown-submenu">
