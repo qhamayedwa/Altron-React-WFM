@@ -153,6 +153,51 @@ def user_management():
                          title='User Management', 
                          users=users)
 
+@auth_bp.route('/user/<int:user_id>/edit', methods=['GET', 'POST'])
+@super_user_required
+def edit_user(user_id):
+    """Edit user route (Super User only)"""
+    user = User.query.get_or_404(user_id)
+    from forms import EditUserForm
+    form = EditUserForm(user.username, user.email)
+    
+    if form.validate_on_submit():
+        user.username = form.username.data
+        user.email = form.email.data
+        user.first_name = form.first_name.data
+        user.last_name = form.last_name.data
+        user.employee_id = form.employee_id.data
+        user.department = form.department.data
+        user.position = form.position.data
+        user.is_active = form.is_active.data
+        
+        # Update roles
+        user.roles.clear()
+        if form.roles.data:
+            for role_id in form.roles.data:
+                role = Role.query.get(role_id)
+                if role:
+                    user.add_role(role)
+        
+        db.session.commit()
+        flash(f'User {user.username} has been updated!', 'success')
+        return redirect(url_for('auth.user_management'))
+    
+    elif request.method == 'GET':
+        form.username.data = user.username
+        form.email.data = user.email
+        form.first_name.data = user.first_name
+        form.last_name.data = user.last_name
+        form.employee_id.data = user.employee_id
+        form.department.data = user.department
+        form.position.data = user.position
+        form.is_active.data = user.is_active
+        form.roles.data = [role.id for role in user.roles]
+    
+    return render_template('auth/edit_user.html', 
+                         title=f'Edit User - {user.username}', 
+                         form=form, user=user)
+
 @auth_bp.route('/profile')
 @login_required
 def profile():
