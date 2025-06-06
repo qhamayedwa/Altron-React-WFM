@@ -1,143 +1,164 @@
 {% extends "base.html" %}
 
-{% block title %}AI Insights Dashboard - WFM{% endblock %}
+{% block title %}AI Insights Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="row mb-4">
+<div class="container mt-4">
+    <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2>
-                        <i data-feather="zap" class="me-2"></i>
+                    <h2 class="mb-1">
+                        <i data-feather="brain" class="me-2"></i>
                         AI Insights Dashboard
                     </h2>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Dashboard</a></li>
-                            <li class="breadcrumb-item active">AI Insights</li>
-                        </ol>
-                    </nav>
+                    <p class="text-muted mb-0">Intelligent workforce management insights and recommendations</p>
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-info" onclick="testAIConnection()">
-                        <i data-feather="wifi" class="me-2"></i>
-                        Test AI Connection
-                    </button>
-                    <button class="btn btn-primary" onclick="refreshInsights()">
-                        <i data-feather="refresh-cw" class="me-2"></i>
-                        Refresh Insights
-                    </button>
+                <div class="btn-group">
+                    <a href="{{ url_for('ai.scheduling_optimizer') }}" class="btn btn-primary">
+                        <i data-feather="cpu" class="me-2"></i>Schedule Optimizer
+                    </a>
+                    <a href="{{ url_for('ai.natural_query') }}" class="btn btn-outline-primary">
+                        <i data-feather="message-square" class="me-2"></i>Ask AI
+                    </a>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Quick AI Actions -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <i data-feather="calendar" class="mb-3" style="width: 48px; height: 48px; color: #0d6efd;"></i>
-                    <h5 class="card-title">Schedule Optimizer</h5>
-                    <p class="card-text">AI-powered scheduling recommendations</p>
-                    <a href="{{ url_for('ai.scheduling_optimizer') }}" class="btn btn-primary">Optimize</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <i data-feather="dollar-sign" class="mb-3" style="width: 48px; height: 48px; color: #28a745;"></i>
-                    <h5 class="card-title">Payroll Insights</h5>
-                    <p class="card-text">Intelligent payroll analysis and anomaly detection</p>
-                    <a href="{{ url_for('ai.payroll_insights') }}" class="btn btn-success">Analyze</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <i data-feather="users" class="mb-3" style="width: 48px; height: 48px; color: #fd7e14;"></i>
-                    <h5 class="card-title">Attendance Analysis</h5>
-                    <p class="card-text">Pattern recognition and predictive insights</p>
-                    <a href="{{ url_for('ai.attendance_analyzer') }}" class="btn btn-warning">Explore</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <i data-feather="message-circle" class="mb-3" style="width: 48px; height: 48px; color: #6f42c1;"></i>
-                    <h5 class="card-title">Ask AI</h5>
-                    <p class="card-text">Natural language workforce queries</p>
-                    <a href="{{ url_for('ai.natural_query') }}" class="btn btn-purple">Query</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI Insights Grid -->
-    <div class="row">
-        <!-- Quick AI Query -->
-        <div class="col-12 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i data-feather="message-circle" class="me-2"></i>
-                        Ask AI About Your Workforce
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="ai-query-input" 
-                               placeholder="Ask anything about your workforce data... e.g., 'What are our busiest hours?' or 'Show me attendance trends'">
-                        <button class="btn btn-primary" onclick="askAI()">
-                            <i data-feather="send" class="me-2"></i>Ask AI
-                        </button>
+            <!-- Quick Insights Cards -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="card-title">Scheduling Insights</h4>
+                                    <p class="mb-0" id="scheduling-summary">Loading...</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i data-feather="calendar" style="width: 48px; height: 48px;"></i>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div id="ai-response" class="mt-3" style="display: none;"></div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI Insights Display -->
-    <div class="row">
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i data-feather="calendar" class="me-2"></i>
-                        Scheduling Intelligence
-                    </h5>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="card-title">Attendance Patterns</h4>
+                                    <p class="mb-0" id="attendance-summary">Loading...</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i data-feather="users" style="width: 48px; height: 48px;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body" id="scheduling-insights">
-                    <div class="text-center py-4">
-                        <i data-feather="zap" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
-                        <h6>AI Scheduling Analysis</h6>
-                        <p class="text-muted">Click "Analyze Scheduling" to get AI insights</p>
-                        <button class="btn btn-primary" onclick="analyzeScheduling()">Analyze Scheduling</button>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="card-title">Payroll Analysis</h4>
+                                    <p class="mb-0" id="payroll-summary">Loading...</p>
+                                </div>
+                                <div class="align-self-center">
+                                    <i data-feather="dollar-sign" style="width: 48px; height: 48px;"></i>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i data-feather="clock" class="me-2"></i>
-                        Attendance Intelligence
-                    </h5>
+            <!-- Detailed Insights -->
+            <div class="row">
+                <!-- Scheduling Insights -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i data-feather="calendar" class="me-2"></i>
+                                Scheduling Patterns
+                            </h5>
+                        </div>
+                        <div class="card-body" id="scheduling-insights">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2 text-muted">Analyzing scheduling patterns...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body" id="attendance-insights">
-                    <div class="text-center py-4">
-                        <i data-feather="users" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
-                        <h6>AI Attendance Analysis</h6>
-                        <p class="text-muted">Click "Analyze Attendance" to get AI insights</p>
-                        <button class="btn btn-info" onclick="analyzeAttendance()">Analyze Attendance</button>
+
+                <!-- Attendance Insights -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i data-feather="clock" class="me-2"></i>
+                                Attendance Analysis
+                            </h5>
+                        </div>
+                        <div class="card-body" id="attendance-insights">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-success" role="status"></div>
+                                <p class="mt-2 text-muted">Analyzing attendance patterns...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Actions -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i data-feather="zap" class="me-2"></i>
+                                AI-Powered Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <div class="d-grid">
+                                        <a href="{{ url_for('ai.scheduling_optimizer') }}" class="btn btn-outline-primary">
+                                            <i data-feather="cpu" class="me-2"></i>
+                                            Schedule Optimizer
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <div class="d-grid">
+                                        <button class="btn btn-outline-success" onclick="generatePayrollInsights()">
+                                            <i data-feather="dollar-sign" class="me-2"></i>
+                                            Payroll Insights
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <div class="d-grid">
+                                        <button class="btn btn-outline-info" onclick="analyzeAttendance()">
+                                            <i data-feather="bar-chart-2" class="me-2"></i>
+                                            Attendance Analysis
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <div class="d-grid">
+                                        <a href="{{ url_for('ai.natural_query') }}" class="btn btn-outline-warning">
+                                            <i data-feather="message-square" class="me-2"></i>
+                                            Ask AI Assistant
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -145,355 +166,192 @@
     </div>
 </div>
 
-<!-- AI Connection Test Modal -->
-<div class="modal fade" id="aiTestModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">AI Connection Test</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="ai-test-content">
-                <div class="text-center">
-                    <div class="spinner-border" role="status">
-                        <span class="visually-hidden">Testing...</span>
-                    </div>
-                    <p class="mt-3">Testing OpenAI connection...</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    feather.replace();
-    
-    // Handle Enter key in AI query input
-    document.getElementById('ai-query-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            askAI();
-        }
-    });
+    // Load initial insights
+    loadSchedulingInsights();
+    loadAttendanceInsights();
+    loadPayrollSummary();
 });
 
-async function askAI() {
-    const input = document.getElementById('ai-query-input');
-    const responseDiv = document.getElementById('ai-response');
-    const query = input.value.trim();
-    
-    if (!query) {
-        alert('Please enter a question for AI');
-        return;
-    }
-    
-    responseDiv.style.display = 'block';
-    responseDiv.innerHTML = `
-        <div class="d-flex align-items-center">
-            <div class="spinner-border spinner-border-sm me-3" role="status"></div>
-            <div>AI is analyzing your query...</div>
-        </div>
-    `;
-    
-    try {
-        const response = await fetch('/ai/api/natural-query', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ query: query })
+function loadSchedulingInsights() {
+    fetch('/ai/api/analyze-scheduling')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.suggestions) {
+                displaySchedulingInsights(data.suggestions);
+                document.getElementById('scheduling-summary').textContent = 
+                    `Efficiency: ${data.suggestions.efficiency_score || 'N/A'}%`;
+            } else {
+                displaySchedulingError(data.error || 'Unable to analyze scheduling patterns');
+            }
+        })
+        .catch(error => {
+            console.error('Scheduling insights error:', error);
+            displaySchedulingError('Failed to load scheduling insights');
         });
-        
-        const data = await response.json();
-        
-        if (data.success && data.result) {
-            const result = data.result;
-            responseDiv.innerHTML = `
-                <div class="alert alert-light border">
-                    <h6><i data-feather="zap" class="me-2"></i>AI Response:</h6>
-                    <p class="mb-3">${result.response}</p>
-                    
-                    ${result.insights && result.insights.length > 0 ? `
-                        <h6>Key Insights:</h6>
-                        <ul>
-                            ${result.insights.map(insight => `<li>${insight}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                    
-                    ${result.suggested_actions && result.suggested_actions.length > 0 ? `
-                        <h6>Suggested Actions:</h6>
-                        <ul>
-                            ${result.suggested_actions.map(action => `<li>${action}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                </div>
-            `;
-        } else {
-            responseDiv.innerHTML = `
-                <div class="alert alert-warning">
-                    <i data-feather="alert-triangle" class="me-2"></i>
-                    Unable to process your query. ${data.error || 'Please try again.'}
-                </div>
-            `;
-        }
-        
-    } catch (error) {
-        responseDiv.innerHTML = `
-            <div class="alert alert-danger">
-                <i data-feather="alert-circle" class="me-2"></i>
-                Error connecting to AI service. Please check your configuration.
-            </div>
-        `;
-    }
-    
-    feather.replace();
-    input.value = '';
 }
 
-async function analyzeScheduling() {
+function loadAttendanceInsights() {
+    fetch('/ai/api/analyze-attendance')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.insights) {
+                displayAttendanceInsights(data.insights);
+                document.getElementById('attendance-summary').textContent = 
+                    data.insights.patterns?.[0] || 'No patterns detected';
+            } else {
+                displayAttendanceError(data.error || 'Unable to analyze attendance');
+            }
+        })
+        .catch(error => {
+            console.error('Attendance insights error:', error);
+            displayAttendanceError('Failed to load attendance insights');
+        });
+}
+
+function loadPayrollSummary() {
+    // Get current date for payroll period
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    fetch('/ai/api/generate-payroll-insights', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            pay_period_start: startDate.toISOString().split('T')[0],
+            pay_period_end: endDate.toISOString().split('T')[0]
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.insights) {
+            document.getElementById('payroll-summary').textContent = 
+                data.insights.cost_analysis?.total_hours_worked || 'No data available';
+        } else {
+            document.getElementById('payroll-summary').textContent = 'Analysis unavailable';
+        }
+    })
+    .catch(error => {
+        console.error('Payroll summary error:', error);
+        document.getElementById('payroll-summary').textContent = 'Failed to load';
+    });
+}
+
+function displaySchedulingInsights(suggestions) {
     const container = document.getElementById('scheduling-insights');
     container.innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-3 text-muted">AI is analyzing scheduling patterns...</p>
+        <div class="mb-3">
+            <h6>Efficiency Score</h6>
+            <div class="progress mb-2">
+                <div class="progress-bar bg-primary" style="width: ${suggestions.efficiency_score || 0}%"></div>
+            </div>
+            <small class="text-muted">${suggestions.efficiency_score || 0}% efficiency</small>
+        </div>
+        
+        <div class="mb-3">
+            <h6>Key Patterns</h6>
+            <ul class="list-unstyled">
+                ${suggestions.patterns?.map(pattern => `<li><i data-feather="check" class="text-success me-2"></i>${pattern}</li>`).join('') || '<li>No patterns detected</li>'}
+            </ul>
+        </div>
+        
+        <div>
+            <h6>Recommendations</h6>
+            <ul class="list-unstyled">
+                ${suggestions.recommendations?.map(rec => `<li><i data-feather="arrow-right" class="text-info me-2"></i>${rec}</li>`).join('') || '<li>No recommendations available</li>'}
+            </ul>
         </div>
     `;
-    
-    try {
-        const response = await fetch('/ai/api/analyze-scheduling', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ days: 30 })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success && data.analysis) {
-            const analysis = data.analysis;
-            container.innerHTML = `
-                <div class="mb-3">
-                    <h6>Efficiency Score</h6>
-                    <div class="progress mb-2">
-                        <div class="progress-bar bg-primary" style="width: ${analysis.efficiency_score || 75}%"></div>
-                    </div>
-                    <small class="text-muted">${analysis.efficiency_score || 75}% efficient</small>
-                </div>
-                
-                <div class="mb-3">
-                    <h6>Key Patterns</h6>
-                    <ul class="list-unstyled">
-                        ${(analysis.patterns_identified || ['Advanced pattern analysis available']).map(pattern => 
-                            `<li><i data-feather="arrow-right" style="width: 16px; height: 16px;" class="me-2"></i>${pattern}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-                
-                <div>
-                    <h6>Recommendations</h6>
-                    <ul class="list-unstyled">
-                        ${(analysis.optimization_suggestions || ['Optimize shift distribution', 'Consider peak hour staffing']).map(suggestion => 
-                            `<li><i data-feather="lightbulb" style="width: 16px; height: 16px;" class="me-2 text-warning"></i>${suggestion}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-                
-                <div class="mt-3">
-                    <small class="text-muted">Data period: ${data.data_period || 'Last 30 days'}</small>
-                </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <div class="alert alert-warning">
-                    <i data-feather="alert-triangle" class="me-2"></i>
-                    Unable to analyze scheduling data. ${data.error || 'Please check your AI configuration.'}
-                </div>
-            `;
-        }
-        
-    } catch (error) {
-        container.innerHTML = `
-            <div class="alert alert-danger">
-                <i data-feather="alert-circle" class="me-2"></i>
-                Error analyzing scheduling data. Please try again.
-            </div>
-        `;
-    }
-    
     feather.replace();
 }
 
-async function analyzeAttendance() {
+function displaySchedulingError(error) {
+    const container = document.getElementById('scheduling-insights');
+    container.innerHTML = `
+        <div class="alert alert-warning">
+            <i data-feather="alert-triangle" class="me-2"></i>
+            ${error}
+        </div>
+        <p class="text-muted">Statistical analysis is available using historical data patterns.</p>
+    `;
+    feather.replace();
+}
+
+function displayAttendanceInsights(insights) {
     const container = document.getElementById('attendance-insights');
     container.innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-info" role="status"></div>
-            <p class="mt-3 text-muted">AI is analyzing attendance patterns...</p>
+        <div class="mb-3">
+            <h6>Attendance Patterns</h6>
+            <ul class="list-unstyled">
+                ${insights.patterns?.map(pattern => `<li><i data-feather="activity" class="text-primary me-2"></i>${pattern}</li>`).join('') || '<li>No patterns detected</li>'}
+            </ul>
+        </div>
+        
+        <div class="mb-3">
+            <h6>Risk Factors</h6>
+            <ul class="list-unstyled">
+                ${insights.risk_factors?.map(risk => `<li><i data-feather="alert-circle" class="text-warning me-2"></i>${risk}</li>`).join('') || '<li>No risk factors detected</li>'}
+            </ul>
+        </div>
+        
+        <div>
+            <h6>Recommendations</h6>
+            <ul class="list-unstyled">
+                ${insights.recommendations?.map(rec => `<li><i data-feather="arrow-right" class="text-success me-2"></i>${rec}</li>`).join('') || '<li>No recommendations available</li>'}
+            </ul>
         </div>
     `;
-    
-    try {
-        const response = await fetch('/ai/api/analyze-attendance', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ days: 30 })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success && data.analysis) {
-            const analysis = data.analysis;
-            const trends = analysis.attendance_trends || {};
-            
-            container.innerHTML = `
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <div class="text-center">
-                            <h5 class="text-primary">${trends.punctuality_score || 85}%</h5>
-                            <small class="text-muted">Punctuality Score</small>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="text-center">
-                            <h5 class="text-success">${trends.consistency_score || 92}%</h5>
-                            <small class="text-muted">Consistency Score</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <h6>Key Patterns</h6>
-                    <ul class="list-unstyled">
-                        ${(analysis.patterns_identified || ['Regular attendance patterns detected', 'Peak productivity hours identified']).map(pattern => 
-                            `<li><i data-feather="trending-up" style="width: 16px; height: 16px;" class="me-2"></i>${pattern}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-                
-                <div>
-                    <h6>Insights</h6>
-                    <ul class="list-unstyled">
-                        ${(analysis.recommendations || ['Monitor early departures', 'Consider flexible schedules']).map(insight => 
-                            `<li><i data-feather="bar-chart" style="width: 16px; height: 16px;" class="me-2 text-info"></i>${insight}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-                
-                <div class="mt-3">
-                    <small class="text-muted">Entries analyzed: ${data.entries_analyzed || 'Processing...'}</small>
-                </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <div class="alert alert-warning">
-                    <i data-feather="alert-triangle" class="me-2"></i>
-                    Unable to analyze attendance data. ${data.error || 'Please check your AI configuration.'}
-                </div>
-            `;
-        }
-        
-    } catch (error) {
-        container.innerHTML = `
-            <div class="alert alert-danger">
-                <i data-feather="alert-circle" class="me-2"></i>
-                Error analyzing attendance data. Please try again.
-            </div>
-        `;
-    }
-    
     feather.replace();
 }
 
-async function testAIConnection() {
-    const modal = new bootstrap.Modal(document.getElementById('aiTestModal'));
-    modal.show();
-    
-    try {
-        const response = await fetch('/ai/api/test-connection', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        const data = await response.json();
-        const content = document.getElementById('ai-test-content');
-        
-        if (data.success) {
-            content.innerHTML = `
-                <div class="alert alert-success">
-                    <i data-feather="check-circle" class="me-2"></i>
-                    <strong>Connection Successful!</strong>
-                    <p class="mb-0 mt-2">OpenAI API is working correctly.</p>
-                </div>
-            `;
-        } else {
-            content.innerHTML = `
-                <div class="alert alert-danger">
-                    <i data-feather="x-circle" class="me-2"></i>
-                    <strong>Connection Failed</strong>
-                    <p class="mb-0 mt-2">${data.error}</p>
-                </div>
-            `;
-        }
-        
-    } catch (error) {
-        const content = document.getElementById('ai-test-content');
-        content.innerHTML = `
-            <div class="alert alert-danger">
-                <i data-feather="wifi-off" class="me-2"></i>
-                <strong>Connection Error</strong>
-                <p class="mb-0 mt-2">Failed to test AI connection: ${error.message}</p>
-            </div>
-        `;
-    }
-    
+function displayAttendanceError(error) {
+    const container = document.getElementById('attendance-insights');
+    container.innerHTML = `
+        <div class="alert alert-warning">
+            <i data-feather="alert-triangle" class="me-2"></i>
+            ${error}
+        </div>
+        <p class="text-muted">Statistical analysis is available using time tracking data.</p>
+    `;
     feather.replace();
 }
 
-function refreshInsights() {
-    // Reset both containers and reload
-    document.getElementById('scheduling-insights').innerHTML = `
-        <div class="text-center py-4">
-            <i data-feather="brain" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
-            <h6>AI Scheduling Analysis</h6>
-            <p class="text-muted">Click "Analyze Scheduling" to get AI insights</p>
-            <button class="btn btn-primary" onclick="analyzeScheduling()">Analyze Scheduling</button>
-        </div>
-    `;
-    
-    document.getElementById('attendance-insights').innerHTML = `
-        <div class="text-center py-4">
-            <i data-feather="users" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
-            <h6>AI Attendance Analysis</h6>
-            <p class="text-muted">Click "Analyze Attendance" to get AI insights</p>
-            <button class="btn btn-info" onclick="analyzeAttendance()">Analyze Attendance</button>
-        </div>
-    `;
-    
-    feather.replace();
+function generatePayrollInsights() {
+    window.location.href = '/ai/payroll-insights';
+}
+
+function analyzeAttendance() {
+    window.location.href = '/ai/attendance-analyzer';
 }
 </script>
 
 <style>
-.btn-purple {
-    background-color: #6f42c1;
-    border-color: #6f42c1;
-    color: white;
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
 }
 
-.btn-purple:hover {
-    background-color: #5a2d91;
-    border-color: #5a2d91;
-    color: white;
+.progress {
+    height: 8px;
+}
+
+.list-unstyled li {
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.btn-group .btn {
+    border-radius: 0.375rem;
+    margin-left: 0.5rem;
+}
+
+.btn-group .btn:first-child {
+    margin-left: 0;
 }
 </style>
 {% endblock %}
