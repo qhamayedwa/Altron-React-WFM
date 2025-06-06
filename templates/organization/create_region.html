@@ -2,6 +2,31 @@
 
 {% block title %}Create Region - {{ company.name }}{% endblock %}
 
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container {
+        width: 100% !important;
+    }
+    .select2-container .select2-selection--single {
+        height: 38px;
+        padding: 6px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+    }
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 24px;
+    }
+    .manager-details-card {
+        background: #f8f9fa;
+        border-left: 4px solid #27C1E3;
+        padding: 15px;
+        border-radius: 0 8px 8px 0;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="row justify-content-center">
@@ -154,124 +179,140 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
 <script>
-$(document).ready(function() {
-    // Initialize Select2 for searchable dropdown
-    $('#manager_select').select2({
-        placeholder: 'Search for a manager...',
-        allowClear: true,
-        width: '100%',
-        templateResult: function(option) {
-            if (!option.id) return option.text;
-            
-            const $option = $(option.element);
-            const position = $option.data('position') || '';
-            const department = $option.data('department') || '';
-            
-            let html = '<div>';
-            html += '<div><strong>' + option.text + '</strong></div>';
-            if (position || department) {
-                html += '<div class="text-muted small">';
-                if (position) html += position;
-                if (position && department) html += ' - ';
-                if (department) html += department;
-                html += '</div>';
-            }
-            html += '</div>';
-            
-            return $(html);
-        }
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    const managerSelect = document.getElementById('manager_select');
+    const managerNameInput = document.getElementById('manager_name');
+    const emailInput = document.getElementById('email');
+    const phoneInput = document.getElementById('phone');
+    const managerDetails = document.getElementById('manager-details');
     
     // Handle manager selection
-    $('#manager_select').on('change', function() {
-        const selectedOption = $(this).find('option:selected');
-        const managerId = selectedOption.val();
+    managerSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const managerId = selectedOption.value;
         
         if (managerId) {
             // Auto-populate fields from selected manager
-            const managerName = selectedOption.data('name');
-            const email = selectedOption.data('email');
-            const phone = selectedOption.data('phone');
-            const position = selectedOption.data('position');
-            const department = selectedOption.data('department');
+            const managerName = selectedOption.getAttribute('data-name');
+            const email = selectedOption.getAttribute('data-email');
+            const phone = selectedOption.getAttribute('data-phone');
+            const position = selectedOption.getAttribute('data-position');
+            const department = selectedOption.getAttribute('data-department');
             
             // Fill the form fields
-            $('#manager_name').val(managerName);
-            $('#email').val(email);
-            $('#phone').val(phone);
+            managerNameInput.value = managerName || '';
+            emailInput.value = email || '';
+            phoneInput.value = phone || '';
             
             // Show manager details
-            $('#selected-manager-name').text(managerName);
-            $('#selected-manager-position').text(position || 'Not specified');
-            $('#selected-manager-department').text(department || 'Not specified');
-            $('#selected-manager-contact').text((email || '') + (email && phone ? ', ' : '') + (phone || '') || 'Not specified');
-            $('#manager-details').show();
+            document.getElementById('selected-manager-name').textContent = managerName || '';
+            document.getElementById('selected-manager-position').textContent = position || 'Not specified';
+            document.getElementById('selected-manager-department').textContent = department || 'Not specified';
             
-            // Clear manual entry field when dropdown is used
-            $('#manager_name').prop('readonly', true).addClass('bg-light');
+            const contactText = (email || '') + (email && phone ? ', ' : '') + (phone || '') || 'Not specified';
+            document.getElementById('selected-manager-contact').textContent = contactText;
+            
+            managerDetails.style.display = 'block';
+            
+            // Make manual entry readonly when dropdown is used
+            managerNameInput.readOnly = true;
+            managerNameInput.classList.add('bg-light');
         } else {
             // Clear fields and hide details
-            $('#manager_name').val('').prop('readonly', false).removeClass('bg-light');
-            $('#email').val('');
-            $('#phone').val('');
-            $('#manager-details').hide();
+            managerNameInput.value = '';
+            emailInput.value = '';
+            phoneInput.value = '';
+            managerDetails.style.display = 'none';
+            
+            // Enable manual entry
+            managerNameInput.readOnly = false;
+            managerNameInput.classList.remove('bg-light');
         }
     });
     
     // Handle manual entry
-    $('#manager_name').on('input', function() {
-        if ($(this).val() && !$(this).prop('readonly')) {
+    managerNameInput.addEventListener('input', function() {
+        if (this.value && !this.readOnly) {
             // Clear dropdown selection when manual entry is used
-            $('#manager_select').val('').trigger('change');
-            $('#manager-details').hide();
+            managerSelect.value = '';
+            managerDetails.style.display = 'none';
         }
     });
     
     // Auto-generate region code from name
-    $('#name').on('input', function() {
+    document.getElementById('name').addEventListener('input', function() {
         const name = this.value;
         const code = name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10).toUpperCase();
-        $('#code').val(code);
+        document.getElementById('code').value = code;
     });
-});
-
-// Form validation
-function validateForm() {
-    const regionName = document.getElementById('name').value;
-    const regionCode = document.getElementById('code').value;
     
-    if (!regionName || !regionCode) {
-        alert('Please enter both region name and code.');
-        return false;
-    }
-    
-    // Check if either dropdown selection or manual entry is provided for manager
-    const managerSelect = document.getElementById('manager_select').value;
-    const managerName = document.getElementById('manager_name').value;
-    
-    if (!managerSelect && !managerName) {
-        if (!confirm('No regional manager specified. Continue anyway?')) {
+    // Form validation
+    function validateForm(e) {
+        const regionName = document.getElementById('name').value;
+        const regionCode = document.getElementById('code').value;
+        
+        if (!regionName || !regionCode) {
+            alert('Please enter both region name and code.');
+            e.preventDefault();
             return false;
         }
+        
+        // Check if either dropdown selection or manual entry is provided for manager
+        const managerSelectValue = managerSelect.value;
+        const managerNameValue = managerNameInput.value;
+        
+        if (!managerSelectValue && !managerNameValue) {
+            if (!confirm('No regional manager specified. Continue anyway?')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+        
+        return true;
     }
     
-    return true;
-}
-
-// Attach validation to form
-document.addEventListener('DOMContentLoaded', function() {
+    // Attach validation to form
     const form = document.querySelector('form');
     if (form) {
-        form.addEventListener('submit', function(e) {
-            if (!validateForm()) {
-                e.preventDefault();
+        form.addEventListener('submit', validateForm);
+    }
+    
+    // Add search functionality to select
+    const searchBox = document.createElement('input');
+    searchBox.type = 'text';
+    searchBox.placeholder = 'Search managers...';
+    searchBox.className = 'form-control mb-2';
+    searchBox.style.fontSize = '14px';
+    
+    // Insert search box before the select
+    managerSelect.parentNode.insertBefore(searchBox, managerSelect);
+    
+    // Store original options
+    const originalOptions = Array.from(managerSelect.options);
+    
+    // Search functionality
+    searchBox.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        // Clear existing options except the first one
+        managerSelect.innerHTML = '<option value="">Select a manager...</option>';
+        
+        // Filter and add matching options
+        originalOptions.slice(1).forEach(option => {
+            const text = option.textContent.toLowerCase();
+            const name = (option.getAttribute('data-name') || '').toLowerCase();
+            const department = (option.getAttribute('data-department') || '').toLowerCase();
+            const position = (option.getAttribute('data-position') || '').toLowerCase();
+            
+            if (text.includes(searchTerm) || 
+                name.includes(searchTerm) || 
+                department.includes(searchTerm) || 
+                position.includes(searchTerm)) {
+                managerSelect.appendChild(option.cloneNode(true));
             }
         });
-    }
+    });
 });
 </script>
 {% endblock %}
