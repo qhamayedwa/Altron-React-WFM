@@ -311,11 +311,11 @@ class WFMIntelligence:
             historical_data = []
             for schedule in historical_schedules:
                 historical_data.append({
-                    'date': schedule.date.isoformat(),
+                    'date': schedule.start_time.date().isoformat(),
                     'employee_id': schedule.user_id,
                     'start_time': schedule.start_time.strftime('%H:%M'),
                     'end_time': schedule.end_time.strftime('%H:%M'),
-                    'shift_type': schedule.shift_type.name if schedule.shift_type else 'Regular'
+                    'shift_type': schedule.shift_type.name if hasattr(schedule, 'shift_type') and schedule.shift_type else 'Regular'
                 })
             
             employee_data = []
@@ -388,7 +388,7 @@ class WFMIntelligence:
                 TimeEntry.clock_in_time >= datetime.now() - timedelta(days=7)
             ).count()
             recent_schedules = Schedule.query.filter(
-                Schedule.date >= date.today() - timedelta(days=7)
+                func.date(Schedule.start_time) >= date.today() - timedelta(days=7)
             ).count()
             pending_leave = LeaveApplication.query.filter(
                 LeaveApplication.status == 'pending'
