@@ -71,6 +71,7 @@ def create_app(config_class=Config):
     app.register_blueprint(payroll_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(org_bp)
+    app.register_blueprint(import_bp)
     
     # Register additional API routes without version prefix for frontend compatibility
     from api import api_bp as api_v1_bp
