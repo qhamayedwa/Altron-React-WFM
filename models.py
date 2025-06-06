@@ -202,8 +202,9 @@ class TimeEntry(db.Model):
         total_time = self.clock_out_time - self.clock_in_time
         total_minutes = total_time.total_seconds() / 60
         
-        # Subtract break time
-        total_minutes -= self.total_break_minutes
+        # Subtract break time (handle None values)
+        if self.total_break_minutes:
+            total_minutes -= self.total_break_minutes
         
         return round(total_minutes / 60, 2)
     

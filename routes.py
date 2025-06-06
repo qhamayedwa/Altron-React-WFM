@@ -285,6 +285,15 @@ def index():
     except Exception as e:
         logging.error(f"Error in dashboard route: {e}")
         flash("An error occurred while loading the dashboard.", "error")
+        # Provide default analytics data structure
+        default_analytics = {
+            'daily_attendance': {'labels': [], 'data': []},
+            'weekly_hours': {'labels': [], 'data': []},
+            'leave_distribution': {'labels': [], 'data': []},
+            'productivity_insights': [],
+            'hourly_patterns': {'labels': [], 'data': []},
+            'insights': {'peak_hour': 9, 'total_entries_month': 0, 'avg_daily_entries': 0, 'most_productive_day': 'N/A'}
+        }
         return render_template('dashboard.html',
                              total_employees=0,
                              active_schedules=0,
@@ -294,7 +303,10 @@ def index():
                              recent_entries=[],
                              active_pay_rules=0,
                              active_pay_codes=0,
-                             weekly_hours=0)
+                             weekly_hours=0,
+                             current_status={'is_clocked_in': False, 'clock_in_time': None},
+                             pending_approvals=0,
+                             analytics_data=default_analytics)
 
 @main_bp.route('/reports')
 @login_required
