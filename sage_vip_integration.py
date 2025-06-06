@@ -1,6 +1,6 @@
 """
 SAGE VIP Payroll Integration Module
-Handles bidirectional data synchronization between Altron WFM and SAGE VIP Payroll system
+Handles bidirectional data synchronization between WFM and SAGE VIP Payroll system
 """
 
 import requests

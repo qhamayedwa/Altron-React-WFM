@@ -2,7 +2,7 @@
 
 ## Overview
 
-This integration enables bidirectional data synchronization between Altron WFM and SAGE VIP Payroll system. The integration supports:
+This integration enables bidirectional data synchronization between WFM and SAGE VIP Payroll system. The integration supports:
 
 - **Employee Data Sync**: Pull employee information from SAGE VIP to WFM
 - **Time Entry Push**: Send time tracking data from WFM to SAGE VIP
