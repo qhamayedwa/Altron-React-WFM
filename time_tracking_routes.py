@@ -9,6 +9,7 @@ from datetime import datetime
 from app import db
 from models import TimeEntry
 from sqlalchemy import and_
+from timezone_utils import get_current_time
 
 # Create blueprint for time tracking
 time_tracking_bp = Blueprint('time_tracking', __name__)
@@ -35,7 +36,7 @@ def clock_in():
         # Create new time entry
         new_entry = TimeEntry(
             user_id=current_user.id,
-            clock_in_time=datetime.now(),
+            clock_in_time=get_current_time(),
             status='Open'
         )
         

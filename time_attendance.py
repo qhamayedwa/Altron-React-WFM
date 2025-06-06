@@ -5,6 +5,7 @@ from sqlalchemy import and_, or_, func, case
 from app import db
 from models import TimeEntry, User
 from auth_simple import role_required, super_user_required
+from timezone_utils import get_current_time, localize_datetime
 
 # Create time attendance blueprint
 time_attendance_bp = Blueprint('time_attendance', __name__, url_prefix='/time')
@@ -36,7 +37,7 @@ def clock_in():
         # Create new time entry
         time_entry = TimeEntry()
         time_entry.user_id = current_user.id
-        time_entry.clock_in_time = datetime.utcnow()
+        time_entry.clock_in_time = get_current_time()
         time_entry.status = 'Open'
         time_entry.notes = notes
         time_entry.clock_in_latitude = latitude
@@ -82,7 +83,7 @@ def clock_out():
         notes = request.json.get('notes', '') if request.is_json else ''
         
         # Update time entry
-        open_entry.clock_out_time = datetime.utcnow()
+        open_entry.clock_out_time = get_current_time()
         open_entry.status = 'Closed'
         open_entry.clock_out_latitude = latitude
         open_entry.clock_out_longitude = longitude
