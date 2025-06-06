@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}{{ company.name }} - Company Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .company-header {
+        background: linear-gradient(135deg, #27C1E3 0%, #1a8ca8 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 4px solid #27C1E3;
+    }
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #27C1E3;
+    }
+    .region-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+    }
+    .region-card:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .hierarchy-breadcrumb {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-family: monospace;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Breadcrumb -->
+    <div class="hierarchy-breadcrumb">
+        <i class="fas fa-sitemap"></i> 
+        <a href="{{ url_for('organization.dashboard') }}" class="text-decoration-none">Organization</a> 
+        → <strong>{{ company.name }}</strong>
+    </div>
+
+    <!-- Company Header -->
+    <div class="company-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">{{ company.name }}</h1>
+                <span class="badge bg-light text-dark me-2">{{ company.code }}</span>
+                {% if company.legal_name %}
+                <p class="mb-2 opacity-75">{{ company.legal_name }}</p>
+                {% endif %}
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        {% if company.city %}
+                        <p class="mb-1"><i class="fas fa-map-marker-alt"></i> {{ company.city }}, {{ company.country }}</p>
+                        {% endif %}
+                        {% if company.timezone %}
+                        <p class="mb-1"><i class="fas fa-clock"></i> {{ company.timezone }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        {% if company.currency %}
+                        <p class="mb-1"><i class="fas fa-coins"></i> {{ company.currency }}</p>
+                        {% endif %}
+                        {% if company.email %}
+                        <p class="mb-1"><i class="fas fa-envelope"></i> {{ company.email }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('organization.edit_company', company_id=company.id) }}" class="btn btn-light me-2">
+                    <i class="fas fa-edit"></i> Edit Company
+                </a>
+                <a href="{{ url_for('organization.create_region', company_id=company.id) }}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Add Region
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.regions }}</div>
+                <div class="text-muted">Regions</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.sites }}</div>
+                <div class="text-muted">Sites</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.departments }}</div>
+                <div class="text-muted">Departments</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.employees }}</div>
+                <div class="text-muted">Employees</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regions -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-map-marked-alt"></i> Regions</h5>
+            <a href="{{ url_for('organization.create_region', company_id=company.id) }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Add Region
+            </a>
+        </div>
+        <div class="card-body">
+            {% if regions %}
+                {% for region in regions %}
+                <div class="region-card">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h6 class="mb-1">
+                                <a href="{{ url_for('organization.view_region', region_id=region.id) }}" 
+                                   class="text-decoration-none">
+                                    {{ region.name }}
+                                </a>
+                                <span class="badge bg-secondary">{{ region.code }}</span>
+                            </h6>
+                            {% if region.description %}
+                            <p class="text-muted mb-1">{{ region.description }}</p>
+                            {% endif %}
+                            {% if region.city %}
+                            <small class="text-muted"><i class="fas fa-map-marker-alt"></i> {{ region.city }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            {% if region.manager_name %}
+                            <strong>Manager:</strong><br>
+                            <span class="text-muted">{{ region.manager_name }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('organization.view_region', region_id=region.id) }}" 
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{{ url_for('organization.create_site', region_id=region.id) }}" 
+                                   class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-plus"></i> Add Site
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sites under this region -->
+                    {% set region_sites = region.sites.filter_by(is_active=True).all() %}
+                    {% if region_sites %}
+                    <div class="mt-3 pt-3 border-top">
+                        <small class="text-muted">Sites:</small>
+                        <div class="row mt-2">
+                            {% for site in region_sites[:4] %}
+                            <div class="col-md-3">
+                                <div class="small">
+                                    <a href="{{ url_for('organization.view_site', site_id=site.id) }}" 
+                                       class="text-decoration-none">
+                                        <i class="fas fa-building"></i> {{ site.name }}
+                                    </a>
+                                    <span class="text-muted">({{ site.code }})</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% if region_sites|length > 4 %}
+                            <div class="col-md-3">
+                                <small class="text-muted">... and {{ region_sites|length - 4 }} more</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-map-marked-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Regions Found</h5>
+                    <p class="text-muted">Create your first region to start organizing your company structure.</p>
+                    <a href="{{ url_for('organization.create_region', company_id=company.id) }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create First Region
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Company Details Tab -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle"></i> Company Information</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        {% if company.registration_number %}
+                        <tr>
+                            <td><strong>Registration Number:</strong></td>
+                            <td>{{ company.registration_number }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if company.tax_number %}
+                        <tr>
+                            <td><strong>Tax Number:</strong></td>
+                            <td>{{ company.tax_number }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if company.website %}
+                        <tr>
+                            <td><strong>Website:</strong></td>
+                            <td><a href="{{ company.website }}" target="_blank">{{ company.website }}</a></td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <td><strong>Fiscal Year Start:</strong></td>
+                            <td>{{ ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][company.fiscal_year_start] }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Created:</strong></td>
+                            <td>{{ company.created_at.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-map-marker-alt"></i> Address</h6>
+                </div>
+                <div class="card-body">
+                    {% if company.address_line1 or company.city %}
+                    <address>
+                        {% if company.address_line1 %}{{ company.address_line1 }}<br>{% endif %}
+                        {% if company.address_line2 %}{{ company.address_line2 }}<br>{% endif %}
+                        {% if company.city %}{{ company.city }}{% endif %}
+                        {% if company.state_province %}, {{ company.state_province }}{% endif %}<br>
+                        {% if company.postal_code %}{{ company.postal_code }}<br>{% endif %}
+                        {{ company.country }}
+                    </address>
+                    {% else %}
+                    <p class="text-muted">No address information available</p>
+                    {% endif %}
+                    
+                    {% if company.phone %}
+                    <p><i class="fas fa-phone"></i> {{ company.phone }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add real-time hierarchy visualization
+function loadHierarchyData() {
+    fetch(`/organization/api/hierarchy/{{ company.id }}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Company hierarchy:', data);
+            // Future: Add interactive hierarchy tree visualization
+        })
+        .catch(error => {
+            console.error('Error loading hierarchy:', error);
+        });
+}
+
+// Load hierarchy data on page load
+document.addEventListener('DOMContentLoaded', loadHierarchyData);
+</script>
+{% endblock %}
