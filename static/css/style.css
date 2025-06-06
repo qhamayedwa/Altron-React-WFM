@@ -23,13 +23,13 @@
 
 :root {
     /* Altron Brand Colors */
-    --primary-gradient: linear-gradient(135deg, #FF6B35 0%, #E55722 100%);
-    --primary-dark: #CC4F1C;
-    --primary-light: #FF6B35;
+    --primary-gradient: linear-gradient(135deg, #27C1E3 0%, #1FA3C7 100%);
+    --primary-dark: #1B8AA3;
+    --primary-light: #27C1E3;
     
     /* Altron Accent Colors */
     --accent-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    --accent-warning: linear-gradient(135deg, #FF6B35 0%, #E55722 100%);
+    --accent-warning: linear-gradient(135deg, #27C1E3 0%, #1FA3C7 100%);
     --accent-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     --accent-info: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
     
@@ -81,11 +81,11 @@
     --app-info: #06b6d4;
     --app-warning: #f59e0b;
     --app-danger: #ef4444;
-    --bs-primary: #FF6B35;
+    --bs-primary: #27C1E3;
     --bs-secondary: var(--neutral-500);
     --bs-success: #10b981;
     --bs-info: #1E3A8A;
-    --bs-warning: #FF6B35;
+    --bs-warning: #27C1E3;
     --bs-danger: #ef4444;
     --bs-dark: var(--neutral-800);
     --bs-light: var(--neutral-100);
@@ -124,7 +124,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.9) 0%, rgba(229, 87, 34, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(39, 193, 227, 0.9) 0%, rgba(31, 163, 199, 0.95) 100%);
     z-index: -1;
 }
 
@@ -299,7 +299,7 @@ body {
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #E55722 0%, #CC4F1C 100%);
+    background: linear-gradient(135deg, #1FA3C7 0%, #1B8AA3 100%);
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
     color: white;
