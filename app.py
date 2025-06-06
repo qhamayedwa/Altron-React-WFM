@@ -1,11 +1,12 @@
 import os
 import logging
-from flask import Flask
+from flask import Flask, Blueprint, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
+from datetime import datetime
 
 # Configure logging for debugging
 logging.basicConfig(level=logging.DEBUG)
@@ -67,6 +68,56 @@ def create_app(config_class=Config):
     app.register_blueprint(pay_codes_bp)
     app.register_blueprint(payroll_bp)
     app.register_blueprint(api_bp)
+    
+    # Register additional API routes without version prefix for frontend compatibility
+    from api import api_bp as api_v1_bp
+    api_compat_bp = Blueprint('api_compat', __name__, url_prefix='/api')
+    
+    # Add database status endpoint for frontend
+    @api_compat_bp.route('/db-status', methods=['GET'])
+    def api_database_status_compat():
+        """Database status endpoint for frontend monitoring"""
+        try:
+            # Test database connection
+            db.session.execute(db.text('SELECT 1'))
+            
+            # Get table counts for monitoring
+            from models import User, TimeEntry, Schedule, LeaveApplication
+            table_counts = {
+                'users': User.query.count(),
+                'time_entries': TimeEntry.query.count(),
+                'schedules': Schedule.query.count(),
+                'leave_applications': LeaveApplication.query.count()
+            }
+            
+            return jsonify({
+                'status': 'connected',
+                'message': 'Database connection successful',
+                'tables': table_counts,
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            })
+            
+        except Exception as e:
+            logging.error(f"Database status check failed: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': str(e),
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            }), 500
+    
+    @api_compat_bp.route('/system-info', methods=['GET'])
+    def api_system_info_compat():
+        """System info endpoint for frontend compatibility"""
+        return jsonify({
+            'success': True,
+            'data': {
+                'app_name': 'WFM Time & Attendance',
+                'version': '1.0.0',
+                'status': 'connected'
+            }
+        })
+    
+    app.register_blueprint(api_compat_bp)
     app.register_blueprint(automation_bp, url_prefix='/automation')
     app.register_blueprint(ai_scheduling_bp)
     
