@@ -13,9 +13,14 @@ from flask import current_app
 from sqlalchemy import func, and_, or_
 from app import db
 from models import User, TimeEntry, Schedule, LeaveApplication, PayRule, PayCalculation
+from ai_fallback import fallback_service
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Initialize OpenAI client with error handling
+try:
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+except Exception as e:
+    logging.error(f"OpenAI client initialization error: {e}")
+    client = None
 
 class WFMIntelligence:
     """AI-powered workforce management intelligence engine"""
@@ -25,9 +30,21 @@ class WFMIntelligence:
         # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
         # do not change this unless explicitly requested by the user
         self.model = "gpt-4o"
+        self.is_available = client is not None and os.environ.get("OPENAI_API_KEY") is not None
     
     def analyze_scheduling_patterns(self, department_id: Optional[int] = None, days: int = 30) -> Dict[str, Any]:
         """Analyze scheduling patterns and provide AI insights"""
+        if not self.is_available:
+            return {
+                'success': False,
+                'error': 'OpenAI service is not available. Please check your API key configuration.',
+                'suggestions': {
+                    'patterns': ['Manual review recommended'],
+                    'efficiency_score': 0,
+                    'recommendations': ['Configure OpenAI API key to enable AI insights']
+                }
+            }
+            
         try:
             # Get scheduling data
             end_date = date.today()
@@ -109,6 +126,17 @@ class WFMIntelligence:
     
     def generate_payroll_insights(self, pay_period_start: date, pay_period_end: date) -> Dict[str, Any]:
         """Generate AI-powered payroll insights and anomaly detection"""
+        if not self.is_available:
+            return {
+                'success': False,
+                'error': 'OpenAI service is not available. Please check your API key configuration.',
+                'insights': {
+                    'anomalies_detected': [],
+                    'cost_analysis': {'total_payroll_cost': 'N/A', 'overtime_percentage': 'N/A'},
+                    'recommendations': ['Configure OpenAI API key to enable AI insights']
+                }
+            }
+            
         try:
             # Get payroll calculations for the period
             calculations = PayCalculation.query.filter(
@@ -207,6 +235,17 @@ class WFMIntelligence:
     
     def analyze_attendance_patterns(self, employee_id: Optional[int] = None, days: int = 30) -> Dict[str, Any]:
         """Analyze attendance patterns and predict potential issues"""
+        if not self.is_available:
+            return {
+                'success': False,
+                'error': 'OpenAI service is not available. Please check your API key configuration.',
+                'insights': {
+                    'patterns': ['Manual review recommended'],
+                    'risk_factors': [],
+                    'recommendations': ['Configure OpenAI API key to enable AI insights']
+                }
+            }
+            
         try:
             end_date = date.today()
             start_date = end_date - timedelta(days=days)
