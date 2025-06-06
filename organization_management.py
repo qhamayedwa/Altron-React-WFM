@@ -144,14 +144,32 @@ def create_region(company_id):
     company = Company.query.get_or_404(company_id)
     
     if request.method == 'POST':
+        # Handle manager selection - either from dropdown or manual entry
+        manager_id = request.form.get('manager_select')
+        manager_name = request.form.get('manager_name')
+        
+        # If manager selected from dropdown, get their details
+        if manager_id:
+            selected_manager = User.query.get(manager_id)
+            if selected_manager:
+                manager_name = selected_manager.full_name
+                email = request.form.get('email') or selected_manager.email
+                phone = request.form.get('phone') or selected_manager.phone_number or selected_manager.mobile_number
+            else:
+                email = request.form.get('email')
+                phone = request.form.get('phone')
+        else:
+            email = request.form.get('email')
+            phone = request.form.get('phone')
+        
         region = Region(
             company_id=company_id,
             name=request.form['name'],
             code=request.form['code'],
             description=request.form.get('description'),
-            manager_name=request.form.get('manager_name'),
-            email=request.form.get('email'),
-            phone=request.form.get('phone'),
+            manager_name=manager_name,
+            email=email,
+            phone=phone,
             address_line1=request.form.get('address_line1'),
             address_line2=request.form.get('address_line2'),
             city=request.form.get('city'),
@@ -169,7 +187,11 @@ def create_region(company_id):
             db.session.rollback()
             flash(f'Error creating region: {str(e)}', 'error')
     
-    return render_template('organization/create_region.html', company=company)
+    # Get potential managers from active users
+    managers = User.query.filter_by(is_active=True).all()
+    
+    return render_template('organization/create_region.html', 
+                         company=company, managers=managers)
 
 @org_bp.route('/regions/<int:region_id>')
 @login_required
