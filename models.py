@@ -4,7 +4,196 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 
-# Multi-tenant models
+# Organizational Hierarchy Models
+
+class Company(db.Model):
+    """Company model - top level of organizational hierarchy"""
+    __tablename__ = 'companies'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(10), unique=True, nullable=False)  # Company code
+    
+    # Company details
+    legal_name = db.Column(db.String(150), nullable=True)
+    registration_number = db.Column(db.String(50), nullable=True)
+    tax_number = db.Column(db.String(50), nullable=True)
+    
+    # Contact information
+    email = db.Column(db.String(120), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    website = db.Column(db.String(100), nullable=True)
+    
+    # Address
+    address_line1 = db.Column(db.String(100), nullable=True)
+    address_line2 = db.Column(db.String(100), nullable=True)
+    city = db.Column(db.String(50), nullable=True)
+    state_province = db.Column(db.String(50), nullable=True)
+    postal_code = db.Column(db.String(20), nullable=True)
+    country = db.Column(db.String(50), default='South Africa')
+    
+    # Settings
+    timezone = db.Column(db.String(50), default='Africa/Johannesburg')
+    currency = db.Column(db.String(3), default='ZAR')
+    fiscal_year_start = db.Column(db.Integer, default=4)  # April = 4
+    
+    # Status
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    regions = db.relationship('Region', backref='company', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Company {self.name}>'
+
+class Region(db.Model):
+    """Region model - second level of organizational hierarchy"""
+    __tablename__ = 'regions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(10), nullable=False)  # Region code
+    
+    # Region details
+    description = db.Column(db.Text, nullable=True)
+    
+    # Contact information
+    manager_name = db.Column(db.String(100), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    
+    # Address
+    address_line1 = db.Column(db.String(100), nullable=True)
+    address_line2 = db.Column(db.String(100), nullable=True)
+    city = db.Column(db.String(50), nullable=True)
+    state_province = db.Column(db.String(50), nullable=True)
+    postal_code = db.Column(db.String(20), nullable=True)
+    
+    # Settings
+    timezone = db.Column(db.String(50), nullable=True)  # Inherits from company if null
+    
+    # Status
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    sites = db.relationship('Site', backref='region', lazy='dynamic', cascade='all, delete-orphan')
+    
+    # Unique constraint for company + code
+    __table_args__ = (
+        db.UniqueConstraint('company_id', 'code', name='uq_company_region_code'),
+    )
+    
+    def __repr__(self):
+        return f'<Region {self.name}>'
+
+class Site(db.Model):
+    """Site model - third level of organizational hierarchy"""
+    __tablename__ = 'sites'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(10), nullable=False)  # Site code
+    
+    # Site details
+    site_type = db.Column(db.String(50), nullable=True)  # Office, Warehouse, Factory, etc.
+    description = db.Column(db.Text, nullable=True)
+    
+    # Contact information
+    manager_name = db.Column(db.String(100), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    
+    # Address
+    address_line1 = db.Column(db.String(100), nullable=False)
+    address_line2 = db.Column(db.String(100), nullable=True)
+    city = db.Column(db.String(50), nullable=False)
+    state_province = db.Column(db.String(50), nullable=True)
+    postal_code = db.Column(db.String(20), nullable=True)
+    
+    # Geolocation for time tracking
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    geo_fence_radius = db.Column(db.Integer, default=100)  # meters
+    
+    # Operating hours
+    operating_hours_start = db.Column(db.Time, nullable=True)
+    operating_hours_end = db.Column(db.Time, nullable=True)
+    
+    # Settings
+    timezone = db.Column(db.String(50), nullable=True)  # Inherits from region/company if null
+    allow_remote_work = db.Column(db.Boolean, default=False)
+    
+    # Status
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    departments = db.relationship('Department', backref='site', lazy='dynamic', cascade='all, delete-orphan')
+    
+    # Unique constraint for region + code
+    __table_args__ = (
+        db.UniqueConstraint('region_id', 'code', name='uq_region_site_code'),
+    )
+    
+    def __repr__(self):
+        return f'<Site {self.name}>'
+
+class Department(db.Model):
+    """Department model - fourth level of organizational hierarchy"""
+    __tablename__ = 'departments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(10), nullable=False)  # Department code
+    
+    # Department details
+    description = db.Column(db.Text, nullable=True)
+    cost_center = db.Column(db.String(20), nullable=True)
+    budget_code = db.Column(db.String(20), nullable=True)
+    
+    # Management
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    deputy_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    # Contact information
+    email = db.Column(db.String(120), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    extension = db.Column(db.String(10), nullable=True)
+    
+    # Working patterns
+    standard_hours_per_day = db.Column(db.Float, default=8.0)
+    standard_hours_per_week = db.Column(db.Float, default=40.0)
+    
+    # Status
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    employees = db.relationship('User', backref='employee_department', lazy='dynamic', 
+                               foreign_keys='User.department_id')
+    manager = db.relationship('User', foreign_keys=[manager_id], 
+                            backref='managed_departments', post_update=True)
+    deputy_manager = db.relationship('User', foreign_keys=[deputy_manager_id], 
+                                   backref='deputy_managed_departments', post_update=True)
+    
+    # Unique constraint for site + code
+    __table_args__ = (
+        db.UniqueConstraint('site_id', 'code', name='uq_site_department_code'),
+    )
+    
+    def __repr__(self):
+        return f'<Department {self.name}>'
+
+# Multi-tenant models (legacy - will be replaced by Company hierarchy)
 
 class Tenant(db.Model):
     """Tenant/Organization model for multi-tenancy"""
@@ -132,16 +321,33 @@ class User(UserMixin, db.Model):
     
     # Additional fields for employee management
     employee_id = db.Column(db.String(20), nullable=False, index=True)  # Employee ID - unique per tenant
-    department = db.Column(db.String(64), nullable=True, index=True)  # Department with index
+    department = db.Column(db.String(64), nullable=True, index=True)  # Legacy department field
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), nullable=True, index=True)  # New hierarchy
     position = db.Column(db.String(64), nullable=True)
     hire_date = db.Column(db.Date, nullable=True, index=True)  # Hire date with index
     
-    # Multi-tenant unique constraints
-    __table_args__ = (
-        db.UniqueConstraint('tenant_id', 'username', name='uq_tenant_username'),
-        db.UniqueConstraint('tenant_id', 'email', name='uq_tenant_email'),
-        db.UniqueConstraint('tenant_id', 'employee_id', name='uq_tenant_employee_id'),
-    )
+    # Employment details
+    employment_type = db.Column(db.String(20), default='full_time')  # full_time, part_time, contract, temporary
+    employment_status = db.Column(db.String(20), default='active')  # active, inactive, terminated, on_leave
+    line_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    # Contact details
+    phone_number = db.Column(db.String(20), nullable=True)
+    mobile_number = db.Column(db.String(20), nullable=True)
+    emergency_contact_name = db.Column(db.String(100), nullable=True)
+    emergency_contact_phone = db.Column(db.String(20), nullable=True)
+    
+    # Address
+    address_line1 = db.Column(db.String(100), nullable=True)
+    address_line2 = db.Column(db.String(100), nullable=True)
+    city = db.Column(db.String(50), nullable=True)
+    postal_code = db.Column(db.String(20), nullable=True)
+    
+    # Job details
+    job_title = db.Column(db.String(100), nullable=True)
+    job_grade = db.Column(db.String(10), nullable=True)
+    salary = db.Column(db.Float, nullable=True)
+    hourly_rate = db.Column(db.Float, nullable=True)
     
     # Relationships
     tenant = db.relationship('Tenant', backref='users')
@@ -149,11 +355,17 @@ class User(UserMixin, db.Model):
     roles = db.relationship('Role', secondary=user_roles, lazy='subquery',
                            backref=db.backref('users', lazy=True))
     
-    # Additional indexes for performance optimization
+    # Line manager relationship (self-referential)
+    line_manager = db.relationship('User', remote_side=[id], backref='direct_reports')
+    
+    # Multi-tenant unique constraints and indexes
     __table_args__ = (
-        db.Index('idx_users_full_name', 'first_name', 'last_name'),  # Composite index for full name searches
-        db.Index('idx_users_dept_active', 'department', 'is_active'),  # Composite index for active employees by department
-        db.Index('idx_users_hire_date_desc', 'hire_date', postgresql_using='btree'),  # Optimized for date range queries
+        db.UniqueConstraint('tenant_id', 'username', name='uq_tenant_username'),
+        db.UniqueConstraint('tenant_id', 'email', name='uq_tenant_email'),
+        db.UniqueConstraint('tenant_id', 'employee_id', name='uq_tenant_employee_id'),
+        db.Index('idx_users_full_name', 'first_name', 'last_name'),
+        db.Index('idx_users_dept_active', 'department', 'is_active'),
+        db.Index('idx_users_hire_date_desc', 'hire_date'),
     )
     
     def set_password(self, password):
