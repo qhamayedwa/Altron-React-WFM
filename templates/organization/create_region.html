@@ -206,12 +206,17 @@ document.addEventListener('DOMContentLoaded', function() {
             phoneInput.value = phone || '';
             
             // Show manager details
-            document.getElementById('selected-manager-name').textContent = managerName || '';
-            document.getElementById('selected-manager-position').textContent = position || 'Not specified';
-            document.getElementById('selected-manager-department').textContent = department || 'Not specified';
+            const nameElement = document.getElementById('selected-manager-name');
+            const positionElement = document.getElementById('selected-manager-position');
+            const departmentElement = document.getElementById('selected-manager-department');
+            const contactElement = document.getElementById('selected-manager-contact');
+            
+            if (nameElement) nameElement.textContent = managerName || '';
+            if (positionElement) positionElement.textContent = position || 'Not specified';
+            if (departmentElement) departmentElement.textContent = department || 'Not specified';
             
             const contactText = (email || '') + (email && phone ? ', ' : '') + (phone || '') || 'Not specified';
-            document.getElementById('selected-manager-contact').textContent = contactText;
+            if (contactElement) contactElement.textContent = contactText;
             
             managerDetails.style.display = 'block';
             
