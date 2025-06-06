@@ -10,7 +10,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2>
-                        <i data-feather="brain" class="me-2"></i>
+                        <i data-feather="zap" class="me-2"></i>
                         AI Insights Dashboard
                     </h2>
                     <nav aria-label="breadcrumb">
@@ -115,7 +115,7 @@
                 </div>
                 <div class="card-body" id="scheduling-insights">
                     <div class="text-center py-4">
-                        <i data-feather="brain" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
+                        <i data-feather="zap" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
                         <h6>AI Scheduling Analysis</h6>
                         <p class="text-muted">Click "Analyze Scheduling" to get AI insights</p>
                         <button class="btn btn-primary" onclick="analyzeScheduling()">Analyze Scheduling</button>
@@ -215,7 +215,7 @@ async function askAI() {
             const result = data.result;
             responseDiv.innerHTML = `
                 <div class="alert alert-light border">
-                    <h6><i data-feather="brain" class="me-2"></i>AI Response:</h6>
+                    <h6><i data-feather="zap" class="me-2"></i>AI Response:</h6>
                     <p class="mb-3">${result.response}</p>
                     
                     ${result.insights && result.insights.length > 0 ? `
