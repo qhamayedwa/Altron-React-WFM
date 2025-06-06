@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Employee CSV{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <!-- Header -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('employee_import.import_dashboard') }}">Employee Import</a>
+                    </li>
+                    <li class="breadcrumb-item active">Upload CSV</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i data-feather="upload" class="me-2"></i>
+                        Upload Employee CSV File
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if errors %}
+                    <div class="alert alert-danger">
+                        <h6><i data-feather="alert-circle" class="me-2"></i>Validation Errors</h6>
+                        <ul class="mb-0">
+                            {% for error in errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if warnings %}
+                    <div class="alert alert-warning">
+                        <h6><i data-feather="alert-triangle" class="me-2"></i>Warnings</h6>
+                        <ul class="mb-0">
+                            {% for warning in warnings %}
+                            <li>{{ warning }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Upload Form -->
+                    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                        <div class="mb-4">
+                            <label for="csv_file" class="form-label">
+                                <i data-feather="file-text" class="me-2"></i>Select CSV File
+                            </label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="csv_file" 
+                                   name="csv_file" 
+                                   accept=".csv"
+                                   required>
+                            <div class="form-text">
+                                Choose a CSV file with employee data. Maximum file size: 10MB
+                            </div>
+                        </div>
+
+                        <!-- File Info Display -->
+                        <div id="file-info" class="alert alert-info" style="display: none;">
+                            <div class="d-flex align-items-center">
+                                <i data-feather="file" class="me-2"></i>
+                                <div>
+                                    <strong id="file-name"></strong><br>
+                                    <small id="file-details" class="text-muted"></small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('employee_import.import_dashboard') }}" class="btn btn-secondary">
+                                <i data-feather="arrow-left" class="me-2"></i>Back to Dashboard
+                            </a>
+                            <div>
+                                <a href="{{ url_for('employee_import.download_template') }}" class="btn btn-outline-primary me-2">
+                                    <i data-feather="download" class="me-2"></i>Download Template
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="uploadBtn">
+                                    <i data-feather="upload" class="me-2"></i>Validate & Continue
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Requirements Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i data-feather="check-square" class="me-2"></i>
+                        CSV File Requirements
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Required Columns</h6>
+                            <ul class="list-unstyled">
+                                <li><i data-feather="check" class="text-success me-2" style="width: 16px; height: 16px;"></i><code>employee_id</code></li>
+                                <li><i data-feather="check" class="text-success me-2" style="width: 16px; height: 16px;"></i><code>first_name</code></li>
+                                <li><i data-feather="check" class="text-success me-2" style="width: 16px; height: 16px;"></i><code>last_name</code></li>
+                                <li><i data-feather="check" class="text-success me-2" style="width: 16px; height: 16px;"></i><code>email</code></li>
+                                <li><i data-feather="check" class="text-success me-2" style="width: 16px; height: 16px;"></i><code>department_code</code></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">Optional Columns</h6>
+                            <ul class="list-unstyled">
+                                <li><i data-feather="circle" class="text-info me-2" style="width: 16px; height: 16px;"></i><code>username</code></li>
+                                <li><i data-feather="circle" class="text-info me-2" style="width: 16px; height: 16px;"></i><code>phone_number</code></li>
+                                <li><i data-feather="circle" class="text-info me-2" style="width: 16px; height: 16px;"></i><code>position</code></li>
+                                <li><i data-feather="circle" class="text-info me-2" style="width: 16px; height: 16px;"></i><code>hire_date</code></li>
+                                <li><i data-feather="circle" class="text-info me-2" style="width: 16px; height: 16px;"></i><code>employment_type</code></li>
+                                <li><i data-feather="circle" class="text-info me-2" style="width: 16px; height: 16px;"></i><code>salary</code></li>
+                                <li><i data-feather="circle" class="text-info me-2" style="width: 16px; height: 16px;"></i><code>hourly_rate</code></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-warning">Important Notes</h6>
+                            <ul class="small text-muted">
+                                <li>Employee IDs and email addresses must be unique</li>
+                                <li>Department codes must exist in the system (see dashboard for available codes)</li>
+                                <li>Date format should be YYYY-MM-DD or MM/DD/YYYY</li>
+                                <li>Employment types: full_time, part_time, contract, temporary</li>
+                                <li>Default passwords will be generated (firstname + employee_id)</li>
+                                <li>All employees will be assigned the "Employee" role by default</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('csv_file');
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+    const fileDetails = document.getElementById('file-details');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadForm = document.getElementById('uploadForm');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Display file information
+            fileName.textContent = file.name;
+            fileDetails.textContent = `Size: ${formatFileSize(file.size)} | Type: ${file.type || 'text/csv'}`;
+            fileInfo.style.display = 'block';
+            
+            // Validate file
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                showAlert('Please select a CSV file.', 'warning');
+                fileInput.value = '';
+                fileInfo.style.display = 'none';
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                showAlert('File size must be less than 10MB.', 'warning');
+                fileInput.value = '';
+                fileInfo.style.display = 'none';
+                return;
+            }
+        } else {
+            fileInfo.style.display = 'none';
+        }
+    });
+
+    uploadForm.addEventListener('submit', function(e) {
+        const file = fileInput.files[0];
+        if (!file) {
+            e.preventDefault();
+            showAlert('Please select a CSV file first.', 'warning');
+            return;
+        }
+        
+        // Show loading state
+        uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Validating...';
+        uploadBtn.disabled = true;
+    });
+});
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert after the card header
+    const cardBody = document.querySelector('.card-body');
+    cardBody.insertBefore(alertDiv, cardBody.firstChild);
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875em;
+}
+
+.breadcrumb {
+    background: none;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+.form-control:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.list-unstyled li {
+    margin-bottom: 0.25rem;
+}
+</style>
+{% endblock %}

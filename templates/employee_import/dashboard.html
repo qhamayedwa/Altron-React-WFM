@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Import Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>
+                        <i data-feather="upload" class="me-2"></i>
+                        Employee Import Dashboard
+                    </h2>
+                    <p class="text-muted">Bulk import employees from CSV files</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('employee_import.download_template') }}" class="btn btn-outline-primary me-2">
+                        <i data-feather="download" class="me-2"></i>Download Template
+                    </a>
+                    <a href="{{ url_for('employee_import.upload_csv') }}" class="btn btn-primary">
+                        <i data-feather="upload" class="me-2"></i>Import Employees
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="card-title">Total Employees</h4>
+                                    <h2 id="total-employees">-</h2>
+                                </div>
+                                <div class="align-self-center">
+                                    <i data-feather="users" style="width: 48px; height: 48px;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="card-title">Active Employees</h4>
+                                    <h2 id="active-employees">-</h2>
+                                </div>
+                                <div class="align-self-center">
+                                    <i data-feather="user-check" style="width: 48px; height: 48px;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="card-title">Departments</h4>
+                                    <h2 id="total-departments">-</h2>
+                                </div>
+                                <div class="align-self-center">
+                                    <i data-feather="briefcase" style="width: 48px; height: 48px;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="card-title">Recent Imports</h4>
+                                    <h2>0</h2>
+                                </div>
+                                <div class="align-self-center">
+                                    <i data-feather="upload-cloud" style="width: 48px; height: 48px;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i data-feather="info" class="me-2"></i>
+                        How Employee Import Works
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <span class="h4 mb-0">1</span>
+                                </div>
+                                <h6>Download Template</h6>
+                                <p class="text-muted small">Download the CSV template with all required columns and example data.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <div class="bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <span class="h4 mb-0">2</span>
+                                </div>
+                                <h6>Prepare Data</h6>
+                                <p class="text-muted small">Fill in employee information using the template format. Ensure department codes exist.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                    <span class="h4 mb-0">3</span>
+                                </div>
+                                <h6>Upload & Import</h6>
+                                <p class="text-muted small">Upload your CSV file. The system will validate and import employees automatically.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Departments -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i data-feather="building" class="me-2"></i>
+                        Available Departments
+                    </h5>
+                    <small class="text-muted">Use these department codes in your CSV file</small>
+                </div>
+                <div class="card-body">
+                    <div id="departments-loading" class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading departments...</p>
+                    </div>
+                    <div id="departments-table" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Department Code</th>
+                                        <th>Department Name</th>
+                                        <th>Site</th>
+                                        <th>Region</th>
+                                        <th>Company</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="departments-list">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="departments-error" style="display: none;">
+                        <div class="alert alert-warning">
+                            <i data-feather="alert-triangle" class="me-2"></i>
+                            Unable to load departments. Please refresh the page.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load statistics and departments
+    loadStatistics();
+    loadDepartments();
+});
+
+function loadStatistics() {
+    // Load employee statistics (implement API endpoint if needed)
+    // For now, showing placeholder
+    document.getElementById('total-employees').textContent = '-';
+    document.getElementById('active-employees').textContent = '-';
+    document.getElementById('total-departments').textContent = '-';
+}
+
+function loadDepartments() {
+    fetch('/employee-import/api/departments')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayDepartments(data.departments);
+            } else {
+                showDepartmentsError();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading departments:', error);
+            showDepartmentsError();
+        });
+}
+
+function displayDepartments(departments) {
+    const tbody = document.getElementById('departments-list');
+    tbody.innerHTML = '';
+    
+    departments.forEach(dept => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><code>${dept.code}</code></td>
+            <td>${dept.name}</td>
+            <td>${dept.site}</td>
+            <td>${dept.region}</td>
+            <td>${dept.company}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    document.getElementById('departments-loading').style.display = 'none';
+    document.getElementById('departments-table').style.display = 'block';
+    document.getElementById('total-departments').textContent = departments.length;
+}
+
+function showDepartmentsError() {
+    document.getElementById('departments-loading').style.display = 'none';
+    document.getElementById('departments-error').style.display = 'block';
+}
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.bg-primary { background-color: #0d6efd !important; }
+.bg-success { background-color: #198754 !important; }
+.bg-info { background-color: #0dcaf0 !important; }
+.bg-warning { background-color: #ffc107 !important; }
+
+code {
+    background-color: #f8f9fa;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+</style>
+{% endblock %}

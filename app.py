@@ -60,6 +60,7 @@ def create_app(config_class=Config):
     from automation_engine import automation_bp
     from ai_scheduling import ai_scheduling_bp
     from organization_management import org_bp
+    from employee_import import import_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(time_attendance_bp)

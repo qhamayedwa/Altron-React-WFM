@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Employee Import{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <!-- Header -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('employee_import.import_dashboard') }}">Employee Import</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('employee_import.upload_csv') }}">Upload CSV</a>
+                    </li>
+                    <li class="breadcrumb-item active">Confirm Import</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i data-feather="check-circle" class="me-2"></i>
+                        Confirm Employee Import
+                    </h4>
+                    <small>Review and confirm the import of {{ import_data.valid_rows|length }} employees</small>
+                </div>
+                <div class="card-body">
+                    {% if errors %}
+                    <div class="alert alert-danger">
+                        <h6><i data-feather="alert-circle" class="me-2"></i>Import Errors</h6>
+                        <ul class="mb-0">
+                            {% for error in errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                        <hr>
+                        <a href="{{ url_for('employee_import.upload_csv') }}" class="btn btn-outline-danger btn-sm">
+                            <i data-feather="arrow-left" class="me-2"></i>Back to Upload
+                        </a>
+                    </div>
+                    {% else %}
+                    
+                    <!-- Import Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 class="text-primary">{{ import_data.valid_rows|length }}</h3>
+                                    <small class="text-muted">Employees to Import</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 class="text-info">{{ import_data.total_rows }}</h3>
+                                    <small class="text-muted">Total Rows Processed</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h3 class="text-success">{{ import_data.filename }}</h3>
+                                    <small class="text-muted">Source File</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Employee Preview -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i data-feather="users" class="me-2"></i>
+                                Employees to be Imported
+                            </h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-striped mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Employee ID</th>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Department</th>
+                                            <th>Position</th>
+                                            <th>Employment Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for employee in import_data.valid_rows[:10] %}
+                                        <tr>
+                                            <td><code>{{ employee.employee_id }}</code></td>
+                                            <td>{{ employee.first_name }} {{ employee.last_name }}</td>
+                                            <td>{{ employee.email }}</td>
+                                            <td><span class="badge bg-primary">{{ employee.department_code }}</span></td>
+                                            <td>{{ employee.position or 'Not specified' }}</td>
+                                            <td>
+                                                <span class="badge bg-info">{{ employee.employment_type.replace('_', ' ').title() }}</span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                        {% if import_data.valid_rows|length > 10 %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">
+                                                <i data-feather="more-horizontal" class="me-2"></i>
+                                                And {{ import_data.valid_rows|length - 10 }} more employees...
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Department Summary -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i data-feather="pie-chart" class="me-2"></i>
+                                Department Distribution
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row" id="department-stats">
+                                <!-- Department statistics will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Import Actions -->
+                    <form method="POST" id="confirmForm">
+                        <div class="alert alert-info">
+                            <h6><i data-feather="info" class="me-2"></i>Important Notes</h6>
+                            <ul class="mb-0">
+                                <li>All employees will be created with default passwords (firstname + employee_id)</li>
+                                <li>Employees should change their passwords on first login</li>
+                                <li>All employees will be assigned the "Employee" role by default</li>
+                                <li>This action cannot be undone - employees will need to be manually removed if needed</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('employee_import.upload_csv') }}" class="btn btn-secondary">
+                                <i data-feather="arrow-left" class="me-2"></i>Back to Upload
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg" id="confirmBtn">
+                                <i data-feather="user-plus" class="me-2"></i>
+                                Import {{ import_data.valid_rows|length }} Employees
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculate department statistics
+    const employees = {{ import_data.valid_rows | tojson }};
+    if (employees) {
+        calculateDepartmentStats(employees);
+    }
+
+    // Handle form submission
+    const confirmForm = document.getElementById('confirmForm');
+    const confirmBtn = document.getElementById('confirmBtn');
+    
+    if (confirmForm && confirmBtn) {
+        confirmForm.addEventListener('submit', function(e) {
+            // Show confirmation dialog
+            if (!confirm('Are you sure you want to import these employees? This action cannot be undone.')) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Show loading state
+            confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Importing...';
+            confirmBtn.disabled = true;
+        });
+    }
+});
+
+function calculateDepartmentStats(employees) {
+    const deptStats = {};
+    
+    employees.forEach(emp => {
+        const dept = emp.department_code;
+        if (deptStats[dept]) {
+            deptStats[dept]++;
+        } else {
+            deptStats[dept] = 1;
+        }
+    });
+    
+    const statsContainer = document.getElementById('department-stats');
+    const colors = ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-danger', 'bg-secondary'];
+    let colorIndex = 0;
+    
+    Object.entries(deptStats).forEach(([dept, count]) => {
+        const percentage = ((count / employees.length) * 100).toFixed(1);
+        const color = colors[colorIndex % colors.length];
+        colorIndex++;
+        
+        const statCard = document.createElement('div');
+        statCard.className = 'col-md-4 mb-3';
+        statCard.innerHTML = `
+            <div class="card ${color} text-white">
+                <div class="card-body text-center py-3">
+                    <h5>${count}</h5>
+                    <small>${dept} (${percentage}%)</small>
+                </div>
+            </div>
+        `;
+        
+        statsContainer.appendChild(statCard);
+    });
+}
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875em;
+}
+
+.breadcrumb {
+    background: none;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.bg-primary { background-color: #0d6efd !important; }
+.bg-success { background-color: #198754 !important; }
+.bg-info { background-color: #0dcaf0 !important; }
+.bg-warning { background-color: #ffc107 !important; }
+.bg-danger { background-color: #dc3545 !important; }
+.bg-secondary { background-color: #6c757d !important; }
+</style>
+{% endblock %}
