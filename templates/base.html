@@ -506,6 +506,7 @@
             const statusElement = document.getElementById('db-status');
             const statusTextElement = document.getElementById('db-status-text');
             
+            // Only run if status elements exist on the page
             if (!statusElement || !statusTextElement) return;
             
             fetch('/api/system-info')
@@ -520,9 +521,11 @@
                     }
                 })
                 .catch(error => {
-                    console.log('Failed to check database status:', error);
-                    statusElement.className = 'db-status disconnected';
-                    statusTextElement.textContent = 'Offline';
+                    // Silent fail if status elements don't exist
+                    if (statusElement && statusTextElement) {
+                        statusElement.className = 'db-status disconnected';
+                        statusTextElement.textContent = 'Offline';
+                    }
                 });
         }
         
