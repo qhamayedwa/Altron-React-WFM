@@ -273,28 +273,44 @@
                         <li><hr class="dropdown-divider"></li>
                         {% endif %}
                         
-                        <!-- Organization Admin Section -->
-                        {% if current_user.is_tenant_admin() %}
+                        <!-- Organization Management Section -->
                         <li class="dropdown-submenu">
                             <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">
                                 <i data-feather="building" class="me-2"></i>
                                 Organization
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ url_for('tenant.tenant_dashboard') }}">
+                                <li><a class="dropdown-item" href="{{ url_for('organization.organization_dashboard') }}">
                                     <i data-feather="activity" class="me-2"></i>
                                     Organization Dashboard
                                 </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('organization.company_list') }}">
+                                    <i data-feather="building" class="me-2"></i>
+                                    Company Management
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('organization.create_company') }}">
+                                    <i data-feather="plus-circle" class="me-2"></i>
+                                    Create Company
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% if current_user.is_tenant_admin() %}
+                                <li><a class="dropdown-item" href="{{ url_for('tenant.tenant_dashboard') }}">
+                                    <i data-feather="monitor" class="me-2"></i>
+                                    Tenant Dashboard
+                                </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('tenant.tenant_settings') }}">
                                     <i data-feather="settings" class="me-2"></i>
-                                    Organization Settings
+                                    Tenant Settings
                                 </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('tenant.tenant_users') }}">
                                     <i data-feather="users" class="me-2"></i>
-                                    Organization Users
+                                    Tenant Users
                                 </a></li>
+                                {% endif %}
                             </ul>
                         </li>
+                        
+                        {% if current_user.is_tenant_admin() %}
                         <li><hr class="dropdown-divider"></li>
                         {% endif %}
 
