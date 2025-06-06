@@ -504,6 +504,14 @@
             window.location.href = '/leave-management';
         }
         
+        // Toggle Quick Actions View
+        function toggleQuickActionsView() {
+            const quickActions = document.getElementById('quick-actions-section');
+            if (quickActions) {
+                quickActions.style.display = quickActions.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+        
         // Navigation Functions
         function navigateToTimeAttendance() {
             window.location.href = '/time-attendance';
