@@ -211,6 +211,89 @@ def view_region(region_id):
     return render_template('organization/view_region.html', 
                          region=region, sites=sites, stats=stats)
 
+@org_bp.route('/regions/<int:region_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required('Super User', 'Admin')
+def edit_region(region_id):
+    """Edit region details"""
+    region = Region.query.get_or_404(region_id)
+    
+    if request.method == 'POST':
+        # Get manager details if selected
+        manager_id = request.form.get('manager_id')
+        manager_name = request.form.get('manager_name', '')
+        
+        # If manager selected from dropdown, get their details
+        if manager_id:
+            selected_manager = User.query.get(manager_id)
+            if selected_manager:
+                manager_name = selected_manager.full_name
+                email = request.form.get('email') or selected_manager.email
+                phone = request.form.get('phone') or selected_manager.phone_number or selected_manager.mobile_number
+            else:
+                email = request.form.get('email')
+                phone = request.form.get('phone')
+        else:
+            email = request.form.get('email')
+            phone = request.form.get('phone')
+        
+        # Update region fields
+        region.name = request.form['name']
+        region.code = request.form['code']
+        region.description = request.form.get('description')
+        region.manager_name = manager_name
+        region.email = email
+        region.phone = phone
+        region.address_line1 = request.form.get('address_line1')
+        region.address_line2 = request.form.get('address_line2')
+        region.city = request.form.get('city')
+        region.state_province = request.form.get('state_province')
+        region.postal_code = request.form.get('postal_code')
+        region.timezone = request.form.get('timezone')
+        region.is_active = bool(request.form.get('is_active'))
+        
+        try:
+            db.session.commit()
+            flash('Region updated successfully!', 'success')
+            return redirect(url_for('organization.view_region', region_id=region_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating region: {str(e)}', 'error')
+    
+    # Get potential managers from active users
+    managers = User.query.filter_by(is_active=True).all()
+    
+    return render_template('organization/edit_region.html', 
+                         region=region, managers=managers)
+
+@org_bp.route('/regions/<int:region_id>/delete', methods=['POST'])
+@login_required
+@role_required('Super User', 'Admin')
+def delete_region(region_id):
+    """Delete region (soft delete)"""
+    region = Region.query.get_or_404(region_id)
+    company_id = region.company_id
+    
+    try:
+        # Check if region has active sites
+        active_sites = Site.query.filter_by(region_id=region_id, is_active=True).count()
+        if active_sites > 0:
+            flash(f'Cannot delete region: {active_sites} active sites still exist. Please deactivate or move sites first.', 'error')
+            return redirect(url_for('organization.view_region', region_id=region_id))
+        
+        # Soft delete the region
+        region.is_active = False
+        region.deleted_at = datetime.utcnow()
+        
+        db.session.commit()
+        flash('Region deleted successfully!', 'success')
+        return redirect(url_for('organization.view_company', company_id=company_id))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting region: {str(e)}', 'error')
+        return redirect(url_for('organization.view_region', region_id=region_id))
+
 # Site Management
 @org_bp.route('/regions/<int:region_id>/sites/create', methods=['GET', 'POST'])
 @login_required
