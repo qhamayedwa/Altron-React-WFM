@@ -27,7 +27,7 @@
                     <p class="text-muted">{{ region.description or 'Regional operations and management' }}</p>
                 </div>
                 <div>
-                    {% if current_user.role in ['Super User', 'Admin'] %}
+                    {% if current_user.has_role('Super User') or current_user.has_role('Admin') %}
                     <div class="btn-group me-2" role="group">
                         <a href="{{ url_for('organization.edit_region', region_id=region.id) }}" class="btn btn-outline-secondary">
                             <i data-feather="edit" class="me-2"></i>Edit Region
@@ -209,7 +209,7 @@
 </div>
 
 <!-- Delete Region Modal -->
-{% if current_user.role in ['Super User', 'Admin'] %}
+{% if current_user.has_role('Super User') or current_user.has_role('Admin') %}
 <div class="modal fade" id="deleteRegionModal" tabindex="-1" aria-labelledby="deleteRegionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

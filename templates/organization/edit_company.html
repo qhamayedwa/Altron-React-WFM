@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Company - {{ company.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-edit"></i> Edit Company - {{ company.name }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Company Name *</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{{ company.name }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="code" class="form-label">Company Code *</label>
+                                    <input type="text" class="form-control" id="code" name="code" 
+                                           value="{{ company.code }}" required maxlength="10" style="text-transform: uppercase;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="legal_name" class="form-label">Legal Name</label>
+                            <input type="text" class="form-control" id="legal_name" name="legal_name" 
+                                   value="{{ company.legal_name or '' }}">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="registration_number" class="form-label">Registration Number</label>
+                                    <input type="text" class="form-control" id="registration_number" name="registration_number" 
+                                           value="{{ company.registration_number or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="tax_number" class="form-label">Tax Number</label>
+                                    <input type="text" class="form-control" id="tax_number" name="tax_number" 
+                                           value="{{ company.tax_number or '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h5>Contact Information</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           value="{{ company.email or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Phone</label>
+                                    <input type="text" class="form-control" id="phone" name="phone" 
+                                           value="{{ company.phone or '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="website" class="form-label">Website</label>
+                            <input type="url" class="form-control" id="website" name="website" 
+                                   value="{{ company.website or '' }}">
+                        </div>
+
+                        <hr>
+                        <h5>Address</h5>
+                        
+                        <div class="mb-3">
+                            <label for="address_line1" class="form-label">Address Line 1</label>
+                            <input type="text" class="form-control" id="address_line1" name="address_line1" 
+                                   value="{{ company.address_line1 or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address_line2" class="form-label">Address Line 2</label>
+                            <input type="text" class="form-control" id="address_line2" name="address_line2" 
+                                   value="{{ company.address_line2 or '' }}">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="city" class="form-label">City</label>
+                                    <input type="text" class="form-control" id="city" name="city" 
+                                           value="{{ company.city or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="state_province" class="form-label">State/Province</label>
+                                    <input type="text" class="form-control" id="state_province" name="state_province" 
+                                           value="{{ company.state_province or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="postal_code" class="form-label">Postal Code</label>
+                                    <input type="text" class="form-control" id="postal_code" name="postal_code" 
+                                           value="{{ company.postal_code or '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="country" class="form-label">Country</label>
+                            <select class="form-control" id="country" name="country">
+                                <option value="South Africa" {% if company.country == 'South Africa' %}selected{% endif %}>South Africa</option>
+                                <option value="Botswana" {% if company.country == 'Botswana' %}selected{% endif %}>Botswana</option>
+                                <option value="Namibia" {% if company.country == 'Namibia' %}selected{% endif %}>Namibia</option>
+                                <option value="Zimbabwe" {% if company.country == 'Zimbabwe' %}selected{% endif %}>Zimbabwe</option>
+                                <option value="Other" {% if company.country not in ['South Africa', 'Botswana', 'Namibia', 'Zimbabwe'] %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+
+                        <hr>
+                        <h5>Settings</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="timezone" class="form-label">Timezone</label>
+                                    <select class="form-control" id="timezone" name="timezone">
+                                        <option value="Africa/Johannesburg" {% if company.timezone == 'Africa/Johannesburg' %}selected{% endif %}>South Africa Standard Time (SAST)</option>
+                                        <option value="Africa/Cairo" {% if company.timezone == 'Africa/Cairo' %}selected{% endif %}>Central Africa Time (CAT)</option>
+                                        <option value="Africa/Lagos" {% if company.timezone == 'Africa/Lagos' %}selected{% endif %}>West Africa Time (WAT)</option>
+                                        <option value="UTC" {% if company.timezone == 'UTC' %}selected{% endif %}>Coordinated Universal Time (UTC)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="currency" class="form-label">Currency</label>
+                                    <select class="form-control" id="currency" name="currency">
+                                        <option value="ZAR" {% if company.currency == 'ZAR' %}selected{% endif %}>South African Rand (ZAR)</option>
+                                        <option value="USD" {% if company.currency == 'USD' %}selected{% endif %}>US Dollar (USD)</option>
+                                        <option value="EUR" {% if company.currency == 'EUR' %}selected{% endif %}>Euro (EUR)</option>
+                                        <option value="GBP" {% if company.currency == 'GBP' %}selected{% endif %}>British Pound (GBP)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="fiscal_year_start" class="form-label">Fiscal Year Start Month</label>
+                                    <select class="form-control" id="fiscal_year_start" name="fiscal_year_start">
+                                        <option value="1" {% if company.fiscal_year_start == 1 %}selected{% endif %}>January</option>
+                                        <option value="2" {% if company.fiscal_year_start == 2 %}selected{% endif %}>February</option>
+                                        <option value="3" {% if company.fiscal_year_start == 3 %}selected{% endif %}>March</option>
+                                        <option value="4" {% if company.fiscal_year_start == 4 %}selected{% endif %}>April</option>
+                                        <option value="5" {% if company.fiscal_year_start == 5 %}selected{% endif %}>May</option>
+                                        <option value="6" {% if company.fiscal_year_start == 6 %}selected{% endif %}>June</option>
+                                        <option value="7" {% if company.fiscal_year_start == 7 %}selected{% endif %}>July</option>
+                                        <option value="8" {% if company.fiscal_year_start == 8 %}selected{% endif %}>August</option>
+                                        <option value="9" {% if company.fiscal_year_start == 9 %}selected{% endif %}>September</option>
+                                        <option value="10" {% if company.fiscal_year_start == 10 %}selected{% endif %}>October</option>
+                                        <option value="11" {% if company.fiscal_year_start == 11 %}selected{% endif %}>November</option>
+                                        <option value="12" {% if company.fiscal_year_start == 12 %}selected{% endif %}>December</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h5>Status</h5>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                       {% if company.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    Company is Active
+                                </label>
+                                <small class="form-text text-muted d-block">Inactive companies will be hidden from most views</small>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('organization.view_company', company_id=company.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Update Company
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Convert company code to uppercase
+    document.getElementById('code').addEventListener('input', function() {
+        this.value = this.value.toUpperCase();
+    });
+});
+</script>
+{% endblock %}
