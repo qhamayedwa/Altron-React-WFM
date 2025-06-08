@@ -232,7 +232,7 @@ def edit_user(user_id):
     if request.method == 'GET':
         form.roles.data = [role.id for role in user.roles]
         form.department.data = user.department_id
-        form.manager_id.data = user.manager_id
+        form.manager_id.data = user.line_manager_id
     
     if form.validate_on_submit():
         # Update basic information
