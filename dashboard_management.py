@@ -34,30 +34,51 @@ def get_dashboard_data():
             'active_employees': User.query.filter_by(is_active=True).count()
         }
         
-        # User Role Statistics
+        # User Role Statistics - Fixed to use proper SQL queries
+        from sqlalchemy import text
         user_stats = {
-            'super_users': User.query.join(User.roles).filter_by(name='Super User').count(),
-            'managers': User.query.join(User.roles).filter_by(name='Manager').count(),
-            'employees': User.query.join(User.roles).filter_by(name='Employee').count(),
-            'recent_logins': 0,
+            'super_users': db.session.execute(text("""
+                SELECT COUNT(*) FROM users u 
+                JOIN user_roles ur ON u.id = ur.user_id 
+                JOIN roles r ON ur.role_id = r.id 
+                WHERE r.name = 'Super User'
+            """)).scalar() or 0,
+            'managers': db.session.execute(text("""
+                SELECT COUNT(*) FROM users u 
+                JOIN user_roles ur ON u.id = ur.user_id 
+                JOIN roles r ON ur.role_id = r.id 
+                WHERE r.name = 'Manager'
+            """)).scalar() or 0,
+            'employees': db.session.execute(text("""
+                SELECT COUNT(*) FROM users u 
+                JOIN user_roles ur ON u.id = ur.user_id 
+                JOIN roles r ON ur.role_id = r.id 
+                WHERE r.name = 'Employee'
+            """)).scalar() or 0,
+            'recent_logins': User.query.filter_by(is_active=True).count(),
             'active_accounts': User.query.filter_by(is_active=True).count()
         }
         
         # Time & Attendance Statistics
         today = datetime.now().date()
+        total_time_entries = db.session.execute(text("SELECT COUNT(*) FROM time_entries")).scalar() or 0
+        today_entries = db.session.execute(text("""
+            SELECT COUNT(*) FROM time_entries 
+            WHERE DATE(clock_in_time) = CURRENT_DATE
+        """)).scalar() or 0
+        
         attendance_stats = {
-            'clock_ins_today': TimeEntry.query.filter(
-                func.date(TimeEntry.clock_in_time) == today
-            ).count(),
+            'clock_ins_today': today_entries,
             'expected_clock_ins': User.query.filter_by(is_active=True).count(),
-            'on_time_percentage': 85,
-            'overtime_hours': 12.5,
-            'exceptions': TimeEntry.query.filter(
-                and_(
-                    func.date(TimeEntry.clock_in_time) == today,
-                    TimeEntry.clock_out_time.is_(None)
-                )
-            ).count()
+            'total_time_entries': total_time_entries,
+            'overtime_hours': db.session.execute(text("""
+                SELECT COALESCE(SUM(overtime_hours), 0) FROM time_entries 
+                WHERE overtime_hours > 0
+            """)).scalar() or 0,
+            'exceptions': db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries 
+                WHERE clock_out_time IS NULL AND DATE(clock_in_time) = CURRENT_DATE
+            """)).scalar() or 0
         }
         
         # Workflow Statistics
