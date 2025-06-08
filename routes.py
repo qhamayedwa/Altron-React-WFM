@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response
 from flask_login import login_required, current_user
 from app import db
-from models import User, TimeEntry, Schedule, LeaveApplication, PayRule, PayCode, LeaveBalance
+from models import User, TimeEntry, Schedule, LeaveApplication, PayRule, PayCode, LeaveBalance, Department
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
 import logging
@@ -11,6 +11,13 @@ import json
 
 # Create blueprint for main routes
 main_bp = Blueprint('main', __name__)
+
+def get_managed_departments(user_id):
+    """Get list of department IDs that a manager oversees"""
+    managed_depts = db.session.query(Department.id).filter(
+        or_(Department.manager_id == user_id, Department.deputy_manager_id == user_id)
+    ).all()
+    return [dept.id for dept in managed_depts]
 
 def generate_dashboard_analytics(is_manager_or_admin, user_id=None):
     """Generate comprehensive analytics data for dashboard charts"""
@@ -204,19 +211,19 @@ def reports():
         # Employee attendance summary - with proper department filtering
         is_super_user = current_user.has_role('Super User')
         is_manager = current_user.has_role('Manager')
-        user_department_id = getattr(current_user, 'department_id', None)
+        managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
         
         if is_super_user:
             # Super Users see all employees
             users_with_entries = db.session.query(User).join(
                 TimeEntry, User.id == TimeEntry.user_id
             ).filter(base_time_filter).distinct().all()
-        elif is_manager and user_department_id:
-            # Managers see only employees in their department
+        elif is_manager and managed_dept_ids:
+            # Managers see only employees in departments they manage
             users_with_entries = db.session.query(User).join(
                 TimeEntry, User.id == TimeEntry.user_id
             ).filter(
-                and_(base_time_filter, User.department_id == user_department_id)
+                and_(base_time_filter, User.department_id.in_(managed_dept_ids))
             ).distinct().all()
         else:
             # Employees see only themselves
@@ -464,15 +471,15 @@ def time_entries():
     # Apply proper department filtering for security
     is_super_user = current_user.has_role('Super User')
     is_manager = current_user.has_role('Manager')
-    user_department_id = getattr(current_user, 'department_id', None)
+    managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
     
     if is_super_user:
         # Super Users see all time entries
         entries = TimeEntry.query.order_by(TimeEntry.clock_in_time.desc()).limit(100).all()
-    elif is_manager and user_department_id:
-        # Managers see only time entries for employees in their department
+    elif is_manager and managed_dept_ids:
+        # Managers see only time entries for employees in departments they manage
         entries = TimeEntry.query.join(User, TimeEntry.user_id == User.id).filter(
-            User.department_id == user_department_id
+            User.department_id.in_(managed_dept_ids)
         ).order_by(TimeEntry.clock_in_time.desc()).limit(100).all()
     else:
         # Employees see only their own time entries
