@@ -504,7 +504,7 @@ def api_team_time_entries():
         # Get team entries for the specified date
         entries = TimeEntry.query.filter(
             func.date(TimeEntry.clock_in_time) == target_date
-        ).join(User).all()
+        ).join(User, TimeEntry.user_id == User.id).all()
         
         entries_data = []
         for entry in entries:
