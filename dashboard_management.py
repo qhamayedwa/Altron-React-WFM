@@ -25,6 +25,7 @@ def get_dashboard_data():
     try:
         # System Statistics - Apply role-based filtering
         from sqlalchemy import text
+        from datetime import datetime, timedelta
         
         # Determine user's access scope with managed departments
         is_super_user = current_user.has_role('Super User')
@@ -561,8 +562,11 @@ def get_dashboard_data():
         traceback.print_exc()
         # Log more details for debugging
         print(f"Current user: {current_user.id if current_user else 'None'}")
-        print(f"Is manager: {is_manager if 'is_manager' in locals() else 'Undefined'}")
-        print(f"Managed dept IDs: {managed_dept_ids if 'managed_dept_ids' in locals() else 'Undefined'}")
+        try:
+            print(f"Is manager: {is_manager}")
+            print(f"Managed dept IDs: {managed_dept_ids}")
+        except NameError:
+            print("Variables not defined before exception")
         # Return minimal safe data if database query fails
         return {
             'system_stats': {'uptime': 99.9, 'active_users': 0, 'pending_tasks': 0, 'data_integrity': 100},
