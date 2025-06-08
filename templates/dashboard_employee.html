@@ -348,12 +348,12 @@ function initializePersonalAttendanceChart() {
 }
 
 function updateClockStatus() {
-    fetch('/api/current-status')
+    fetch('/time/current-status')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 // Update UI based on clock status
-                console.log('Clock status updated:', data.status);
+                console.log('Clock status updated:', data.is_clocked_in);
             }
         })
         .catch(error => {
@@ -363,7 +363,7 @@ function updateClockStatus() {
 
 function quickClockAction() {
     // Determine current status and perform opposite action
-    fetch('/api/current-status')
+    fetch('/time/current-status')
         .then(response => response.json())
         .then(data => {
             if (data.is_clocked_in) {
