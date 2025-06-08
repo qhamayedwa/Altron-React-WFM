@@ -223,7 +223,8 @@
                         </li>
                         {% endif %}
                         
-                        <!-- Organization Management Section -->
+                        <!-- Organization Management Section - Only for Managers and Admins -->
+                        {% if current_user.has_role('Manager') or current_user.has_role('Admin') or current_user.has_role('Super User') %}
                         <li class="dropdown-submenu">
                             <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">
                                 <i data-feather="building" class="me-2"></i>
@@ -263,6 +264,7 @@
                                 {% endif %}
                             </ul>
                         </li>
+                        {% endif %}
                         
                         {% if current_user.is_tenant_admin() %}
                         <li><hr class="dropdown-divider"></li>
