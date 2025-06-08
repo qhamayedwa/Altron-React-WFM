@@ -139,7 +139,11 @@
             <div class="card">
                 <div class="card-body text-center">
                     <h5 class="text-success">
-                        {{ "%.1f"|format(schedules.items|sum(attribute='duration_hours')|default(0, true)) }}
+                        {% set total_hours = 0 %}
+                        {% for schedule in schedules.items %}
+                            {% set total_hours = total_hours + (schedule.duration_hours or 0) %}
+                        {% endfor %}
+                        {{ total_hours|hours_minutes }}
                     </h5>
                     <p class="text-muted mb-0">Total Hours</p>
                 </div>
