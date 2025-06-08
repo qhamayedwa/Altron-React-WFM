@@ -75,8 +75,7 @@ def test_employee_data_restrictions():
                 user_id=test_employee_1.id,
                 clock_in_time=yesterday.replace(hour=9, minute=0),
                 clock_out_time=yesterday.replace(hour=17, minute=0),
-                status='approved',
-                total_hours=8.0
+                status='approved'
             )
             
             # Employee 2 time entries
@@ -84,8 +83,7 @@ def test_employee_data_restrictions():
                 user_id=test_employee_2.id,
                 clock_in_time=yesterday.replace(hour=8, minute=30),
                 clock_out_time=yesterday.replace(hour=16, minute=30),
-                status='approved',
-                total_hours=8.0
+                status='approved'
             )
             
             db.session.add_all([entry1, entry2])
