@@ -5,9 +5,10 @@ Provides management interface for Company → Regions → Sites → Departments 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from app import db
-from models import Company, Region, Site, Department, User
+from models import Company, Region, Site, Department, User, TimeEntry
 from auth import role_required
-from datetime import datetime
+from datetime import datetime, date
+from sqlalchemy import func, and_
 
 org_bp = Blueprint('organization', __name__, url_prefix='/organization')
 
@@ -581,3 +582,74 @@ def api_search():
         })
     
     return jsonify({'results': results})
+
+@org_bp.route('/my_department')
+@login_required
+@role_required('Manager', 'Admin', 'Super User')
+def my_department():
+    """View manager's department team"""
+    # Check if user is assigned to a department as manager
+    department = None
+    if current_user.has_role('Manager'):
+        department = Department.query.filter_by(manager_id=current_user.id, is_active=True).first()
+    elif current_user.has_role('Admin') or current_user.has_role('Super User'):
+        # For admins, show their assigned department if any
+        department = current_user.department
+    
+    if not department:
+        return render_template('organization/my_department.html', 
+                             team_members=[], 
+                             current_status={}, 
+                             todays_hours={},
+                             active_count=0,
+                             on_leave_count=0,
+                             scheduled_count=0)
+    
+    # Get all team members in the department
+    team_members = User.query.filter_by(department_id=department.id, is_active=True).all()
+    
+    # Get current clock-in status for each team member
+    current_status = {}
+    today = date.today()
+    
+    for member in team_members:
+        latest_entry = TimeEntry.query.filter_by(
+            user_id=member.id,
+            date=today
+        ).order_by(TimeEntry.created_at.desc()).first()
+        
+        if latest_entry:
+            current_status[member.id] = {
+                'is_clocked_in': latest_entry.clock_out is None,
+                'clock_in_time': latest_entry.clock_in,
+                'clock_out_time': latest_entry.clock_out
+            }
+    
+    # Calculate today's hours for each team member
+    todays_hours = {}
+    for member in team_members:
+        entries = TimeEntry.query.filter_by(
+            user_id=member.id,
+            date=today
+        ).all()
+        
+        total_hours = 0
+        for entry in entries:
+            if entry.clock_in and entry.clock_out:
+                duration = entry.clock_out - entry.clock_in
+                total_hours += duration.total_seconds() / 3600
+        
+        todays_hours[member.id] = total_hours
+    
+    # Calculate summary statistics
+    active_count = len([m for m in team_members if m.id in current_status and current_status[m.id]['is_clocked_in']])
+    on_leave_count = 0  # TODO: Add leave status check
+    scheduled_count = len(team_members)  # TODO: Add actual schedule check
+    
+    return render_template('organization/my_department.html', 
+                         team_members=team_members,
+                         current_status=current_status,
+                         todays_hours=todays_hours,
+                         active_count=active_count,
+                         on_leave_count=on_leave_count,
+                         scheduled_count=scheduled_count)

@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}My Department - {{ current_user.department.name if current_user.department else 'Department' }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    {% if current_user.department %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i data-feather="users" class="me-2"></i>
+                {{ current_user.department.name }}
+            </h2>
+            {% if current_user.department.description %}
+            <p class="text-muted mb-0">{{ current_user.department.description }}</p>
+            {% endif %}
+        </div>
+        <div class="text-end">
+            <div class="badge bg-primary fs-6">{{ team_members|length }} Team Members</div>
+        </div>
+    </div>
+
+    <!-- Department Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">{{ team_members|length }}</h5>
+                    <p class="card-text">Total Employees</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">{{ active_count }}</h5>
+                    <p class="card-text">Active Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">{{ on_leave_count }}</h5>
+                    <p class="card-text">On Leave</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">{{ scheduled_count }}</h5>
+                    <p class="card-text">Scheduled Today</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Members Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i data-feather="users" class="me-2"></i>
+                Department Team Members
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if team_members %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Contact</th>
+                            <th>Employee ID</th>
+                            <th>Status</th>
+                            <th>Today's Hours</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in team_members %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            {{ member.full_name[0] if member.full_name else member.username[0] }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <strong>{{ member.full_name or member.username }}</strong>
+                                        <br><small class="text-muted">@{{ member.username }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if member.email %}
+                                <div><i data-feather="mail" class="me-1"></i> {{ member.email }}</div>
+                                {% endif %}
+                                {% if member.phone %}
+                                <div><i data-feather="phone" class="me-1"></i> {{ member.phone }}</div>
+                                {% endif %}
+                                {% if not member.email and not member.phone %}
+                                <span class="text-muted">No contact info</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if member.employee_id %}
+                                <span class="badge bg-light text-dark">{{ member.employee_id }}</span>
+                                {% else %}
+                                <span class="text-muted">Not assigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if member.id in current_status %}
+                                    {% set status = current_status[member.id] %}
+                                    {% if status.is_clocked_in %}
+                                    <span class="badge bg-success">Clocked In</span>
+                                    <br><small class="text-muted">Since {{ status.clock_in_time.strftime('%H:%M') }}</small>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Clocked Out</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="badge bg-light text-dark">No Activity</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if member.id in todays_hours %}
+                                <strong>{{ "%.1f"|format(todays_hours[member.id]) }}h</strong>
+                                {% else %}
+                                <span class="text-muted">0.0h</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('time_attendance.employee_timecard', employee_id=member.id) }}" 
+                                       class="btn btn-outline-primary" title="View Timecard">
+                                        <i data-feather="clock"></i>
+                                    </a>
+                                    <a href="{{ url_for('scheduling.employee_schedule', employee_id=member.id) }}" 
+                                       class="btn btn-outline-success" title="View Schedule">
+                                        <i data-feather="calendar"></i>
+                                    </a>
+                                    <a href="{{ url_for('leave_management.employee_leave', employee_id=member.id) }}" 
+                                       class="btn btn-outline-warning" title="Leave Management">
+                                        <i data-feather="umbrella"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i data-feather="users" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                <h5 class="text-muted">No Team Members</h5>
+                <p class="text-muted">No employees are currently assigned to this department.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('time_attendance.team_timecard') }}" class="btn btn-outline-primary">
+                            <i data-feather="clock" class="me-2"></i>
+                            View Team Timecard
+                        </a>
+                        <a href="{{ url_for('scheduling.manage_schedules') }}" class="btn btn-outline-success">
+                            <i data-feather="calendar" class="me-2"></i>
+                            Manage Team Schedules
+                        </a>
+                        <a href="{{ url_for('leave_management.team_applications') }}" class="btn btn-outline-warning">
+                            <i data-feather="umbrella" class="me-2"></i>
+                            Team Leave Requests
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Department Information</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Department:</dt>
+                        <dd class="col-sm-8">{{ current_user.department.name }}</dd>
+                        
+                        {% if current_user.department.description %}
+                        <dt class="col-sm-4">Description:</dt>
+                        <dd class="col-sm-8">{{ current_user.department.description }}</dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-4">Manager:</dt>
+                        <dd class="col-sm-8">{{ current_user.full_name or current_user.username }}</dd>
+                        
+                        <dt class="col-sm-4">Team Size:</dt>
+                        <dd class="col-sm-8">{{ team_members|length }} employees</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- No Department Assigned -->
+    <div class="text-center py-5">
+        <i data-feather="alert-circle" class="text-warning mb-3" style="width: 64px; height: 64px;"></i>
+        <h3 class="text-muted">No Department Assigned</h3>
+        <p class="text-muted">You are not currently assigned as manager of any department.</p>
+        <p class="text-muted">Please contact your administrator to assign you to a department.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Auto-refresh every 30 seconds to keep status current
+    setTimeout(function() {
+        window.location.reload();
+    }, 30000);
+});
+</script>
+{% endblock %}
