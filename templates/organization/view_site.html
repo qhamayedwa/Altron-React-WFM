@@ -171,7 +171,7 @@
                                     <p class="card-text text-muted small">
                                         Code: {{ department.code }}<br>
                                         {% if department.manager_name %}Manager: {{ department.manager_name }}<br>{% endif %}
-                                        Employees: 0
+                                        Employees: {% for detail in department_details %}{% if detail.department.id == department.id %}{{ detail.employee_count }}{% endif %}{% endfor %}
                                     </p>
                                     <div class="mt-auto">
                                         <a href="{{ url_for('organization.view_department', department_id=department.id) }}" class="btn btn-sm btn-outline-primary">

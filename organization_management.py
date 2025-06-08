@@ -374,14 +374,25 @@ def view_site(site_id):
     site = Site.query.get_or_404(site_id)
     departments = Department.query.filter_by(site_id=site_id, is_active=True).all()
     
+    # Calculate employee counts for each department
+    department_details = []
+    total_employees = 0
+    for dept in departments:
+        employee_count = User.query.filter_by(department_id=dept.id, is_active=True).count()
+        total_employees += employee_count
+        department_details.append({
+            'department': dept,
+            'employee_count': employee_count
+        })
+    
     # Get site statistics
     stats = {
-        'departments': Department.query.filter_by(site_id=site_id, is_active=True).count(),
-        'employees': db.session.query(User).filter(User.is_active == True).count()
+        'departments': len(departments),
+        'employees': total_employees
     }
     
     return render_template('organization/view_site.html', 
-                         site=site, departments=departments, stats=stats)
+                         site=site, departments=departments, department_details=department_details, stats=stats)
 
 # Department Management
 @org_bp.route('/sites/<int:site_id>/departments/create', methods=['GET', 'POST'])
@@ -433,11 +444,14 @@ def create_department(site_id):
 def view_department(department_id):
     """View department details with employees"""
     department = Department.query.get_or_404(department_id)
-    employees = User.query.filter_by(department_id=department_id, is_active=True).all()
+    all_employees = User.query.filter_by(department_id=department_id).all()
+    employees = [e for e in all_employees if e.is_active]
     
     # Get department statistics
     stats = {
-        'employees': len(employees),
+        'total_employees': len(all_employees),
+        'active_employees': len(employees),
+        'inactive_employees': len(all_employees) - len(employees),
         'full_time': len([e for e in employees if e.employment_type == 'full_time']),
         'part_time': len([e for e in employees if e.employment_type == 'part_time']),
         'contractors': len([e for e in employees if e.employment_type == 'contract'])
