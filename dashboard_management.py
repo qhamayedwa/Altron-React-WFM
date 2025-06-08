@@ -66,34 +66,95 @@ def get_dashboard_data():
                 "SELECT COUNT(*) FROM leave_applications WHERE user_id = :user_id"
             ), {'user_id': current_user.id}).scalar() or 0
         
-        # Calculate actual system statistics
-        # Get active sessions/recent logins (last 24 hours) 
-        active_users_24h = db.session.execute(text("""
-            SELECT COUNT(DISTINCT id) FROM users 
-            WHERE last_login >= NOW() - INTERVAL '24 hours' AND is_active = true
-        """)).scalar() or 0
+        # Calculate actual system statistics with department filtering
+        if is_super_user:
+            # Super Users see all active users
+            active_users_24h = db.session.execute(text("""
+                SELECT COUNT(DISTINCT id) FROM users 
+                WHERE last_login >= NOW() - INTERVAL '24 hours' AND is_active = true
+            """)).scalar() or 0
+            
+            # Count actual pending tasks from workflows and approvals
+            pending_leave_approvals = db.session.execute(text(
+                "SELECT COUNT(*) FROM leave_applications WHERE status = 'Pending'"
+            )).scalar() or 0
+        elif is_manager and user_department_id:
+            # Managers see only their department's active users
+            active_users_24h = db.session.execute(text("""
+                SELECT COUNT(DISTINCT id) FROM users 
+                WHERE last_login >= NOW() - INTERVAL '24 hours' 
+                AND is_active = true 
+                AND department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+            
+            # Count pending leave approvals for their department only
+            pending_leave_approvals = db.session.execute(text("""
+                SELECT COUNT(*) FROM leave_applications la 
+                JOIN users u ON la.user_id = u.id 
+                WHERE la.status = 'Pending' AND u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+        else:
+            # Employees see only their own data
+            active_users_24h = 1 if current_user.last_login and current_user.last_login >= datetime.now() - timedelta(hours=24) else 0
+            pending_leave_approvals = db.session.execute(text(
+                "SELECT COUNT(*) FROM leave_applications WHERE status = 'Pending' AND user_id = :user_id"
+            ), {'user_id': current_user.id}).scalar() or 0
         
-        # Count actual pending tasks from workflows and approvals
-        pending_leave_approvals = db.session.execute(text(
-            "SELECT COUNT(*) FROM leave_applications WHERE status = 'Pending'"
-        )).scalar() or 0
-        
-        # Calculate pending overtime approvals (entries over 8 hours not yet approved)
-        pending_overtime_approvals = db.session.execute(text("""
-            SELECT COUNT(*) FROM time_entries 
-            WHERE is_overtime_approved = false 
-            AND clock_in_time IS NOT NULL 
-            AND clock_out_time IS NOT NULL
-            AND EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 > 8
-        """)).scalar() or 0
+        # Calculate pending overtime approvals with department filtering
+        if is_super_user:
+            pending_overtime_approvals = db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries 
+                WHERE is_overtime_approved = false 
+                AND clock_in_time IS NOT NULL 
+                AND clock_out_time IS NOT NULL
+                AND EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 > 8
+            """)).scalar() or 0
+        elif is_manager and user_department_id:
+            pending_overtime_approvals = db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries te 
+                JOIN users u ON te.user_id = u.id 
+                WHERE te.is_overtime_approved = false 
+                AND te.clock_in_time IS NOT NULL 
+                AND te.clock_out_time IS NOT NULL
+                AND EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time))/3600 > 8
+                AND u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+        else:
+            pending_overtime_approvals = db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries 
+                WHERE user_id = :user_id
+                AND is_overtime_approved = false 
+                AND clock_in_time IS NOT NULL 
+                AND clock_out_time IS NOT NULL
+                AND EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 > 8
+            """), {'user_id': current_user.id}).scalar() or 0
         
         total_pending_tasks = pending_leave_approvals + pending_overtime_approvals
         
-        # Calculate data integrity based on complete vs incomplete records
-        total_entries = db.session.execute(text("SELECT COUNT(*) FROM time_entries")).scalar() or 1
-        complete_entries = db.session.execute(text(
-            "SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NOT NULL"
-        )).scalar() or 0
+        # Calculate data integrity based on complete vs incomplete records with department filtering
+        if is_super_user:
+            total_entries = db.session.execute(text("SELECT COUNT(*) FROM time_entries")).scalar() or 1
+            complete_entries = db.session.execute(text(
+                "SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NOT NULL"
+            )).scalar() or 0
+        elif is_manager and user_department_id:
+            total_entries = db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries te 
+                JOIN users u ON te.user_id = u.id 
+                WHERE u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 1
+            complete_entries = db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries te 
+                JOIN users u ON te.user_id = u.id 
+                WHERE te.clock_out_time IS NOT NULL AND u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+        else:
+            total_entries = db.session.execute(text(
+                "SELECT COUNT(*) FROM time_entries WHERE user_id = :user_id"
+            ), {'user_id': current_user.id}).scalar() or 1
+            complete_entries = db.session.execute(text(
+                "SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NOT NULL AND user_id = :user_id"
+            ), {'user_id': current_user.id}).scalar() or 0
         
         data_integrity_percentage = (complete_entries / total_entries * 100) if total_entries > 0 else 100
         
@@ -108,11 +169,24 @@ def get_dashboard_data():
             'data_integrity': round(data_integrity_percentage, 1)
         }
         
-        # Calculate actual active employees (those who have clocked in recently)
-        active_employees = db.session.execute(text("""
-            SELECT COUNT(DISTINCT user_id) FROM time_entries 
-            WHERE clock_in_time >= CURRENT_DATE - INTERVAL '7 days'
-        """)).scalar() or 0
+        # Calculate actual active employees with department filtering
+        if is_super_user:
+            active_employees = db.session.execute(text("""
+                SELECT COUNT(DISTINCT user_id) FROM time_entries 
+                WHERE clock_in_time >= CURRENT_DATE - INTERVAL '7 days'
+            """)).scalar() or 0
+        elif is_manager and user_department_id:
+            active_employees = db.session.execute(text("""
+                SELECT COUNT(DISTINCT te.user_id) FROM time_entries te 
+                JOIN users u ON te.user_id = u.id 
+                WHERE te.clock_in_time >= CURRENT_DATE - INTERVAL '7 days'
+                AND u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+        else:
+            active_employees = 1 if db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries 
+                WHERE user_id = :user_id AND clock_in_time >= CURRENT_DATE - INTERVAL '7 days'
+            """), {'user_id': current_user.id}).scalar() > 0 else 0
         
         org_stats = {
             'companies': companies_count,
@@ -146,29 +220,73 @@ def get_dashboard_data():
             'active_accounts': total_users
         }
         
-        # Time & Attendance Statistics - Calculate from actual data
+        # Time & Attendance Statistics with department filtering
         from datetime import datetime, timedelta
         today = datetime.now().date()
         
-        # Get actual today's entries
-        today_entries = db.session.execute(text(
-            "SELECT COUNT(*) FROM time_entries WHERE DATE(clock_in_time) = :today"
-        ), {'today': today}).scalar() or 0
-        
-        # Calculate actual overtime hours from time entries with both clock in and out
-        actual_overtime = db.session.execute(text("""
-            SELECT COALESCE(SUM(
-                CASE WHEN EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 > 8 
-                THEN EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 - 8 
-                ELSE 0 END
-            ), 0) FROM time_entries 
-            WHERE clock_in_time IS NOT NULL AND clock_out_time IS NOT NULL
-        """)).scalar() or 0
-        
-        # Get exceptions (entries without clock out time)
-        exceptions = db.session.execute(text(
-            "SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NULL"
-        )).scalar() or 0
+        if is_super_user:
+            # Get actual today's entries for all users
+            today_entries = db.session.execute(text(
+                "SELECT COUNT(*) FROM time_entries WHERE DATE(clock_in_time) = :today"
+            ), {'today': today}).scalar() or 0
+            
+            # Calculate actual overtime hours from time entries with both clock in and out
+            actual_overtime = db.session.execute(text("""
+                SELECT COALESCE(SUM(
+                    CASE WHEN EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 > 8 
+                    THEN EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 - 8 
+                    ELSE 0 END
+                ), 0) FROM time_entries 
+                WHERE clock_in_time IS NOT NULL AND clock_out_time IS NOT NULL
+            """)).scalar() or 0
+            
+            # Get exceptions (entries without clock out time)
+            exceptions = db.session.execute(text(
+                "SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NULL"
+            )).scalar() or 0
+        elif is_manager and user_department_id:
+            # Manager sees only their department's data
+            today_entries = db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries te 
+                JOIN users u ON te.user_id = u.id 
+                WHERE DATE(te.clock_in_time) = :today AND u.department_id = :dept_id
+            """), {'today': today, 'dept_id': user_department_id}).scalar() or 0
+            
+            actual_overtime = db.session.execute(text("""
+                SELECT COALESCE(SUM(
+                    CASE WHEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time))/3600 > 8 
+                    THEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time))/3600 - 8 
+                    ELSE 0 END
+                ), 0) FROM time_entries te 
+                JOIN users u ON te.user_id = u.id 
+                WHERE te.clock_in_time IS NOT NULL AND te.clock_out_time IS NOT NULL
+                AND u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+            
+            exceptions = db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries te 
+                JOIN users u ON te.user_id = u.id 
+                WHERE te.clock_out_time IS NULL AND u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+        else:
+            # Employee sees only their own data
+            today_entries = db.session.execute(text(
+                "SELECT COUNT(*) FROM time_entries WHERE DATE(clock_in_time) = :today AND user_id = :user_id"
+            ), {'today': today, 'user_id': current_user.id}).scalar() or 0
+            
+            actual_overtime = db.session.execute(text("""
+                SELECT COALESCE(SUM(
+                    CASE WHEN EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 > 8 
+                    THEN EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 - 8 
+                    ELSE 0 END
+                ), 0) FROM time_entries 
+                WHERE clock_in_time IS NOT NULL AND clock_out_time IS NOT NULL
+                AND user_id = :user_id
+            """), {'user_id': current_user.id}).scalar() or 0
+            
+            exceptions = db.session.execute(text(
+                "SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NULL AND user_id = :user_id"
+            ), {'user_id': current_user.id}).scalar() or 0
         
         attendance_stats = {
             'clock_ins_today': today_entries,
