@@ -308,13 +308,23 @@ window.performClockIn = async function() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            credentials: 'same-origin'
+            credentials: 'same-origin',
+            body: JSON.stringify({})  // Send empty JSON object instead of no body
         });
         
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Response data:', data);
         
         if (data.success) {
             // Refresh the page to show updated status
+            console.log('Clock in successful, reloading page');
             window.location.reload();
         } else {
             alert('Error: ' + data.message);
@@ -325,6 +335,7 @@ window.performClockIn = async function() {
         }
     } catch (error) {
         console.error('Clock in error:', error);
+        console.error('Error details:', error.message, error.stack);
         alert('Failed to clock in. Please try again.');
         if (button) {
             button.disabled = false;
