@@ -204,14 +204,312 @@ const utils = {
     }
 };
 
+// Live Clock Timer
+class LiveClockTimer {
+    constructor() {
+        this.timerInterval = null;
+        this.clockInTime = null;
+        this.init();
+    }
+
+    init() {
+        // Check if user is currently clocked in and start timer
+        this.checkClockStatus();
+        
+        // Update timer every second
+        this.startTimer();
+    }
+
+    async checkClockStatus() {
+        try {
+            const response = await fetch('/api/v1/current-status');
+            const data = await response.json();
+            
+            if (data.success && data.data.is_clocked_in && data.data.clock_in_time) {
+                // Parse the clock-in time
+                this.clockInTime = new Date(data.data.clock_in_time);
+                this.updateDisplay();
+            }
+        } catch (error) {
+            console.error('Failed to check clock status:', error);
+        }
+    }
+
+    startTimer() {
+        // Clear any existing timer
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+
+        // Update every second
+        this.timerInterval = setInterval(() => {
+            this.updateDisplay();
+        }, 1000);
+    }
+
+    updateDisplay() {
+        const durationElement = document.getElementById('liveDuration');
+        
+        if (!durationElement || !this.clockInTime) {
+            return;
+        }
+
+        const now = new Date();
+        const elapsed = now - this.clockInTime;
+        
+        // Calculate hours, minutes, seconds
+        const hours = Math.floor(elapsed / (1000 * 60 * 60));
+        const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
+
+        // Format as HH:MM:SS
+        const formattedTime = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        durationElement.textContent = formattedTime;
+        
+        // Add pulsing effect for active status
+        durationElement.style.animation = 'pulse 2s infinite';
+    }
+
+    onClockIn() {
+        // Set clock-in time to now
+        this.clockInTime = new Date();
+        this.updateDisplay();
+    }
+
+    onClockOut() {
+        // Clear timer when clocked out
+        this.clockInTime = null;
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+    }
+
+    destroy() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+    }
+}
+
+// Time Tracking Functions
+async function clockIn() {
+    try {
+        const button = document.getElementById('clockInBtn');
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Clocking In...';
+        }
+
+        const response = await fetch('/api/v1/clock-in', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update UI to show clocked in state
+            updateClockButtonUI(true, data.data.clock_in_time);
+            
+            // Initialize live timer
+            if (window.liveTimer) {
+                window.liveTimer.onClockIn();
+            }
+            
+            flashMessages.show('Successfully clocked in!', 'success');
+            
+            // Refresh time entries
+            if (typeof refreshTimeEntries === 'function') {
+                refreshTimeEntries();
+            }
+        } else {
+            flashMessages.show(data.message || 'Failed to clock in', 'danger');
+        }
+    } catch (error) {
+        console.error('Clock in error:', error);
+        flashMessages.show('Error clocking in. Please try again.', 'danger');
+    }
+}
+
+async function clockOut() {
+    try {
+        const button = document.getElementById('clockOutBtn');
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Clocking Out...';
+        }
+
+        const response = await fetch('/api/v1/clock-out', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update UI to show clocked out state
+            updateClockButtonUI(false);
+            
+            // Stop live timer
+            if (window.liveTimer) {
+                window.liveTimer.onClockOut();
+            }
+            
+            flashMessages.show('Successfully clocked out!', 'success');
+            
+            // Refresh time entries
+            if (typeof refreshTimeEntries === 'function') {
+                refreshTimeEntries();
+            }
+        } else {
+            flashMessages.show(data.message || 'Failed to clock out', 'danger');
+        }
+    } catch (error) {
+        console.error('Clock out error:', error);
+        flashMessages.show('Error clocking out. Please try again.', 'danger');
+    }
+}
+
+function updateClockButtonUI(isClockedIn, clockInTime = null) {
+    const container = document.getElementById('clockButtonContainer');
+    if (!container) return;
+
+    if (isClockedIn && clockInTime) {
+        const formattedTime = new Date(clockInTime).toLocaleTimeString();
+        container.innerHTML = `
+            <button class="btn btn-danger w-100 mb-2" onclick="clockOut()" id="clockOutBtn">
+                <i data-feather="clock" class="me-2"></i>Clock Out
+                <small class="d-block" id="clockInTime">Started: ${formattedTime}</small>
+                <div class="live-timer mt-1">
+                    <strong class="text-white" id="liveDuration">00:00:00</strong>
+                    <small class="d-block opacity-75">Working Time</small>
+                </div>
+            </button>
+        `;
+    } else {
+        container.innerHTML = `
+            <button class="btn btn-success w-100 mb-2" onclick="clockIn()" id="clockInBtn">
+                <i data-feather="clock" class="me-2"></i>Clock In
+                <small class="d-block">Start your workday</small>
+            </button>
+        `;
+    }
+    
+    // Re-initialize feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+}
+
+// Time Entries Management
+async function refreshTimeEntries() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    const container = document.getElementById('timeEntriesContainer');
+    
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i data-feather="refresh-cw" style="width: 16px; height: 16px;" class="spin"></i>';
+    }
+    
+    try {
+        const response = await fetch('/api/v1/recent-time-entries');
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+            updateTimeEntriesTable(data.data);
+        }
+    } catch (error) {
+        console.error('Failed to refresh time entries:', error);
+    } finally {
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i data-feather="refresh-cw" style="width: 16px; height: 16px;"></i>';
+            feather.replace();
+        }
+    }
+}
+
+function updateTimeEntriesTable(entries) {
+    const container = document.getElementById('timeEntriesContainer');
+    if (!container || !entries.length) return;
+    
+    const tableHtml = `
+        <div class="table-responsive">
+            <table class="table table-sm" id="timeEntriesTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Clock In</th>
+                        <th>Clock Out</th>
+                        <th>Hours</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${entries.map(entry => `
+                        <tr>
+                            <td>${new Date(entry.date).toLocaleDateString()}</td>
+                            <td>${new Date(entry.clock_in_time).toLocaleTimeString()}</td>
+                            <td>${entry.clock_out_time ? new Date(entry.clock_out_time).toLocaleTimeString() : 'Working'}</td>
+                            <td>${entry.total_hours || '0.0'} hrs</td>
+                            <td>
+                                <span class="badge bg-${entry.status === 'approved' ? 'success' : entry.status === 'pending' ? 'warning' : 'secondary'}">
+                                    ${entry.status}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = tableHtml;
+}
+
+// Quick Action Functions
+function showTimesheet() {
+    window.location.href = '/time-entries';
+}
+
+function showProfile() {
+    window.location.href = '/auth/profile';
+}
+
+function showHelp() {
+    flashMessages.show('Help documentation is available in the user manual. Contact your system administrator for assistance.', 'info');
+}
+
+function toggleQuickActionsView() {
+    const grid = document.getElementById('quickActionsGrid');
+    const icon = document.getElementById('viewToggleIcon');
+    
+    if (grid && icon) {
+        grid.classList.toggle('expanded');
+        // Toggle between grid and list view icons
+        const isExpanded = grid.classList.contains('expanded');
+        icon.setAttribute('data-feather', isExpanded ? 'list' : 'grid');
+        feather.replace();
+    }
+}
+
 // Initialize components when DOM is loaded
-let dbStatus, flashMessages, sampleDataManager;
+let dbStatus, flashMessages, sampleDataManager, liveTimer;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize components
     dbStatus = new DatabaseStatus();
     flashMessages = new FlashMessages();
     sampleDataManager = new SampleDataManager();
+    
+    // Initialize live timer for clock tracking
+    window.liveTimer = new LiveClockTimer();
 
     // Add fade-in animation to main content
     const mainContent = document.querySelector('main');
