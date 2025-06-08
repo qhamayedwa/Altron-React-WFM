@@ -294,8 +294,8 @@ class LiveClockTimer {
 }
 
 // Time Tracking Functions
-window.performClockIn = async function() {
-    console.log('Performing clock in - updated function v2');
+window.performClockIn = function() {
+    console.log('Clock function disabled - using form submission');
     const button = document.getElementById('clockInBtn');
     if (button) {
         button.disabled = true;
@@ -344,8 +344,9 @@ window.performClockIn = async function() {
     }
 };
 
-window.clockIn = async function() {
-    console.log('Clock in function called');
+window.clockIn = function() {
+    console.log('Clock in function disabled - using form submission');
+    return false;
     try {
         const button = document.getElementById('clockInBtn');
         if (button) {
@@ -598,13 +599,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
     popoverTriggerList.map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
     
-    // Remove any JavaScript interference with form submission
-    const clockInBtn = document.getElementById('clockInBtn');
-    if (clockInBtn) {
-        console.log('Clock in button found - allowing form submission');
-        // Remove any existing event listeners that might interfere
-        clockInBtn.removeEventListener('click', window.clockIn);
-    }
+    // Disable all JavaScript interference with clock buttons
+    const clockButtons = document.querySelectorAll('[onclick*="clock"]');
+    clockButtons.forEach(btn => {
+        btn.removeAttribute('onclick');
+        console.log('Removed onclick from clock button');
+    });
     
     console.log('Initialization complete');
 });
