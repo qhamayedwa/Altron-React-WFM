@@ -95,11 +95,6 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <button id="quickClockBtn" class="btn btn-success">
-                            <i data-feather="clock" class="me-2"></i>Clock In
-                            <small class="d-block">Start your workday</small>
-                        </button>
-                        <hr>
                         <a href="{{ url_for('leave_management.apply_leave') }}" class="btn btn-outline-warning">
                             <i data-feather="calendar-x" class="me-2"></i>
                             Request Leave
@@ -313,16 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializePersonalAttendanceChart();
     updateClockStatus();
     
-    // Initialize quick clock button based on current status
-    const quickClockBtn = document.getElementById('quickClockBtn');
-    if (quickClockBtn) {
-        // Set initial state based on personal_stats
-        {% if personal_stats.is_clocked_in %}
-            updateClockButtonUI(true, '{{ personal_stats.clock_in_time.isoformat() if personal_stats.clock_in_time else "" }}');
-        {% else %}
-            updateClockButtonUI(false, null);
-        {% endif %}
-    }
+
     
     // Auto-refresh every 2 minutes
     setInterval(updateClockStatus, 120000);
@@ -379,52 +365,9 @@ function updateClockStatus() {
         });
 }
 
-function updateClockButtonUI(isClockedIn, clockInTime) {
-    const clockButton = document.getElementById('quickClockBtn');
-    if (!clockButton) return;
-    
-    if (isClockedIn) {
-        clockButton.className = 'btn btn-danger w-100';
-        clockButton.onclick = clockOut;
-        
-        const timeDisplay = clockInTime ? new Date(clockInTime).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        }) : 'Unknown';
-        
-        clockButton.innerHTML = `
-            <i data-feather="clock" class="me-2"></i>Clock Out
-            <small class="d-block">Started: ${timeDisplay}</small>
-        `;
-    } else {
-        clockButton.className = 'btn btn-success w-100';
-        clockButton.onclick = clockIn;
-        clockButton.innerHTML = `
-            <i data-feather="clock" class="me-2"></i>Clock In
-            <small class="d-block">Start your workday</small>
-        `;
-    }
-    
-    // Refresh feather icons
-    feather.replace();
-}
 
-function quickClockAction() {
-    // Determine current status and perform opposite action
-    fetch('/api/v1/time/current-status')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.data.is_clocked_in) {
-                clockOut();
-            } else {
-                clockIn();
-            }
-        })
-        .catch(error => {
-            console.log('Error checking status:', error);
-        });
-}
+
+
 
 function clockIn() {
     if (navigator.geolocation) {
