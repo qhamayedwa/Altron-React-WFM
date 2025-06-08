@@ -613,30 +613,30 @@ def my_department():
     today = date.today()
     
     for member in team_members:
-        latest_entry = TimeEntry.query.filter_by(
-            user_id=member.id,
-            date=today
+        latest_entry = TimeEntry.query.filter(
+            TimeEntry.user_id == member.id,
+            func.date(TimeEntry.clock_in_time) == today
         ).order_by(TimeEntry.created_at.desc()).first()
         
         if latest_entry:
             current_status[member.id] = {
-                'is_clocked_in': latest_entry.clock_out is None,
-                'clock_in_time': latest_entry.clock_in,
-                'clock_out_time': latest_entry.clock_out
+                'is_clocked_in': latest_entry.clock_out_time is None,
+                'clock_in_time': latest_entry.clock_in_time,
+                'clock_out_time': latest_entry.clock_out_time
             }
     
     # Calculate today's hours for each team member
     todays_hours = {}
     for member in team_members:
-        entries = TimeEntry.query.filter_by(
-            user_id=member.id,
-            date=today
+        entries = TimeEntry.query.filter(
+            TimeEntry.user_id == member.id,
+            func.date(TimeEntry.clock_in_time) == today
         ).all()
         
         total_hours = 0
         for entry in entries:
-            if entry.clock_in and entry.clock_out:
-                duration = entry.clock_out - entry.clock_in
+            if entry.clock_in_time and entry.clock_out_time:
+                duration = entry.clock_out_time - entry.clock_in_time
                 total_hours += duration.total_seconds() / 3600
         
         todays_hours[member.id] = total_hours
