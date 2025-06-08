@@ -47,6 +47,25 @@ def create_app(config_class=Config):
     app.jinja_env.filters['date'] = date_filter
     app.jinja_env.filters['time'] = time_filter
     
+    # Register hours filter for templates
+    def hours_minutes_filter(value):
+        """Convert decimal hours to hours and minutes format"""
+        if not value:
+            return "0h 0m"
+        
+        total_minutes = int(value * 60)
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        
+        if hours > 0 and minutes > 0:
+            return f"{hours}h {minutes}m"
+        elif hours > 0:
+            return f"{hours}h"
+        else:
+            return f"{minutes}m"
+    
+    app.jinja_env.filters['hours_minutes'] = hours_minutes_filter
+    
     # Register blueprints/routes
     from routes import main_bp
     from auth_simple import auth_bp

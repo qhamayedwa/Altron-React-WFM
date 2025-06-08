@@ -85,10 +85,10 @@
                                 {% endif %}
                             </td>
                             <td>{{ entry.total_break_minutes }} min</td>
-                            <td>{{ "%.2f"|format(entry.total_hours) }}</td>
+                            <td>{{ entry.total_hours|hours_minutes }}</td>
                             <td>
                                 {% if entry.overtime_hours > 0 %}
-                                <span class="text-warning">{{ "%.2f"|format(entry.overtime_hours) }}</span>
+                                <span class="text-warning">{{ entry.overtime_hours|hours_minutes }}</span>
                                 {% if entry.is_overtime_approved %}
                                 <i data-feather="check" class="text-success ms-1" title="Approved"></i>
                                 {% else %}

@@ -104,7 +104,7 @@
         <div class="col-md-6">
             <div class="card text-center">
                 <div class="card-body">
-                    <h3 class="text-primary">{{ "%.2f"|format(total_hours) }}</h3>
+                    <h3 class="text-primary">{{ total_hours|hours_minutes }}</h3>
                     <p class="text-muted mb-0">Total Hours</p>
                 </div>
             </div>
@@ -112,7 +112,7 @@
         <div class="col-md-6">
             <div class="card text-center">
                 <div class="card-body">
-                    <h3 class="text-warning">{{ "%.2f"|format(total_overtime) }}</h3>
+                    <h3 class="text-warning">{{ total_overtime|hours_minutes }}</h3>
                     <p class="text-muted mb-0">Overtime Hours</p>
                 </div>
             </div>
@@ -150,10 +150,10 @@
                                 {% endif %}
                             </td>
                             <td>{{ entry.total_break_minutes }} min</td>
-                            <td>{{ "%.2f"|format(entry.total_hours) }}</td>
+                            <td>{{ entry.total_hours|hours_minutes }}</td>
                             <td>
                                 {% if entry.overtime_hours > 0 %}
-                                <span class="text-warning">{{ "%.2f"|format(entry.overtime_hours) }}</span>
+                                <span class="text-warning">{{ entry.overtime_hours|hours_minutes }}</span>
                                 {% if entry.is_overtime_approved %}
                                 <i data-feather="check" class="text-success ms-1" title="Approved"></i>
                                 {% else %}
