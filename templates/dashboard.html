@@ -527,72 +527,7 @@
 // Initialize Feather Icons
 feather.replace();
 
-// Real-time status tracking
-let statusUpdateInterval;
-
-// Clock In Function
-function clockIn() {
-    const button = document.getElementById('clockInBtn');
-    if (button) {
-        button.disabled = true;
-        button.innerHTML = '<i data-feather="loader" class="me-2"></i>Clocking In...';
-    }
-    
-    fetch('/time/clock-in', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Clock in successful!', 'success');
-            updateClockStatus(true, data.clock_in_time);
-        } else {
-            showNotification('Clock in failed: ' + data.message, 'error');
-            resetClockButton();
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Clock in failed. Please try again.', 'error');
-        resetClockButton();
-    });
-}
-
-// Clock Out Function
-function clockOut() {
-    const button = document.getElementById('clockOutBtn');
-    if (button) {
-        button.disabled = true;
-        button.innerHTML = '<i data-feather="loader" class="me-2"></i>Clocking Out...';
-    }
-    
-    fetch('/time/clock-out', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Clock out successful!', 'success');
-            updateClockStatus(false);
-        } else {
-            showNotification('Clock out failed: ' + data.message, 'error');
-            resetClockButton();
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Clock out failed. Please try again.', 'error');
-        resetClockButton();
-    });
-}
+// Dashboard initialization - clock functions removed for form-based submission
 
 // Update clock status in UI
 function updateClockStatus(isClockedIn, clockInTime = null) {
