@@ -163,7 +163,7 @@ def manage_schedules():
     
     # Apply department filtering to schedules for managers
     if is_manager and user_department_id and not is_super_user:
-        query = query.join(User).filter(User.department_id == user_department_id)
+        query = query.join(User, Schedule.user_id == User.id).filter(User.department_id == user_department_id)
     
     # Filter by user if specified
     if user_id:

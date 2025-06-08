@@ -739,7 +739,7 @@ def reports():
         
         # Apply department filtering for managers
         if is_manager and user_department_id and not is_super_user:
-            entries_query = base_query.join(User).filter(User.department_id == user_department_id).all()
+            entries_query = base_query.join(User, TimeEntry.user_id == User.id).filter(User.department_id == user_department_id).all()
         else:
             entries_query = base_query.all()
         

@@ -471,7 +471,7 @@ def time_entries():
         entries = TimeEntry.query.order_by(TimeEntry.clock_in_time.desc()).limit(100).all()
     elif is_manager and user_department_id:
         # Managers see only time entries for employees in their department
-        entries = TimeEntry.query.join(User).filter(
+        entries = TimeEntry.query.join(User, TimeEntry.user_id == User.id).filter(
             User.department_id == user_department_id
         ).order_by(TimeEntry.clock_in_time.desc()).limit(100).all()
     else:
@@ -499,7 +499,7 @@ def schedules():
         schedules = Schedule.query.filter(Schedule.start_time >= today).order_by(Schedule.start_time).limit(50).all()
     elif is_manager and user_department_id:
         # Managers see only schedules for employees in their department
-        schedules = Schedule.query.join(User).filter(
+        schedules = Schedule.query.join(User, Schedule.user_id == User.id).filter(
             and_(
                 User.department_id == user_department_id,
                 Schedule.start_time >= today
@@ -532,7 +532,7 @@ def leave_management():
         applications = LeaveApplication.query.order_by(LeaveApplication.created_at.desc()).limit(100).all()
     elif is_manager and user_department_id:
         # Managers see only leave applications for employees in their department
-        applications = LeaveApplication.query.join(User).filter(
+        applications = LeaveApplication.query.join(User, LeaveApplication.user_id == User.id).filter(
             User.department_id == user_department_id
         ).order_by(LeaveApplication.created_at.desc()).limit(100).all()
     else:
