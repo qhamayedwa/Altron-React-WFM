@@ -40,9 +40,14 @@ def get_dashboard_data():
             "SELECT COUNT(*) FROM leave_applications WHERE status = 'Pending'"
         )).scalar() or 0
         
-        pending_overtime_approvals = db.session.execute(text(
-            "SELECT COUNT(*) FROM time_entries WHERE is_overtime_approved = false AND overtime_hours > 0"
-        )).scalar() or 0
+        # Calculate pending overtime approvals (entries over 8 hours not yet approved)
+        pending_overtime_approvals = db.session.execute(text("""
+            SELECT COUNT(*) FROM time_entries 
+            WHERE is_overtime_approved = false 
+            AND clock_in_time IS NOT NULL 
+            AND clock_out_time IS NOT NULL
+            AND EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600 > 8
+        """)).scalar() or 0
         
         total_pending_tasks = pending_leave_approvals + pending_overtime_approvals
         
@@ -128,7 +133,7 @@ def get_dashboard_data():
         
         total_time_calculations = db.session.execute(text("SELECT COUNT(*) FROM time_entries")).scalar() or 1
         auto_calculated_times = db.session.execute(text(
-            "SELECT COUNT(*) FROM time_entries WHERE total_hours IS NOT NULL"
+            "SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NOT NULL"
         )).scalar() or 0
         
         # Calculate automation rate based on processed vs manual entries

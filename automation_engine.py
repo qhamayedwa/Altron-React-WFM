@@ -604,6 +604,11 @@ def workflow_config():
                 )
             ).count()
             
+            # Calculate automation rate based on actual processed workflows
+            total_processed = LeaveApplication.query.count() + TimeEntry.query.count()
+            auto_processed = (LeaveApplication.query.filter(LeaveApplication.status == 'Approved').count() + 
+                            TimeEntry.query.filter(TimeEntry.clock_out_time.isnot(None)).count())
+            
             stats = {
                 'pending_approvals': pending_approvals,
                 'exceptions_today': exceptions_today,
