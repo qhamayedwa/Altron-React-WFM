@@ -14,19 +14,57 @@ import json
 dashboard_bp = Blueprint('dashboard_mgmt', __name__, url_prefix='/dashboard')
 
 def get_dashboard_data():
-    """Collect comprehensive dashboard data for all roles"""
+    """Collect comprehensive dashboard data for all roles with proper department filtering"""
     try:
-        # System Statistics - Use direct database queries to avoid transaction issues
+        # System Statistics - Apply role-based filtering
         from sqlalchemy import text
         
-        # Get real counts using simple direct queries
-        total_users = db.session.execute(text("SELECT COUNT(*) FROM users")).scalar() or 0
-        companies_count = db.session.execute(text("SELECT COUNT(*) FROM companies")).scalar() or 0
-        departments_count = db.session.execute(text("SELECT COUNT(*) FROM departments")).scalar() or 0
-        regions_count = db.session.execute(text("SELECT COUNT(*) FROM regions")).scalar() or 0
-        sites_count = db.session.execute(text("SELECT COUNT(*) FROM sites")).scalar() or 0
-        total_time_entries = db.session.execute(text("SELECT COUNT(*) FROM time_entries")).scalar() or 0
-        leave_applications = db.session.execute(text("SELECT COUNT(*) FROM leave_applications")).scalar() or 0
+        # Determine user's access scope
+        is_super_user = current_user.has_role('Super User')
+        is_manager = current_user.has_role('Manager') and not is_super_user
+        user_department_id = getattr(current_user, 'department_id', None) if is_manager else None
+        
+        if is_super_user:
+            # Super Users see all data
+            total_users = db.session.execute(text("SELECT COUNT(*) FROM users")).scalar() or 0
+            companies_count = db.session.execute(text("SELECT COUNT(*) FROM companies")).scalar() or 0
+            departments_count = db.session.execute(text("SELECT COUNT(*) FROM departments")).scalar() or 0
+            regions_count = db.session.execute(text("SELECT COUNT(*) FROM regions")).scalar() or 0
+            sites_count = db.session.execute(text("SELECT COUNT(*) FROM sites")).scalar() or 0
+            total_time_entries = db.session.execute(text("SELECT COUNT(*) FROM time_entries")).scalar() or 0
+            leave_applications = db.session.execute(text("SELECT COUNT(*) FROM leave_applications")).scalar() or 0
+        elif is_manager and user_department_id:
+            # Managers see only their department's data
+            total_users = db.session.execute(text(
+                "SELECT COUNT(*) FROM users WHERE department_id = :dept_id"
+            ), {'dept_id': user_department_id}).scalar() or 0
+            companies_count = 1  # Manager sees only their company context
+            departments_count = 1  # Manager sees only their department
+            regions_count = 1  # Manager sees only their region context
+            sites_count = 1  # Manager sees only their site context
+            total_time_entries = db.session.execute(text("""
+                SELECT COUNT(*) FROM time_entries te 
+                JOIN users u ON te.user_id = u.id 
+                WHERE u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+            leave_applications = db.session.execute(text("""
+                SELECT COUNT(*) FROM leave_applications la 
+                JOIN users u ON la.user_id = u.id 
+                WHERE u.department_id = :dept_id
+            """), {'dept_id': user_department_id}).scalar() or 0
+        else:
+            # Employees or managers without departments see minimal data
+            total_users = 1  # Only themselves
+            companies_count = 1
+            departments_count = 1
+            regions_count = 1
+            sites_count = 1
+            total_time_entries = db.session.execute(text(
+                "SELECT COUNT(*) FROM time_entries WHERE user_id = :user_id"
+            ), {'user_id': current_user.id}).scalar() or 0
+            leave_applications = db.session.execute(text(
+                "SELECT COUNT(*) FROM leave_applications WHERE user_id = :user_id"
+            ), {'user_id': current_user.id}).scalar() or 0
         
         # Calculate actual system statistics
         # Get active sessions/recent logins (last 24 hours) 

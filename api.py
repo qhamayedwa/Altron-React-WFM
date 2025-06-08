@@ -501,10 +501,31 @@ def api_team_time_entries():
         date_filter = request.args.get('date', date.today().isoformat())
         target_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
         
-        # Get team entries for the specified date
-        entries = TimeEntry.query.filter(
-            func.date(TimeEntry.clock_in_time) == target_date
-        ).join(User, TimeEntry.user_id == User.id).all()
+        # Build query based on user role
+        if current_user.has_role('Super User'):
+            # Super Users see all entries
+            entries = TimeEntry.query.filter(
+                func.date(TimeEntry.clock_in_time) == target_date
+            ).join(User, TimeEntry.user_id == User.id).all()
+        elif current_user.has_role('Manager'):
+            # Managers only see their department's entries
+            if hasattr(current_user, 'department_id') and current_user.department_id:
+                entries = TimeEntry.query.filter(
+                    func.date(TimeEntry.clock_in_time) == target_date
+                ).join(User, TimeEntry.user_id == User.id).filter(
+                    User.department_id == current_user.department_id
+                ).all()
+            else:
+                # Manager with no department sees only their own entries
+                entries = TimeEntry.query.filter(
+                    and_(
+                        func.date(TimeEntry.clock_in_time) == target_date,
+                        TimeEntry.user_id == current_user.id
+                    )
+                ).all()
+        else:
+            # Default: empty list for non-authorized roles
+            entries = []
         
         entries_data = []
         for entry in entries:
@@ -615,11 +636,28 @@ def api_recent_time_entries():
         # Base query for recent entries (last 7 days)
         week_ago = datetime.now() - timedelta(days=7)
         
-        if is_manager_or_admin:
-            # Managers see all recent entries
+        if current_user.has_role('Super User'):
+            # Super Users see all recent entries
             recent_entries = TimeEntry.query.filter(
                 TimeEntry.clock_in_time >= week_ago
             ).order_by(TimeEntry.clock_in_time.desc()).limit(10).all()
+        elif current_user.has_role('Manager'):
+            # Managers only see their department's entries
+            if hasattr(current_user, 'department_id') and current_user.department_id:
+                recent_entries = TimeEntry.query.join(User).filter(
+                    and_(
+                        TimeEntry.clock_in_time >= week_ago,
+                        User.department_id == current_user.department_id
+                    )
+                ).order_by(TimeEntry.clock_in_time.desc()).limit(10).all()
+            else:
+                # Manager with no department sees only their own entries
+                recent_entries = TimeEntry.query.filter(
+                    and_(
+                        TimeEntry.user_id == current_user.id,
+                        TimeEntry.clock_in_time >= week_ago
+                    )
+                ).order_by(TimeEntry.clock_in_time.desc()).limit(10).all()
         else:
             # Employees restricted to only their own entries
             recent_entries = TimeEntry.query.filter(

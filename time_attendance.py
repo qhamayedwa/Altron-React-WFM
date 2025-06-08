@@ -380,6 +380,17 @@ def team_timecard():
     from sqlalchemy.orm import joinedload
     query = TimeEntry.query.options(joinedload(TimeEntry.employee))
     
+    # Apply department filtering for managers
+    if current_user.has_role('Manager') and not current_user.has_role('Super User'):
+        if hasattr(current_user, 'department_id') and current_user.department_id:
+            # Manager can only see their department's entries
+            query = query.join(User, TimeEntry.user_id == User.id).filter(
+                User.department_id == current_user.department_id
+            )
+        else:
+            # Manager with no department sees only their own entries
+            query = query.filter(TimeEntry.user_id == current_user.id)
+    
     # Filter by user if specified
     if user_id:
         query = query.filter(TimeEntry.user_id == user_id)
@@ -394,8 +405,17 @@ def team_timecard():
         page=page, per_page=per_page, error_out=False
     )
     
-    # Get all users for filter dropdown
-    users = User.query.filter_by(is_active=True).order_by(User.username).all()
+    # Get users for filter dropdown - restrict to department for managers
+    if current_user.has_role('Manager') and not current_user.has_role('Super User'):
+        if hasattr(current_user, 'department_id') and current_user.department_id:
+            users = User.query.filter_by(
+                is_active=True, 
+                department_id=current_user.department_id
+            ).order_by(User.username).all()
+        else:
+            users = [current_user]  # Manager with no department sees only themselves
+    else:
+        users = User.query.filter_by(is_active=True).order_by(User.username).all()
     
     return render_template('time_attendance/team_timecard.html',
                          time_entries=time_entries,
