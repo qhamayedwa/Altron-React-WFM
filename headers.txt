@@ -1,0 +1,10 @@
+HTTP/1.1 302 FOUND
+Server: gunicorn
+Date: Sun, 08 Jun 2025 23:26:34 GMT
+Connection: close
+Content-Type: text/html; charset=utf-8
+Content-Length: 209
+Location: /auth/login
+Vary: Cookie
+Set-Cookie: session=eyJfZmxhc2hlcyI6W3siIHQiOlsiZGFuZ2VyIiwiSW52YWxpZCB1c2VybmFtZSBvciBwYXNzd29yZCJdfV19.aEYcKg.WqmMecgTEC6cXZdZ6-aBV99UTII; HttpOnly; Path=/
+

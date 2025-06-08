@@ -778,7 +778,7 @@ def employee_dashboard():
     
     # Get leave balance
     leave_balance = db.session.execute(text("""
-        SELECT COALESCE(SUM(days_allocated - days_used), 0) 
+        SELECT COALESCE(SUM(balance), 0) 
         FROM leave_balances 
         WHERE user_id = :user_id
     """), {'user_id': current_user.id}).scalar() or 0
