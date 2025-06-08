@@ -373,8 +373,12 @@ def my_schedule():
         page=page, per_page=per_page, error_out=False
     )
     
+    # Calculate total hours for the current page
+    total_hours = sum((schedule.duration_hours or 0) for schedule in schedules.items)
+    
     return render_template('scheduling/my_schedule.html',
                          schedules=schedules,
+                         total_hours=total_hours,
                          start_date=start_date,
                          end_date=end_date)
 
