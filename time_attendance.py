@@ -24,10 +24,14 @@ def clock_in():
         ).first()
         
         if open_entry:
-            return jsonify({
-                'success': False,
-                'message': 'You already have an open time entry. Please clock out first.'
-            }), 400
+            if request.is_json:
+                return jsonify({
+                    'success': False,
+                    'message': 'You already have an open time entry. Please clock out first.'
+                }), 400
+            else:
+                flash('You already have an open time entry. Please clock out first.', 'warning')
+                return redirect(url_for('main.index'))
         
         # Get GPS coordinates if provided
         latitude = request.json.get('latitude') if request.is_json else None
@@ -46,19 +50,27 @@ def clock_in():
         db.session.add(time_entry)
         db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'message': 'Successfully clocked in',
-            'time_entry_id': time_entry.id,
-            'clock_in_time': time_entry.clock_in_time.isoformat()
-        })
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'message': 'Successfully clocked in',
+                'time_entry_id': time_entry.id,
+                'clock_in_time': time_entry.clock_in_time.isoformat()
+            })
+        else:
+            flash('Successfully clocked in!', 'success')
+            return redirect(url_for('main.index'))
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Error clocking in: {str(e)}'
-        }), 500
+        if request.is_json:
+            return jsonify({
+                'success': False,
+                'message': f'Error clocking in: {str(e)}'
+            }), 500
+        else:
+            flash(f'Error clocking in: {str(e)}', 'danger')
+            return redirect(url_for('main.index'))
 
 @time_attendance_bp.route('/clock-out', methods=['POST'])
 @login_required

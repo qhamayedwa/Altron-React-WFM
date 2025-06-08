@@ -294,7 +294,8 @@ class LiveClockTimer {
 }
 
 // Time Tracking Functions
-async function clockIn() {
+window.clockIn = async function() {
+    console.log('Clock in function called');
     try {
         const button = document.getElementById('clockInBtn');
         if (button) {
@@ -341,7 +342,8 @@ async function clockIn() {
     }
 }
 
-async function clockOut() {
+window.clockOut = async function() {
+    console.log('Clock out function called');
     try {
         const button = document.getElementById('clockOutBtn');
         if (button) {
@@ -517,6 +519,8 @@ function toggleQuickActionsView() {
 let dbStatus, flashMessages, sampleDataManager, liveTimer;
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Content Loaded - Initializing components');
+    
     // Initialize components
     dbStatus = new DatabaseStatus();
     flashMessages = new FlashMessages();
@@ -531,6 +535,11 @@ document.addEventListener('DOMContentLoaded', function() {
         mainContent.classList.add('fade-in');
     }
 
+    // Initialize feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -538,6 +547,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize popovers
     const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
     popoverTriggerList.map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+    
+    // Test button functionality
+    const clockInBtn = document.getElementById('clockInBtn');
+    if (clockInBtn) {
+        console.log('Clock in button found, adding event listener');
+        clockInBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Clock in button clicked via event listener');
+            window.clockIn();
+        });
+    }
+    
+    console.log('Initialization complete');
 });
 
 // Global error handler
