@@ -12,7 +12,7 @@
         <div class="d-flex gap-2">
             {% if current_status and current_status.status == 'clocked_in' %}
                 <!-- Clock Out Form -->
-                <form method="POST" action="{{ url_for('time_attendance.clock_out') }}" class="d-inline">
+                <form method="POST" action="{{ url_for('time_attendance.clock_out') }}" class="d-inline" onsubmit="return true;">
                     <button type="submit" id="clockOutBtn" class="btn btn-danger">
                         <i data-feather="square" class="me-2"></i>
                         Clock Out
@@ -38,7 +38,7 @@
                 {% endif %}
             {% else %}
                 <!-- Clock In Form -->
-                <form method="POST" action="{{ url_for('time_attendance.clock_in') }}" class="d-inline">
+                <form method="POST" action="{{ url_for('time_attendance.clock_in') }}" class="d-inline" onsubmit="return true;">
                     <button type="submit" id="clockInBtn" class="btn btn-success">
                         <i data-feather="clock" class="me-2"></i>
                         Clock In
