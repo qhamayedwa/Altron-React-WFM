@@ -370,7 +370,12 @@ def generate_schedule():
         User.department.isnot(None)
     ).distinct().all()
     
-    return render_template('ai_scheduling/generate.html', departments=[d[0] for d in departments])
+    from datetime import datetime, timedelta
+    
+    return render_template('ai_scheduling/generate.html', 
+                         departments=[d[0] for d in departments],
+                         datetime=datetime,
+                         timedelta=timedelta)
 
 @ai_scheduling_bp.route('/analyze/<int:employee_id>')
 @login_required
