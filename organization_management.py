@@ -54,9 +54,45 @@ def dashboard():
 @login_required
 @role_required('Super User', 'Admin')
 def companies():
-    """List all companies"""
+    """List all companies with detailed statistics"""
     companies = Company.query.all()
-    return render_template('organization/companies.html', companies=companies)
+    
+    # Calculate statistics for each company
+    company_stats = {}
+    for company in companies:
+        # Count regions
+        regions_count = company.regions.filter_by(is_active=True).count()
+        
+        # Count sites
+        sites_count = db.session.query(Site).join(Region, Site.region_id == Region.id).filter(
+            Region.company_id == company.id, 
+            Site.is_active == True
+        ).count()
+        
+        # Count departments
+        departments_count = db.session.query(Department).join(Site, Department.site_id == Site.id).join(
+            Region, Site.region_id == Region.id
+        ).filter(
+            Region.company_id == company.id, 
+            Department.is_active == True
+        ).count()
+        
+        # Count employees
+        employees_count = db.session.query(User).join(Department, User.department_id == Department.id).join(
+            Site, Department.site_id == Site.id
+        ).join(Region, Site.region_id == Region.id).filter(
+            Region.company_id == company.id, 
+            User.is_active == True
+        ).count()
+        
+        company_stats[company.id] = {
+            'regions': regions_count,
+            'sites': sites_count,
+            'departments': departments_count,
+            'employees': employees_count
+        }
+    
+    return render_template('organization/companies.html', companies=companies, company_stats=company_stats)
 
 @org_bp.route('/companies/create', methods=['GET', 'POST'])
 @login_required
