@@ -256,8 +256,11 @@
                             </ul>
                         </li>
                         
+                        {% endif %}
+                        
                         <!-- System Super Admin Section -->
                         {% if current_user.has_role('system_super_admin') %}
+                        <li><hr class="dropdown-divider"></li>
                         <li class="dropdown-submenu">
                             <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">
                                 <i data-feather="globe" class="me-2"></i>
@@ -274,7 +277,6 @@
                                 </a></li>
                             </ul>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
                         {% endif %}
                         
                         <!-- Organization Management Section -->
