@@ -723,14 +723,25 @@ def reports():
     )
     
     if report_type == 'summary':
-        # Summary report by user - use direct queries
-        entries_query = TimeEntry.query.filter(
+        # Apply department filtering for managers
+        is_super_user = current_user.has_role('Super User')
+        is_manager = current_user.has_role('Manager')
+        user_department_id = getattr(current_user, 'department_id', None)
+        
+        # Build base query with date filters
+        base_query = TimeEntry.query.filter(
             and_(
                 TimeEntry.clock_in_time >= datetime.strptime(start_date, '%Y-%m-%d'),
                 TimeEntry.clock_in_time <= datetime.strptime(end_date, '%Y-%m-%d'),
                 TimeEntry.clock_out_time.isnot(None)
             )
-        ).all()
+        )
+        
+        # Apply department filtering for managers
+        if is_manager and user_department_id and not is_super_user:
+            entries_query = base_query.join(User).filter(User.department_id == user_department_id).all()
+        else:
+            entries_query = base_query.all()
         
         # Calculate summary data in Python
         user_data = {}
@@ -738,6 +749,11 @@ def reports():
             user = User.query.get(entry.user_id)
             if not user:
                 continue
+            
+            # Additional security check for managers
+            if is_manager and user_department_id and not is_super_user:
+                if user.department_id != user_department_id:
+                    continue
                 
             username = user.username
             if username not in user_data:

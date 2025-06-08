@@ -201,12 +201,23 @@ def reports():
         
         overtime_hours = max(0, total_hours - (len(period_entries) * 8))
         
-        # Employee attendance summary - restricted by user role
-        if is_manager_or_admin:
-            # Managers see all employees
+        # Employee attendance summary - with proper department filtering
+        is_super_user = current_user.has_role('Super User')
+        is_manager = current_user.has_role('Manager')
+        user_department_id = getattr(current_user, 'department_id', None)
+        
+        if is_super_user:
+            # Super Users see all employees
             users_with_entries = db.session.query(User).join(
                 TimeEntry, User.id == TimeEntry.user_id
             ).filter(base_time_filter).distinct().all()
+        elif is_manager and user_department_id:
+            # Managers see only employees in their department
+            users_with_entries = db.session.query(User).join(
+                TimeEntry, User.id == TimeEntry.user_id
+            ).filter(
+                and_(base_time_filter, User.department_id == user_department_id)
+            ).distinct().all()
         else:
             # Employees see only themselves
             users_with_entries = [current_user] if period_entries else []

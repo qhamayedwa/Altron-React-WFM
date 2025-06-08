@@ -24,8 +24,7 @@ def get_dashboard_data():
         is_manager = current_user.has_role('Manager')
         user_department_id = getattr(current_user, 'department_id', None)
         
-        # Debug logging
-        print(f"DEBUG: User {current_user.username}, is_super_user: {is_super_user}, is_manager: {is_manager}, dept_id: {user_department_id}")
+        # Debug logging removed after verification
         
         # Apply role-based data filtering
         if is_super_user:
@@ -636,15 +635,41 @@ def manager_dashboard():
         if roles.get('manager', True):
             visible_sections.append(section_id)
     
-    # Get manager-specific data - Use real database counts for realistic display
-    total_users = db.session.execute(text("SELECT COUNT(*) FROM users")).scalar() or 0
-    total_time_entries = db.session.execute(text("SELECT COUNT(*) FROM time_entries")).scalar() or 0
-    open_entries = db.session.execute(text("SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NULL")).scalar() or 0
+    # Get manager-specific data - Use department-filtered authentic data
+    is_super_user = current_user.has_role('Super User')
+    is_manager = current_user.has_role('Manager')
+    user_department_id = getattr(current_user, 'department_id', None)
     
-    # Calculate realistic team metrics based on database data
-    team_size = max(5, total_users // 4)  # Managers typically oversee 20-25% of total users
-    present_today = max(1, team_size * 3 // 4)  # ~75% attendance rate
-    pending_approvals = max(0, open_entries // 2)  # Half of open entries need approval
+    if is_manager and user_department_id and not is_super_user:
+        # Manager sees only their department's team
+        team_size = db.session.execute(text(
+            "SELECT COUNT(*) FROM users WHERE department_id = :dept_id AND is_active = true"
+        ), {'dept_id': user_department_id}).scalar() or 0
+        
+        # Present today - users who clocked in today in manager's department
+        today = datetime.now().date()
+        present_today = db.session.execute(text("""
+            SELECT COUNT(DISTINCT te.user_id) FROM time_entries te 
+            JOIN users u ON te.user_id = u.id 
+            WHERE u.department_id = :dept_id 
+            AND DATE(te.clock_in_time) = :today
+        """), {'dept_id': user_department_id, 'today': today}).scalar() or 0
+        
+        # Pending approvals - open entries for manager's department
+        pending_approvals = db.session.execute(text("""
+            SELECT COUNT(*) FROM time_entries te 
+            JOIN users u ON te.user_id = u.id 
+            WHERE u.department_id = :dept_id AND te.clock_out_time IS NULL
+        """), {'dept_id': user_department_id}).scalar() or 0
+    else:
+        # Super user or non-manager sees full system data
+        team_size = db.session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true")).scalar() or 0
+        today = datetime.now().date()
+        present_today = db.session.execute(text("""
+            SELECT COUNT(DISTINCT user_id) FROM time_entries 
+            WHERE DATE(clock_in_time) = :today
+        """), {'today': today}).scalar() or 0
+        pending_approvals = db.session.execute(text("SELECT COUNT(*) FROM time_entries WHERE clock_out_time IS NULL")).scalar() or 0
     
     team_stats = {
         'team_size': team_size,
