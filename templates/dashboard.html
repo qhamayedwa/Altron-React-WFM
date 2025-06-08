@@ -122,7 +122,7 @@
                             <form method="POST" action="/time/clock-out" style="display: inline;" onsubmit="return true;">
                                 <button type="submit" class="btn btn-danger w-100 mb-2" id="clockOutBtn">
                                     <i data-feather="clock" class="me-2"></i>Clock Out
-                                    <small class="d-block" id="clockInTime">Started: {{ current_status.get('clock_in_time') or 'Unknown' }}</small>
+                                    <small class="d-block" id="clockInTime" data-iso-time="{{ current_status.get('clock_in_time') or '' }}">Started: {{ current_status.get('clock_in_time').split('T')[1].split('.')[0][:5] if current_status.get('clock_in_time') else 'Unknown' }}</small>
                                     <div class="live-timer mt-1">
                                         <strong class="text-white" id="liveDuration">00:00:00</strong>
                                         <small class="d-block opacity-75">Working Time</small>

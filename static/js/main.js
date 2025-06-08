@@ -64,11 +64,91 @@ function refreshTimeEntries() {
     window.location.reload();
 }
 
+// Live Clock Timer (No fetch interference)
+class LiveClockTimer {
+    constructor() {
+        this.timerElement = null;
+        this.clockInTime = null;
+        this.interval = null;
+        this.isRunning = false;
+    }
+
+    init() {
+        this.timerElement = document.getElementById('liveDuration');
+        if (this.timerElement) {
+            this.checkClockStatus();
+        }
+    }
+
+    checkClockStatus() {
+        // Get clock in time from the data-iso-time attribute
+        const clockInTimeElement = document.getElementById('clockInTime');
+        if (clockInTimeElement) {
+            const isoTime = clockInTimeElement.getAttribute('data-iso-time');
+            if (isoTime && isoTime !== '') {
+                try {
+                    this.clockInTime = new Date(isoTime);
+                    this.startTimer();
+                } catch (error) {
+                    console.log('Could not parse clock in time:', isoTime);
+                }
+            }
+        }
+    }
+
+    startTimer() {
+        if (this.interval) clearInterval(this.interval);
+        
+        this.isRunning = true;
+        this.updateDisplay();
+        this.interval = setInterval(() => this.updateDisplay(), 1000);
+    }
+
+    updateDisplay() {
+        if (!this.timerElement || !this.clockInTime) return;
+        
+        const now = new Date();
+        const diff = now - this.clockInTime;
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        this.timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    onClockIn() {
+        this.clockInTime = new Date();
+        this.startTimer();
+    }
+
+    onClockOut() {
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
+        this.isRunning = false;
+        if (this.timerElement) {
+            this.timerElement.textContent = '00:00:00';
+        }
+    }
+
+    destroy() {
+        if (this.interval) {
+            clearInterval(this.interval);
+        }
+    }
+}
+
 // Initialize minimal functionality
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize flash messages only
+    // Initialize flash messages
     window.flashMessages = new FlashMessages();
     window.flashMessages.init();
+    
+    // Initialize live timer
+    window.liveTimer = new LiveClockTimer();
+    window.liveTimer.init();
     
     // Initialize Feather icons if available
     if (typeof feather !== 'undefined') {
@@ -76,4 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     console.log('WFM System initialized successfully');
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    if (window.liveTimer) {
+        window.liveTimer.destroy();
+    }
 });

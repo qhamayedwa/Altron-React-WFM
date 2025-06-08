@@ -258,7 +258,7 @@ def index():
         if active_entry:
             current_status = {
                 'is_clocked_in': True,
-                'clock_in_time': active_entry.clock_in_time.strftime('%I:%M %p')
+                'clock_in_time': active_entry.clock_in_time.isoformat()
             }
         
         # Get pending approvals count for managers
