@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Dashboard - WFM System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i data-feather="user" class="me-2"></i>
+                Welcome back, {{ current_user.full_name or current_user.username }}
+            </h2>
+            <p class="text-muted mb-0">Your personal workspace for time tracking and schedule management</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="quickClockAction()">
+                <i data-feather="clock" class="me-2"></i>
+                Quick Clock In/Out
+            </button>
+            <button class="btn btn-outline-secondary" onclick="location.reload()">
+                <i data-feather="refresh-cw" class="me-2"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Personal Time Tracking Section -->
+    {% if 'personal-time-tracking-section' in visible_sections %}
+    <div class="row mb-4" id="personal-time-tracking-section">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i data-feather="clock" class="me-2"></i>
+                        Today's Time Tracking
+                    </h5>
+                    <span class="badge bg-success">Active</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6>Current Status</h6>
+                                <div class="d-flex align-items-center">
+                                    <div class="status-indicator bg-success me-2"></div>
+                                    <span class="fw-bold">Clocked In</span>
+                                    <small class="text-muted ms-2">since 8:00 AM</small>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <h6>Hours Today</h6>
+                                <div class="display-6 text-primary">{{ "%.1f" | format(personal_stats.hours_today) }}h</div>
+                                <small class="text-muted">Target: 8.0h</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <h6>This Week</h6>
+                                <div class="h4 text-info">{{ "%.1f" | format(personal_stats.hours_week) }}h</div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-info" style="width: {{ (personal_stats.hours_week / 40 * 100) | round }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ personal_stats.hours_week }}/40 hours</small>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('time_attendance.time_entries') }}" class="btn btn-outline-primary btn-sm">
+                                    <i data-feather="list" class="me-1"></i>
+                                    View Time Entries
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i data-feather="calendar" class="me-2"></i>
+                        Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" onclick="clockIn()">
+                            <i data-feather="play" class="me-2"></i>
+                            Clock In
+                        </button>
+                        <button class="btn btn-danger" onclick="clockOut()">
+                            <i data-feather="pause" class="me-2"></i>
+                            Clock Out
+                        </button>
+                        <hr>
+                        <a href="{{ url_for('leave_management.apply_leave') }}" class="btn btn-outline-warning">
+                            <i data-feather="calendar-x" class="me-2"></i>
+                            Request Leave
+                        </a>
+                        <a href="{{ url_for('scheduling.my_schedule') }}" class="btn btn-outline-info">
+                            <i data-feather="calendar" class="me-2"></i>
+                            View Schedule
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Attendance Analytics Section -->
+    {% if 'attendance-analytics-section' in visible_sections %}
+    <div class="row mb-4" id="attendance-analytics-section">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i data-feather="trending-up" class="me-2"></i>
+                        Your Attendance Trends
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="personalAttendanceChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i data-feather="bar-chart-2" class="me-2"></i>
+                        Performance Metrics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between">
+                            <span>On-Time Arrival</span>
+                            <strong class="text-success">92%</strong>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-success" style="width: 92%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between">
+                            <span>Attendance Rate</span>
+                            <strong class="text-info">96%</strong>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-info" style="width: 96%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Overtime This Month</span>
+                            <strong class="text-warning">4.5h</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Leave & Scheduling Section -->
+    {% if 'leave-scheduling-section' in visible_sections %}
+    <div class="row mb-4" id="leave-scheduling-section">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i data-feather="calendar-x" class="me-2"></i>
+                        Leave Balance & Applications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <div class="h4 text-success">{{ personal_stats.leave_balance or 15 }}</div>
+                                <small class="text-muted">Annual Leave Days</small>
+                            </div>
+                            <div class="mb-3">
+                                <div class="h4 text-info">{{ leave_stats.pending_applications or 0 }}</div>
+                                <small class="text-muted">Pending Applications</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <div class="h4 text-warning">5</div>
+                                <small class="text-muted">Sick Leave Days</small>
+                            </div>
+                            <div class="mb-3">
+                                <div class="h4 text-secondary">2</div>
+                                <small class="text-muted">Family Leave Days</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <a href="{{ url_for('leave_management.apply_leave') }}" class="btn btn-outline-primary">
+                            <i data-feather="plus" class="me-2"></i>
+                            Apply for Leave
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i data-feather="calendar" class="me-2"></i>
+                        Upcoming Schedule
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Tomorrow</span>
+                            <span class="badge bg-primary">8:00 AM - 5:00 PM</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Wednesday</span>
+                            <span class="badge bg-primary">8:00 AM - 5:00 PM</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Thursday</span>
+                            <span class="badge bg-primary">8:00 AM - 5:00 PM</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Friday</span>
+                            <span class="badge bg-success">Day Off</span>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <a href="{{ url_for('scheduling.my_schedule') }}" class="btn btn-outline-info">
+                            <i data-feather="calendar" class="me-2"></i>
+                            View Full Schedule
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Alerts & Notifications Section -->
+    {% if 'alerts-notifications-section' in visible_sections %}
+    <div class="row mb-4" id="alerts-notifications-section">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i data-feather="bell" class="me-2"></i>
+                        Notifications & Reminders
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-4">
+                            <div class="alert alert-info" role="alert">
+                                <i data-feather="info" class="me-2"></i>
+                                <strong>Schedule Update:</strong> Your Friday shift has been cancelled
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="alert alert-success" role="alert">
+                                <i data-feather="check-circle" class="me-2"></i>
+                                <strong>Leave Approved:</strong> Your vacation request for next week has been approved
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="alert alert-warning" role="alert">
+                                <i data-feather="clock" class="me-2"></i>
+                                <strong>Reminder:</strong> Don't forget to clock out at end of shift
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initializePersonalAttendanceChart();
+    updateClockStatus();
+    
+    // Auto-refresh every 2 minutes
+    setInterval(updateClockStatus, 120000);
+});
+
+function initializePersonalAttendanceChart() {
+    const ctx = document.getElementById('personalAttendanceChart');
+    if (!ctx) return;
+    
+    new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+            datasets: [{
+                label: 'Hours Worked',
+                data: [8.2, 7.8, 8.5, 8.0, 6.5],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Target Hours',
+                data: [8, 8, 8, 8, 8],
+                type: 'line',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 10
+                }
+            }
+        }
+    });
+}
+
+function updateClockStatus() {
+    fetch('/api/current-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI based on clock status
+                console.log('Clock status updated:', data.status);
+            }
+        })
+        .catch(error => {
+            console.log('Error updating clock status:', error);
+        });
+}
+
+function quickClockAction() {
+    // Determine current status and perform opposite action
+    fetch('/api/current-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.is_clocked_in) {
+                clockOut();
+            } else {
+                clockIn();
+            }
+        })
+        .catch(error => {
+            console.log('Error checking status:', error);
+        });
+}
+
+function clockIn() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const clockData = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            };
+            
+            fetch('/api/clock-in', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(clockData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', 'Successfully clocked in!');
+                    location.reload();
+                } else {
+                    showAlert('danger', 'Error clocking in: ' + data.message);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', 'Error clocking in: ' + error.message);
+            });
+        });
+    } else {
+        showAlert('warning', 'Geolocation not supported. Clocking in without location.');
+        // Clock in without location
+        fetch('/api/clock-in', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', 'Successfully clocked in!');
+                location.reload();
+            } else {
+                showAlert('danger', 'Error clocking in: ' + data.message);
+            }
+        });
+    }
+}
+
+function clockOut() {
+    fetch('/api/clock-out', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Successfully clocked out!');
+            location.reload();
+        } else {
+            showAlert('danger', 'Error clocking out: ' + data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Error clocking out: ' + error.message);
+    });
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,559 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Configuration - WFM System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i data-feather="sliders" class="me-2"></i>
+                Dashboard Configuration
+            </h2>
+            <p class="text-muted mb-0">Configure which dashboard sections are visible for each user role</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-success" onclick="saveDashboardConfig()">
+                <i data-feather="save" class="me-2"></i>
+                Save Configuration
+            </button>
+            <button class="btn btn-outline-secondary" onclick="resetToDefaults()">
+                <i data-feather="refresh-cw" class="me-2"></i>
+                Reset to Defaults
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+                <i data-feather="arrow-left" class="me-2"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Role Overview -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i data-feather="user" class="me-2"></i>
+                        Employee Dashboard
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">Standard user access focused on personal time tracking, schedules, and leave requests.</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i data-feather="users" class="me-2"></i>
+                        Manager Dashboard
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">Team management features including approval workflows, team analytics, and scheduling tools.</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-white">
+                    <h6 class="mb-0">
+                        <i data-feather="shield" class="me-2"></i>
+                        Super Admin Dashboard
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">Complete system access with organization management, system health, and configuration controls.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Sections Configuration -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i data-feather="layout" class="me-2"></i>
+                Dashboard Sections Configuration
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Dashboard Section</th>
+                            <th class="text-center" style="width: 20%;">
+                                <i data-feather="user" class="me-1"></i>
+                                Employee
+                            </th>
+                            <th class="text-center" style="width: 20%;">
+                                <i data-feather="users" class="me-1"></i>
+                                Manager
+                            </th>
+                            <th class="text-center" style="width: 20%;">
+                                <i data-feather="shield" class="me-1"></i>
+                                Super Admin
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- System Health Overview -->
+                        <tr data-section-id="system-health-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="activity" class="me-2 text-success"></i>
+                                    <div>
+                                        <strong>System Health & Performance</strong>
+                                        <br><small class="text-muted">System uptime, active users, pending tasks, data integrity</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="system-health">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="system-health" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="system-health" checked>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Organization Overview -->
+                        <tr data-section-id="organization-overview-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="building-2" class="me-2 text-primary"></i>
+                                    <div>
+                                        <strong>Organization Structure & User Management</strong>
+                                        <br><small class="text-muted">Companies, regions, departments, user roles and statistics</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="organization-overview">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="organization-overview" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="organization-overview" checked>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Time & Attendance Analytics -->
+                        <tr data-section-id="attendance-analytics-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="clock" class="me-2 text-info"></i>
+                                    <div>
+                                        <strong>Time & Attendance Analytics</strong>
+                                        <br><small class="text-muted">Clock-in charts, metrics, overtime hours, exceptions</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="attendance-analytics" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="attendance-analytics" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="attendance-analytics" checked>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Workflow & Automation -->
+                        <tr data-section-id="workflow-automation-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="cpu" class="me-2 text-success"></i>
+                                    <div>
+                                        <strong>Workflow & Automation Status</strong>
+                                        <br><small class="text-muted">Active workflows, automation rates, payroll overview</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="workflow-automation">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="workflow-automation" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="workflow-automation" checked>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Leave Management & Scheduling -->
+                        <tr data-section-id="leave-scheduling-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="calendar" class="me-2 text-warning"></i>
+                                    <div>
+                                        <strong>Leave Management & Scheduling</strong>
+                                        <br><small class="text-muted">Leave applications, scheduling overview, coverage rates</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="leave-scheduling" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="leave-scheduling" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="leave-scheduling" checked>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- AI Insights & Reports -->
+                        <tr data-section-id="ai-insights-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="brain" class="me-2 text-secondary"></i>
+                                    <div>
+                                        <strong>AI Insights & Reports</strong>
+                                        <br><small class="text-muted">AI recommendations, productivity trends, analytics reports</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="ai-insights">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="ai-insights" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="ai-insights" checked>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- System Alerts & Notifications -->
+                        <tr data-section-id="alerts-notifications-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="bell" class="me-2 text-danger"></i>
+                                    <div>
+                                        <strong>System Alerts & Notifications</strong>
+                                        <br><small class="text-muted">Critical alerts, system warnings, information messages</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="alerts-notifications" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="alerts-notifications" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="alerts-notifications" checked>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Personal Time Tracking (Employee specific) -->
+                        <tr data-section-id="personal-time-tracking-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="user-clock" class="me-2 text-primary"></i>
+                                    <div>
+                                        <strong>Personal Time Tracking</strong>
+                                        <br><small class="text-muted">Individual clock-in/out, personal schedule, timecard status</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="personal-time-tracking" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="personal-time-tracking">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="personal-time-tracking">
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Team Management (Manager specific) -->
+                        <tr data-section-id="team-management-section">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="users" class="me-2 text-info"></i>
+                                    <div>
+                                        <strong>Team Management</strong>
+                                        <br><small class="text-muted">Team member status, pending approvals, team performance</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="employee" data-section="team-management">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="manager" data-section="team-management" checked>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" data-role="super_admin" data-section="team-management" checked>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Section -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i data-feather="eye" class="me-2"></i>
+                Dashboard Preview
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <h6>Employee Dashboard Preview</h6>
+                    <div id="employee-preview" class="border rounded p-3 bg-light">
+                        <small class="text-muted">Select sections above to see preview</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <h6>Manager Dashboard Preview</h6>
+                    <div id="manager-preview" class="border rounded p-3 bg-light">
+                        <small class="text-muted">Select sections above to see preview</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <h6>Super Admin Dashboard Preview</h6>
+                    <div id="super-admin-preview" class="border rounded p-3 bg-light">
+                        <small class="text-muted">Select sections above to see preview</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadCurrentConfiguration();
+    updatePreviews();
+    
+    // Add event listeners to all checkboxes
+    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', updatePreviews);
+    });
+});
+
+function loadCurrentConfiguration() {
+    fetch('/dashboard/get-config')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.config) {
+                applyConfiguration(data.config);
+            }
+        })
+        .catch(error => {
+            console.log('No existing configuration found, using defaults');
+        });
+}
+
+function applyConfiguration(config) {
+    Object.keys(config).forEach(sectionId => {
+        const section = config[sectionId];
+        Object.keys(section).forEach(role => {
+            const checkbox = document.querySelector(`[data-section="${sectionId}"][data-role="${role}"]`);
+            if (checkbox) {
+                checkbox.checked = section[role];
+            }
+        });
+    });
+    updatePreviews();
+}
+
+function updatePreviews() {
+    const roles = ['employee', 'manager', 'super_admin'];
+    
+    roles.forEach(role => {
+        const previewElement = document.getElementById(`${role.replace('_', '-')}-preview`);
+        const enabledSections = [];
+        
+        document.querySelectorAll(`[data-role="${role}"]:checked`).forEach(checkbox => {
+            const section = checkbox.getAttribute('data-section');
+            const sectionName = getSectionDisplayName(section);
+            enabledSections.push(sectionName);
+        });
+        
+        if (enabledSections.length > 0) {
+            previewElement.innerHTML = enabledSections.map(section => 
+                `<div class="badge bg-primary me-1 mb-1">${section}</div>`
+            ).join('');
+        } else {
+            previewElement.innerHTML = '<small class="text-muted">No sections enabled</small>';
+        }
+    });
+}
+
+function getSectionDisplayName(section) {
+    const sectionNames = {
+        'system-health': 'System Health',
+        'organization-overview': 'Organization',
+        'attendance-analytics': 'Attendance',
+        'workflow-automation': 'Workflows',
+        'leave-scheduling': 'Leave & Scheduling',
+        'ai-insights': 'AI Insights',
+        'alerts-notifications': 'Alerts',
+        'personal-time-tracking': 'Personal Time',
+        'team-management': 'Team Management'
+    };
+    return sectionNames[section] || section;
+}
+
+function saveDashboardConfig() {
+    const config = {};
+    
+    document.querySelectorAll('[data-section-id]').forEach(row => {
+        const sectionId = row.getAttribute('data-section-id');
+        config[sectionId] = {};
+        
+        row.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            const role = checkbox.getAttribute('data-role');
+            config[sectionId][role] = checkbox.checked;
+        });
+    });
+    
+    fetch('/dashboard/save-config', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({config: config})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Dashboard configuration saved successfully!');
+        } else {
+            showAlert('danger', 'Error saving configuration: ' + data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Error saving configuration: ' + error.message);
+    });
+}
+
+function resetToDefaults() {
+    if (confirm('Reset all dashboard configurations to default settings?')) {
+        // Reset to default configuration
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Set defaults
+        const defaults = [
+            '[data-role="manager"][data-section="system-health"]',
+            '[data-role="super_admin"][data-section="system-health"]',
+            '[data-role="manager"][data-section="organization-overview"]',
+            '[data-role="super_admin"][data-section="organization-overview"]',
+            '[data-role="employee"][data-section="attendance-analytics"]',
+            '[data-role="manager"][data-section="attendance-analytics"]',
+            '[data-role="super_admin"][data-section="attendance-analytics"]',
+            '[data-role="manager"][data-section="workflow-automation"]',
+            '[data-role="super_admin"][data-section="workflow-automation"]',
+            '[data-role="employee"][data-section="leave-scheduling"]',
+            '[data-role="manager"][data-section="leave-scheduling"]',
+            '[data-role="super_admin"][data-section="leave-scheduling"]',
+            '[data-role="manager"][data-section="ai-insights"]',
+            '[data-role="super_admin"][data-section="ai-insights"]',
+            '[data-role="employee"][data-section="alerts-notifications"]',
+            '[data-role="manager"][data-section="alerts-notifications"]',
+            '[data-role="super_admin"][data-section="alerts-notifications"]',
+            '[data-role="employee"][data-section="personal-time-tracking"]',
+            '[data-role="manager"][data-section="team-management"]',
+            '[data-role="super_admin"][data-section="team-management"]'
+        ];
+        
+        defaults.forEach(selector => {
+            const checkbox = document.querySelector(selector);
+            if (checkbox) checkbox.checked = true;
+        });
+        
+        updatePreviews();
+        showAlert('info', 'Configuration reset to defaults');
+    }
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+
+{% endblock %}

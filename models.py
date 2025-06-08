@@ -1223,3 +1223,76 @@ class WorkflowConfig(db.Model):
             return json.loads(self.config_data)
         except:
             return {}
+
+
+class DashboardConfig(db.Model):
+    """Dashboard configuration storage for role-based customization"""
+    __tablename__ = 'dashboard_configs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    config_name = db.Column(db.String(100), default='default')
+    config_data = db.Column(db.Text, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = db.relationship('User', backref=db.backref('dashboard_configs', lazy=True))
+    
+    def get_config_data(self):
+        """Parse and return configuration data as dictionary"""
+        import json
+        try:
+            return json.loads(self.config_data)
+        except:
+            return self._get_default_config()
+    
+    def _get_default_config(self):
+        """Return default dashboard configuration"""
+        return {
+            'system-health-section': {
+                'employee': False,
+                'manager': True,
+                'super_admin': True
+            },
+            'organization-overview-section': {
+                'employee': False,
+                'manager': True,
+                'super_admin': True
+            },
+            'attendance-analytics-section': {
+                'employee': True,
+                'manager': True,
+                'super_admin': True
+            },
+            'workflow-automation-section': {
+                'employee': False,
+                'manager': True,
+                'super_admin': True
+            },
+            'leave-scheduling-section': {
+                'employee': True,
+                'manager': True,
+                'super_admin': True
+            },
+            'ai-insights-section': {
+                'employee': False,
+                'manager': True,
+                'super_admin': True
+            },
+            'alerts-notifications-section': {
+                'employee': True,
+                'manager': True,
+                'super_admin': True
+            },
+            'personal-time-tracking-section': {
+                'employee': True,
+                'manager': False,
+                'super_admin': False
+            },
+            'team-management-section': {
+                'employee': False,
+                'manager': True,
+                'super_admin': True
+            }
+        }
