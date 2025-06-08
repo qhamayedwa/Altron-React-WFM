@@ -16,24 +16,13 @@ time_attendance_bp = Blueprint('time_attendance', __name__, url_prefix='/time')
 @login_required
 def clock_in():
     """Employee clock-in endpoint"""
-    print(f"=== CLOCK-IN DEBUG START ===")
-    print(f"User: {current_user.username} (ID: {current_user.id})")
-    print(f"Request method: {request.method}")
-    print(f"Request is_json: {request.is_json}")
-    print(f"Request content type: {request.content_type}")
-    print(f"Request headers: {dict(request.headers)}")
-    print(f"Request form data: {request.form}")
     # Handle both JSON and form requests properly
     json_data = {}
     if request.is_json and request.content_length and request.content_length > 0:
         try:
             json_data = request.get_json() or {}
-            print(f"Request JSON data: {json_data}")
-        except Exception as json_error:
-            print(f"Error getting JSON: {json_error}")
+        except Exception:
             json_data = {}
-    else:
-        print("Request is form-based or empty JSON")
     
     try:
         # Check if user already has an open time entry
@@ -70,34 +59,24 @@ def clock_in():
         db.session.add(time_entry)
         db.session.commit()
         
-        print(f"Time entry created successfully: {time_entry.id}")
-        
         if request.is_json:
-            response_data = {
+            return jsonify({
                 'success': True,
                 'message': 'Successfully clocked in',
                 'time_entry_id': time_entry.id,
                 'clock_in_time': time_entry.clock_in_time.isoformat()
-            }
-            print(f"Returning JSON response: {response_data}")
-            return jsonify(response_data)
+            })
         else:
             flash('Successfully clocked in!', 'success')
             return redirect(url_for('main.index'))
         
     except Exception as e:
-        print(f"Exception in clock-in: {str(e)}")
-        print(f"Exception type: {type(e)}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
         db.session.rollback()
         if request.is_json:
-            error_response = {
+            return jsonify({
                 'success': False,
                 'message': f'Error clocking in: {str(e)}'
-            }
-            print(f"Returning error JSON: {error_response}")
-            return jsonify(error_response), 500
+            }), 500
         else:
             flash(f'Error clocking in: {str(e)}', 'danger')
             return redirect(url_for('main.index'))
