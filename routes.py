@@ -26,9 +26,27 @@ def generate_dashboard_analytics(is_manager_or_admin, user_id=None):
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=30)
         
-        # Base query filters
+        # Determine filtering scope based on user role
+        from flask_login import current_user
+        is_super_user = current_user.has_role('Super User')
+        is_manager = current_user.has_role('Manager')
+        managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
+        
+        # Base query filters with department filtering
         base_filter = TimeEntry.clock_in_time >= start_date
-        if not is_manager_or_admin and user_id:
+        if is_super_user:
+            # Super users see all data
+            pass
+        elif is_manager and managed_dept_ids:
+            # Managers see only their managed departments
+            base_filter = and_(
+                base_filter,
+                TimeEntry.user_id.in_(
+                    db.session.query(User.id).filter(User.department_id.in_(managed_dept_ids))
+                )
+            )
+        elif user_id:
+            # Employees see only their own data
             base_filter = and_(base_filter, TimeEntry.user_id == user_id)
         
         # 1. Daily attendance trends (last 7 days)
@@ -38,7 +56,7 @@ def generate_dashboard_analytics(is_manager_or_admin, user_id=None):
             day_entries = TimeEntry.query.filter(
                 and_(
                     func.date(TimeEntry.clock_in_time) == day,
-                    base_filter if not user_id else and_(base_filter, TimeEntry.user_id == user_id)
+                    base_filter
                 )
             ).count()
             daily_data.append({
@@ -58,7 +76,7 @@ def generate_dashboard_analytics(is_manager_or_admin, user_id=None):
                 and_(
                     TimeEntry.clock_in_time >= week_start,
                     TimeEntry.clock_in_time <= week_end + timedelta(days=1),
-                    base_filter if not user_id else and_(base_filter, TimeEntry.user_id == user_id)
+                    base_filter
                 )
             ).count()
             
@@ -68,12 +86,25 @@ def generate_dashboard_analytics(is_manager_or_admin, user_id=None):
         weekly_hours.reverse()
         week_labels.reverse()
         
-        # 3. Leave application status distribution
-        if is_manager_or_admin:
+        # 3. Leave application status distribution with proper filtering
+        if is_super_user:
             leave_stats = {
                 'pending': LeaveApplication.query.filter_by(status='pending').count(),
                 'approved': LeaveApplication.query.filter_by(status='approved').count(),
                 'rejected': LeaveApplication.query.filter_by(status='rejected').count()
+            }
+        elif is_manager and managed_dept_ids:
+            # Managers see only leave applications from their managed departments
+            leave_stats = {
+                'pending': LeaveApplication.query.join(User).filter(
+                    and_(LeaveApplication.status == 'pending', User.department_id.in_(managed_dept_ids))
+                ).count(),
+                'approved': LeaveApplication.query.join(User).filter(
+                    and_(LeaveApplication.status == 'approved', User.department_id.in_(managed_dept_ids))
+                ).count(),
+                'rejected': LeaveApplication.query.join(User).filter(
+                    and_(LeaveApplication.status == 'rejected', User.department_id.in_(managed_dept_ids))
+                ).count()
             }
         else:
             leave_stats = {

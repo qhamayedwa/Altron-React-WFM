@@ -360,20 +360,21 @@ def get_dashboard_data():
                 WHERE hourly_rate IS NOT NULL AND is_active = true
             """)).scalar() or 150
         elif is_manager and managed_dept_ids:
-            monthly_hours = db.session.execute(text("""
+            dept_ids_str = ','.join(str(id) for id in managed_dept_ids)
+            monthly_hours = db.session.execute(text(f"""
                 SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time))/3600), 0) 
                 FROM time_entries te 
                 JOIN users u ON te.user_id = u.id 
                 WHERE EXTRACT(MONTH FROM te.clock_in_time) = :month 
                 AND EXTRACT(YEAR FROM te.clock_in_time) = :year
                 AND te.clock_in_time IS NOT NULL AND te.clock_out_time IS NOT NULL
-                AND u.department_id = :dept_id
-            """), {'month': current_month, 'year': current_year, 'dept_id': managed_dept_ids}).scalar() or 0
+                AND u.department_id IN ({dept_ids_str})
+            """), {'month': current_month, 'year': current_year}).scalar() or 0
             
-            avg_hourly_rate = db.session.execute(text("""
+            avg_hourly_rate = db.session.execute(text(f"""
                 SELECT COALESCE(AVG(hourly_rate), 150) FROM users 
-                WHERE hourly_rate IS NOT NULL AND is_active = true AND department_id = :dept_id
-            """), {'dept_id': managed_dept_ids}).scalar() or 150
+                WHERE hourly_rate IS NOT NULL AND is_active = true AND department_id IN ({dept_ids_str})
+            """)).scalar() or 150
         else:
             monthly_hours = db.session.execute(text("""
                 SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (clock_out_time - clock_in_time))/3600), 0) 
