@@ -55,7 +55,7 @@
                             <div class="display-6 fw-bold mb-0">{{ clocked_in_now }}</div>
                         {% else %}
                             <div class="text-white-50 fw-medium mb-1">My Clock Status</div>
-                            <div class="display-6 fw-bold mb-0">{{ 'In' if current_status else 'Out' }}</div>
+                            <div class="display-6 fw-bold mb-0" id="clockStatus">{{ 'In' if current_status and current_status.get('is_clocked_in') else 'Out' }}</div>
                         {% endif %}
                     </div>
                     <div class="text-white-50">
@@ -123,17 +123,19 @@
                         <!-- Primary Time Tracking -->
                         <div class="quick-action-section">
                             <small class="text-muted mb-2 d-block">Time Tracking</small>
-                            {% if current_status.is_clocked_in %}
-                            <button class="btn btn-danger w-100 mb-2" onclick="clockOut()">
+                            <div id="clockButtonContainer">
+                            {% if current_status and current_status.get('is_clocked_in') %}
+                            <button class="btn btn-danger w-100 mb-2" onclick="clockOut()" id="clockOutBtn">
                                 <i data-feather="clock" class="me-2"></i>Clock Out
-                                <small class="d-block">Started: {{ current_status.clock_in_time or 'Unknown' }}</small>
+                                <small class="d-block" id="clockInTime">Started: {{ current_status.get('clock_in_time') or 'Unknown' }}</small>
                             </button>
                             {% else %}
-                            <button class="btn btn-success w-100 mb-2" onclick="clockIn()">
+                            <button class="btn btn-success w-100 mb-2" onclick="clockIn()" id="clockInBtn">
                                 <i data-feather="clock" class="me-2"></i>Clock In
                                 <small class="d-block">Start your workday</small>
                             </button>
                             {% endif %}
+                            </div>
                         </div>
                         
                         <!-- Employee Self-Service -->
@@ -494,8 +496,17 @@
 // Initialize Feather Icons
 feather.replace();
 
+// Real-time status tracking
+let statusUpdateInterval;
+
 // Clock In Function
 function clockIn() {
+    const button = document.getElementById('clockInBtn');
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i data-feather="loader" class="me-2"></i>Clocking In...';
+    }
+    
     fetch('/time/clock-in', {
         method: 'POST',
         headers: {
@@ -506,20 +517,28 @@ function clockIn() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Clock in successful!');
-            location.reload();
+            showNotification('Clock in successful!', 'success');
+            updateClockStatus(true, data.clock_in_time);
         } else {
-            alert('Clock in failed: ' + data.message);
+            showNotification('Clock in failed: ' + data.message, 'error');
+            resetClockButton();
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Clock in failed. Please try again.');
+        showNotification('Clock in failed. Please try again.', 'error');
+        resetClockButton();
     });
 }
 
 // Clock Out Function
 function clockOut() {
+    const button = document.getElementById('clockOutBtn');
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i data-feather="loader" class="me-2"></i>Clocking Out...';
+    }
+    
     fetch('/time/clock-out', {
         method: 'POST',
         headers: {
@@ -530,22 +549,117 @@ function clockOut() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Clock out successful!');
-            location.reload();
+            showNotification('Clock out successful!', 'success');
+            updateClockStatus(false);
         } else {
-            alert('Clock out failed: ' + data.message);
+            showNotification('Clock out failed: ' + data.message, 'error');
+            resetClockButton();
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Clock out failed. Please try again.');
+        showNotification('Clock out failed. Please try again.', 'error');
+        resetClockButton();
     });
 }
 
-// Auto-refresh dashboard every 5 minutes
-setTimeout(function() {
-    location.reload();
-}, 300000);
+// Update clock status in UI
+function updateClockStatus(isClockedIn, clockInTime = null) {
+    const statusElement = document.getElementById('clockStatus');
+    const buttonContainer = document.getElementById('clockButtonContainer');
+    
+    if (statusElement) {
+        statusElement.textContent = isClockedIn ? 'In' : 'Out';
+    }
+    
+    if (buttonContainer) {
+        if (isClockedIn) {
+            const displayTime = clockInTime ? new Date(clockInTime).toLocaleTimeString() : 'Unknown';
+            buttonContainer.innerHTML = `
+                <button class="btn btn-danger w-100 mb-2" onclick="clockOut()" id="clockOutBtn">
+                    <i data-feather="clock" class="me-2"></i>Clock Out
+                    <small class="d-block" id="clockInTime">Started: ${displayTime}</small>
+                </button>
+            `;
+        } else {
+            buttonContainer.innerHTML = `
+                <button class="btn btn-success w-100 mb-2" onclick="clockIn()" id="clockInBtn">
+                    <i data-feather="clock" class="me-2"></i>Clock In
+                    <small class="d-block">Start your workday</small>
+                </button>
+            `;
+        }
+        feather.replace();
+    }
+}
+
+// Reset clock button to original state
+function resetClockButton() {
+    const button = document.getElementById('clockInBtn') || document.getElementById('clockOutBtn');
+    if (button) {
+        button.disabled = false;
+        checkCurrentStatus(); // Refresh status
+    }
+}
+
+// Check current clock status
+function checkCurrentStatus() {
+    fetch('/time/status')
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'clocked_in') {
+            updateClockStatus(true, data.clock_in_time);
+        } else {
+            updateClockStatus(false);
+        }
+    })
+    .catch(error => {
+        console.error('Status check failed:', error);
+    });
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+
+// Start real-time status monitoring
+function startStatusMonitoring() {
+    // Check status every 30 seconds
+    statusUpdateInterval = setInterval(checkCurrentStatus, 30000);
+}
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial status check
+    checkCurrentStatus();
+    
+    // Start monitoring
+    startStatusMonitoring();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (statusUpdateInterval) {
+        clearInterval(statusUpdateInterval);
+    }
+});
 
 // Analytics Charts with authentic database data
 document.addEventListener('DOMContentLoaded', function() {

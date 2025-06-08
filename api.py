@@ -586,20 +586,20 @@ def api_database_status():
             'leave_applications': LeaveApplication.query.count()
         }
         
-        return {
+        return jsonify({
             'status': 'connected',
             'message': 'Database connection successful',
             'tables': table_counts,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }
+        })
         
     except Exception as e:
         logging.error(f"Database status check failed: {e}")
-        return {
+        return jsonify({
             'status': 'error',
             'message': str(e),
             'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }, 500
+        }), 500
 
 # ====================
 # USER MANAGEMENT APIs
