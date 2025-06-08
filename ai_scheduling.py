@@ -8,7 +8,7 @@ from flask import Blueprint, render_template, request, jsonify, flash, redirect,
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_, func
 from app import db
-from models import User, Schedule, TimeEntry, LeaveApplication
+from models import User, Schedule, TimeEntry, LeaveApplication, Department
 from auth_simple import role_required
 import logging
 
@@ -374,8 +374,7 @@ def generate_schedule():
     
     # Get departments for dropdown from the proper departments table
     try:
-        from models import Department
-        departments = db.session.query(Department.name, Department.id).filter(
+        departments = Department.query.filter(
             Department.is_active == True
         ).order_by(Department.name).all()
         
@@ -391,7 +390,7 @@ def generate_schedule():
             ).distinct().all()
             departments_list = [{'id': None, 'name': d[0]} for d in user_departments if d[0]]
             departments_list.sort(key=lambda x: x['name'])
-        except Exception:
+        except Exception as fallback_error:
             flash(f'Warning: Could not load departments: {str(e)}', 'warning')
             departments_list = []
     
