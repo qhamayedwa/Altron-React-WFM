@@ -30,11 +30,11 @@ def dashboard():
     # Calculate detailed company statistics
     company_details = []
     for company in companies:
-        sites_count = db.session.query(Site).join(Region).filter(
+        sites_count = db.session.query(Site).join(Region, Site.region_id == Region.id).filter(
             Region.company_id == company.id, Site.is_active == True).count()
-        departments_count = db.session.query(Department).join(Site).join(Region).filter(
+        departments_count = db.session.query(Department).join(Site, Department.site_id == Site.id).join(Region, Site.region_id == Region.id).filter(
             Region.company_id == company.id, Department.is_active == True).count()
-        employees_count = db.session.query(User).join(Department).join(Site).join(Region).filter(
+        employees_count = db.session.query(User).join(Department, User.department_id == Department.id).join(Site, Department.site_id == Site.id).join(Region, Site.region_id == Region.id).filter(
             Region.company_id == company.id, User.is_active == True).count()
         
         company_details.append({
@@ -105,11 +105,11 @@ def view_company(company_id):
     # Get company statistics
     stats = {
         'regions': Region.query.filter_by(company_id=company_id, is_active=True).count(),
-        'sites': db.session.query(Site).join(Region).filter(
+        'sites': db.session.query(Site).join(Region, Site.region_id == Region.id).filter(
             Region.company_id == company_id, Site.is_active == True).count(),
-        'departments': db.session.query(Department).join(Site).join(Region).filter(
+        'departments': db.session.query(Department).join(Site, Department.site_id == Site.id).join(Region, Site.region_id == Region.id).filter(
             Region.company_id == company_id, Department.is_active == True).count(),
-        'employees': db.session.query(User).join(Department).join(Site).join(Region).filter(
+        'employees': db.session.query(User).join(Department, User.department_id == Department.id).join(Site, Department.site_id == Site.id).join(Region, Site.region_id == Region.id).filter(
             Region.company_id == company_id, User.is_active == True).count()
     }
     
