@@ -1,16 +1,16 @@
-# WFM System - Updated Color Palette
+# WFM System - Modern Professional Color Palette
 
 ## Primary Brand Colors
-- **Primary:** `#db6e0a` (Orange)
-- **Primary Dark:** `#b8590a` (Darker orange)
-- **Primary Gradient:** `linear-gradient(135deg, #db6e0a 0%, #b8590a 100%)`
+- **Primary:** `#2563eb` (Professional Blue)
+- **Primary Dark:** `#1d4ed8` (Deeper Blue)
+- **Primary Gradient:** `linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)`
 
-## Accent Colors
-- **Success:** `#10b981` to `#059669` (Green gradient)
-- **Warning:** `#f59e0b` to `#d97706` (Orange gradient)
-- **Danger:** `#ef4444` to `#dc2626` (Red gradient)
-- **Info:** `#db6e0a` to `#b8590a` (Orange gradient)
-- **Secondary:** `#db6e0a` (Orange accent)
+## Complementary Accent Colors
+- **Success:** `#059669` to `#047857` (Emerald Green gradient)
+- **Warning:** `#f59e0b` to `#d97706` (Amber gradient)
+- **Danger:** `#dc2626` to `#b91c1c` (Red gradient)
+- **Info:** `#0891b2` to `#0e7490` (Cyan gradient)
+- **Secondary:** `#6366f1` (Indigo accent)
 
 ## Neutral Palette
 - **50:** `#f9fafb` (Lightest)
