@@ -10,7 +10,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2>
-                        <i data-feather="dollar-sign" class="me-2"></i>
+                        <span class="me-2 fw-bold text-success">R</span>
                         {{ pay_rule.name }}
                     </h2>
                     <nav aria-label="breadcrumb">
@@ -133,7 +133,7 @@
                                             </li>
                                         {% endif %}
                                         {% if actions.get('hourly_rate') %}
-                                            <li><i data-feather="dollar-sign" class="me-2" style="width: 16px; height: 16px;"></i>
+                                            <li><span class="me-2 fw-bold text-success" style="font-size: 16px;">R</span>
                                                 Fixed Hourly Rate: {{ "R%.2f"|format(actions.hourly_rate) }}
                                             </li>
                                         {% endif %}
