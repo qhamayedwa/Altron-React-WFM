@@ -1,185 +1,155 @@
-// Main JavaScript for Flask PostgreSQL App
-
-// Database status checker
+// WFM System Main JavaScript
+// Database Status Monitor
 class DatabaseStatus {
     constructor() {
-        this.statusIndicator = document.getElementById('db-status');
-        this.statusText = document.getElementById('db-status-text');
-        this.init();
+        this.statusElement = null;
+        this.tableCountElement = null;
+        this.checkInterval = 30000; // 30 seconds
     }
 
     init() {
-        if (this.statusIndicator) {
+        this.statusElement = document.getElementById('db-status');
+        this.tableCountElement = document.getElementById('table-counts');
+        
+        if (this.statusElement) {
             this.checkStatus();
-            // Check status every 30 seconds
-            setInterval(() => this.checkStatus(), 30000);
+            setInterval(() => this.checkStatus(), this.checkInterval);
         }
     }
 
     async checkStatus() {
         try {
-            this.setStatus('loading', 'Checking...');
-            
-            const response = await fetch('/api/v1/db-status');
+            const response = await fetch('/api/database-status');
             const data = await response.json();
             
-            if (response.ok && data.status === 'connected') {
+            if (data.success) {
                 this.setStatus('connected', 'Connected');
-                this.updateTableCounts(data.tables);
+                if (data.tables && this.tableCountElement) {
+                    this.updateTableCounts(data.tables);
+                }
             } else {
                 this.setStatus('error', 'Error');
-                console.error('Database status error:', data.message);
             }
         } catch (error) {
-            this.setStatus('error', 'Error');
-            console.error('Failed to check database status:', error);
+            this.setStatus('error', 'Disconnected');
         }
     }
 
     setStatus(status, text) {
-        if (this.statusIndicator) {
-            this.statusIndicator.className = `db-status ${status}`;
-        }
-        if (this.statusText) {
-            this.statusText.textContent = text;
-        }
+        if (!this.statusElement) return;
+        
+        this.statusElement.className = `badge bg-${status === 'connected' ? 'success' : 'danger'}`;
+        this.statusElement.textContent = text;
     }
 
     updateTableCounts(tables) {
-        // Update count displays if they exist
-        Object.entries(tables).forEach(([table, count]) => {
-            const element = document.getElementById(`${table}-count`);
-            if (element) {
-                element.textContent = count;
-            }
-        });
+        if (!this.tableCountElement) return;
+        
+        const counts = Object.entries(tables)
+            .map(([table, count]) => `${table}: ${count}`)
+            .join(', ');
+        this.tableCountElement.textContent = counts;
     }
 }
 
-// Flash message handler
+// Flash Messages System
 class FlashMessages {
     constructor() {
-        this.init();
+        this.container = null;
     }
 
     init() {
-        // Auto-dismiss flash messages after 5 seconds
-        const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
-        alerts.forEach(alert => {
-            setTimeout(() => {
-                const bsAlert = new bootstrap.Alert(alert);
-                if (bsAlert) {
-                    bsAlert.close();
-                }
-            }, 5000);
-        });
+        this.container = document.getElementById('flash-messages');
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.id = 'flash-messages';
+            this.container.className = 'fixed-top mt-3';
+            this.container.style.zIndex = '9999';
+            document.body.appendChild(this.container);
+        }
     }
 
     show(message, type = 'info') {
-        const alertContainer = document.getElementById('flash-messages');
-        if (!alertContainer) return;
-
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-        alertDiv.innerHTML = `
+        if (!this.container) this.init();
+        
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show mx-3`;
+        alert.innerHTML = `
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-
-        alertContainer.appendChild(alertDiv);
-
-        // Auto-dismiss after 5 seconds
+        
+        this.container.appendChild(alert);
+        
         setTimeout(() => {
-            const bsAlert = new bootstrap.Alert(alertDiv);
-            if (bsAlert) {
-                bsAlert.close();
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
             }
         }, 5000);
     }
 }
 
-// Sample data creator
+// Sample Data Manager
 class SampleDataManager {
     constructor() {
-        this.button = document.getElementById('create-sample-data');
-        this.init();
+        this.button = null;
     }
 
     init() {
+        this.button = document.getElementById('create-sample-data');
         if (this.button) {
-            this.button.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.createSampleData();
-            });
+            this.button.addEventListener('click', () => this.createSampleData());
         }
     }
 
     async createSampleData() {
+        if (!confirm('This will create sample data. Continue?')) return;
+        
         try {
-            this.button.disabled = true;
-            this.button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
-
-            const response = await fetch('/create-sample-data');
+            LoadingManager.showLoading(this.button);
+            
+            const response = await fetch('/api/create-sample-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
             const data = await response.json();
-
-            if (response.ok) {
-                flashMessages.show(data.message, 'success');
-                // Refresh page after 2 seconds to show new data
-                setTimeout(() => window.location.reload(), 2000);
+            
+            if (data.success) {
+                window.flashMessages.show('Sample data created successfully!', 'success');
+                setTimeout(() => window.location.reload(), 1000);
             } else {
-                flashMessages.show(data.message, 'danger');
+                window.flashMessages.show(data.message || 'Failed to create sample data', 'danger');
             }
         } catch (error) {
             console.error('Error creating sample data:', error);
-            flashMessages.show('Failed to create sample data', 'danger');
+            window.flashMessages.show('Error creating sample data', 'danger');
         } finally {
-            this.button.disabled = false;
-            this.button.innerHTML = 'Create Sample Data';
+            LoadingManager.hideLoading(this.button);
         }
     }
 }
 
-// Loading states for forms
+// Loading Manager
 class LoadingManager {
     static showLoading(element) {
-        element.classList.add('loading');
-        const buttons = element.querySelectorAll('button[type="submit"]');
-        buttons.forEach(btn => {
-            btn.disabled = true;
-            const originalText = btn.textContent;
-            btn.setAttribute('data-original-text', originalText);
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading...';
-        });
+        if (!element) return;
+        element.disabled = true;
+        element.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading...';
     }
 
     static hideLoading(element) {
-        element.classList.remove('loading');
-        const buttons = element.querySelectorAll('button[type="submit"]');
-        buttons.forEach(btn => {
-            btn.disabled = false;
-            const originalText = btn.getAttribute('data-original-text');
-            if (originalText) {
-                btn.textContent = originalText;
-            }
-        });
+        if (!element) return;
+        element.disabled = false;
+        element.innerHTML = element.getAttribute('data-original-text') || 'Submit';
     }
-}
 
-// Utility functions
-const utils = {
-    // Format date for display
     formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    },
+        return new Date(dateString).toLocaleDateString();
+    }
 
-    // Debounce function for search inputs
     debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -190,359 +160,172 @@ const utils = {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
-    },
+    }
 
-    // Copy text to clipboard
     async copyToClipboard(text) {
         try {
             await navigator.clipboard.writeText(text);
-            return true;
+            window.flashMessages.show('Copied to clipboard!', 'success');
         } catch (err) {
-            console.error('Failed to copy text:', err);
-            return false;
+            console.error('Failed to copy: ', err);
+            window.flashMessages.show('Failed to copy to clipboard', 'danger');
         }
     }
-};
+}
 
 // Live Clock Timer
 class LiveClockTimer {
     constructor() {
-        this.timerInterval = null;
+        this.timerElement = null;
         this.clockInTime = null;
-        this.init();
+        this.interval = null;
+        this.isRunning = false;
     }
 
     init() {
-        // Check if user is currently clocked in and start timer
-        this.checkClockStatus();
-        
-        // Update timer every second
-        this.startTimer();
+        this.timerElement = document.getElementById('live-timer');
+        if (this.timerElement) {
+            this.checkClockStatus();
+        }
     }
 
     async checkClockStatus() {
         try {
-            const response = await fetch('/time/status');
+            const response = await fetch('/api/current-status');
             const data = await response.json();
             
-            if (data.success && data.data.is_clocked_in && data.data.clock_in_time) {
-                // Parse the clock-in time
-                this.clockInTime = new Date(data.data.clock_in_time);
-                this.updateDisplay();
+            if (data.success && data.is_clocked_in && data.clock_in_time) {
+                this.clockInTime = new Date(data.clock_in_time);
+                this.startTimer();
             }
         } catch (error) {
-            console.error('Failed to check clock status:', error);
+            console.error('Error checking clock status:', error);
         }
     }
 
     startTimer() {
-        // Clear any existing timer
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-        }
-
-        // Update every second
-        this.timerInterval = setInterval(() => {
-            this.updateDisplay();
-        }, 1000);
+        if (this.interval) clearInterval(this.interval);
+        
+        this.isRunning = true;
+        this.updateDisplay();
+        this.interval = setInterval(() => this.updateDisplay(), 1000);
     }
 
     updateDisplay() {
-        const durationElement = document.getElementById('liveDuration');
+        if (!this.timerElement || !this.clockInTime) return;
         
-        if (!durationElement || !this.clockInTime) {
-            return;
-        }
-
         const now = new Date();
-        const elapsed = now - this.clockInTime;
+        const diff = now - this.clockInTime;
         
-        // Calculate hours, minutes, seconds
-        const hours = Math.floor(elapsed / (1000 * 60 * 60));
-        const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
-
-        // Format as HH:MM:SS
-        const formattedTime = 
-            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
         
-        durationElement.textContent = formattedTime;
-        
-        // Add pulsing effect for active status
-        durationElement.style.animation = 'pulse 2s infinite';
+        this.timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
     onClockIn() {
-        // Set clock-in time to now
         this.clockInTime = new Date();
-        this.updateDisplay();
+        this.startTimer();
     }
 
     onClockOut() {
-        // Clear timer when clocked out
-        this.clockInTime = null;
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
+        this.isRunning = false;
+        if (this.timerElement) {
+            this.timerElement.textContent = '00:00:00';
         }
     }
 
     destroy() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
+        if (this.interval) {
+            clearInterval(this.interval);
         }
     }
 }
 
-// Time Tracking Functions
-window.performClockIn = function() {
-    console.log('Clock function disabled - using form submission');
-    const button = document.getElementById('clockInBtn');
-    if (button) {
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Clocking In...';
-    }
-    
-    try {
-        const response = await fetch('/time/clock-in', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({})  // Send empty JSON object instead of no body
-        });
-        
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Response data:', data);
-        
-        if (data.success) {
-            // Refresh the page to show updated status
-            console.log('Clock in successful, reloading page');
-            window.location.reload();
-        } else {
-            alert('Error: ' + data.message);
-            if (button) {
-                button.disabled = false;
-                button.innerHTML = '<i data-feather="clock" class="me-2"></i>Clock In<small class="d-block">Start your workday</small>';
-            }
-        }
-    } catch (error) {
-        console.error('Clock in error:', error);
-        console.error('Error details:', error.message, error.stack);
-        alert('Failed to clock in. Please try again.');
-        if (button) {
-            button.disabled = false;
-            button.innerHTML = '<i data-feather="clock" class="me-2"></i>Clock In<small class="d-block">Start your workday</small>';
-        }
-    }
-};
-
-window.clockIn = function() {
-    console.log('Clock in function disabled - using form submission');
-    return false;
-    try {
-        const button = document.getElementById('clockInBtn');
-        if (button) {
-            button.disabled = true;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Clocking In...';
-        }
-
-        const response = await fetch('/time/clock-in', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            // Update UI to show clocked in state
-            updateClockButtonUI(true, data.clock_in_time);
-            
-            // Initialize live timer
-            if (window.liveTimer) {
-                window.liveTimer.onClockIn();
-            }
-            
-            flashMessages.show('Successfully clocked in!', 'success');
-            
-            // Refresh time entries
-            refreshTimeEntries();
-        } else {
-            flashMessages.show(data.message || 'Failed to clock in', 'danger');
-        }
-    } catch (error) {
-        console.error('Clock in error:', error);
-        flashMessages.show('Error clocking in. Please try again.', 'danger');
-    } finally {
-        // Reset button state
-        const button = document.getElementById('clockInBtn');
-        if (button) {
-            button.disabled = false;
-            button.innerHTML = '<i data-feather="clock" class="me-2"></i>Clock In<small class="d-block">Start your workday</small>';
-            feather.replace();
-        }
-    }
-}
-
-window.clockOut = async function() {
-    console.log('Clock out function called');
-    try {
-        const button = document.getElementById('clockOutBtn');
-        if (button) {
-            button.disabled = true;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Clocking Out...';
-        }
-
-        const response = await fetch('/time/clock-out', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            // Update UI to show clocked out state
-            updateClockButtonUI(false);
-            
-            // Stop live timer
-            if (window.liveTimer) {
-                window.liveTimer.onClockOut();
-            }
-            
-            flashMessages.show('Successfully clocked out!', 'success');
-            
-            // Refresh time entries
-            if (typeof refreshTimeEntries === 'function') {
-                refreshTimeEntries();
-            }
-        } else {
-            flashMessages.show(data.message || 'Failed to clock out', 'danger');
-        }
-    } catch (error) {
-        console.error('Clock out error:', error);
-        flashMessages.show('Error clocking out. Please try again.', 'danger');
-    } finally {
-        // Reset button state
-        const button = document.getElementById('clockOutBtn');
-        if (button) {
-            button.disabled = false;
-            button.innerHTML = '<i data-feather="clock" class="me-2"></i>Clock Out<small class="d-block" id="clockInTime">Started: Unknown</small><div class="live-timer mt-1"><strong class="text-white" id="liveDuration">00:00:00</strong><small class="d-block opacity-75">Working Time</small></div>';
-            feather.replace();
-        }
-    }
-}
-
+// Clock Button UI Update
 function updateClockButtonUI(isClockedIn, clockInTime = null) {
-    const container = document.getElementById('clockButtonContainer');
-    if (!container) return;
-
-    if (isClockedIn && clockInTime) {
-        const formattedTime = new Date(clockInTime).toLocaleTimeString();
-        container.innerHTML = `
-            <button class="btn btn-danger w-100 mb-2" onclick="clockOut()" id="clockOutBtn">
-                <i data-feather="clock" class="me-2"></i>Clock Out
-                <small class="d-block" id="clockInTime">Started: ${formattedTime}</small>
-                <div class="live-timer mt-1">
-                    <strong class="text-white" id="liveDuration">00:00:00</strong>
-                    <small class="d-block opacity-75">Working Time</small>
-                </div>
-            </button>
-        `;
-    } else {
-        container.innerHTML = `
-            <button class="btn btn-success w-100 mb-2" onclick="clockIn()" id="clockInBtn">
-                <i data-feather="clock" class="me-2"></i>Clock In
-                <small class="d-block">Start your workday</small>
-            </button>
-        `;
-    }
+    const clockInBtn = document.getElementById('clockInBtn');
+    const clockOutBtn = document.getElementById('clockOutBtn');
+    const statusDiv = document.getElementById('clock-status');
     
-    // Re-initialize feather icons
-    if (typeof feather !== 'undefined') {
-        feather.replace();
+    if (clockInBtn && clockOutBtn) {
+        if (isClockedIn) {
+            clockInBtn.style.display = 'none';
+            clockOutBtn.style.display = 'block';
+            
+            if (statusDiv) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i data-feather="clock" class="me-2"></i>
+                        You are currently clocked in
+                        ${clockInTime ? `<br><small>Since: ${new Date(clockInTime).toLocaleTimeString()}</small>` : ''}
+                    </div>
+                `;
+            }
+        } else {
+            clockInBtn.style.display = 'block';
+            clockOutBtn.style.display = 'none';
+            
+            if (statusDiv) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <i data-feather="clock" class="me-2"></i>
+                        You are currently clocked out
+                    </div>
+                `;
+            }
+        }
+        
+        // Re-initialize Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
     }
 }
 
-// Time Entries Management
+// Time Entries Refresh
 async function refreshTimeEntries() {
-    const refreshBtn = document.getElementById('refreshBtn');
-    const container = document.getElementById('timeEntriesContainer');
-    
-    if (refreshBtn) {
-        refreshBtn.disabled = true;
-        refreshBtn.innerHTML = '<i data-feather="refresh-cw" style="width: 16px; height: 16px;" class="spin"></i>';
-    }
+    const tableBody = document.querySelector('#time-entries-table tbody');
+    if (!tableBody) return;
     
     try {
-        const response = await fetch('/api/v1/recent-time-entries');
+        const response = await fetch('/api/recent-time-entries');
         const data = await response.json();
         
-        if (data.success && data.data) {
-            updateTimeEntriesTable(data.data);
+        if (data.success) {
+            updateTimeEntriesTable(data.entries);
         }
     } catch (error) {
-        console.error('Failed to refresh time entries:', error);
-    } finally {
-        if (refreshBtn) {
-            refreshBtn.disabled = false;
-            refreshBtn.innerHTML = '<i data-feather="refresh-cw" style="width: 16px; height: 16px;"></i>';
-            feather.replace();
-        }
+        console.error('Error refreshing time entries:', error);
     }
 }
 
 function updateTimeEntriesTable(entries) {
-    const container = document.getElementById('timeEntriesContainer');
-    if (!container || !entries.length) return;
+    const tableBody = document.querySelector('#time-entries-table tbody');
+    if (!tableBody) return;
     
-    const tableHtml = `
-        <div class="table-responsive">
-            <table class="table table-sm" id="timeEntriesTable">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Clock In</th>
-                        <th>Clock Out</th>
-                        <th>Hours</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${entries.map(entry => `
-                        <tr>
-                            <td>${new Date(entry.date).toLocaleDateString()}</td>
-                            <td>${new Date(entry.clock_in_time).toLocaleTimeString()}</td>
-                            <td>${entry.clock_out_time ? new Date(entry.clock_out_time).toLocaleTimeString() : 'Working'}</td>
-                            <td>${entry.total_hours || '0.0'} hrs</td>
-                            <td>
-                                <span class="badge bg-${entry.status === 'approved' ? 'success' : entry.status === 'pending' ? 'warning' : 'secondary'}">
-                                    ${entry.status}
-                                </span>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    tableBody.innerHTML = '';
     
-    container.innerHTML = tableHtml;
+    entries.forEach(entry => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${new Date(entry.clock_in_time).toLocaleDateString()}</td>
+            <td>${new Date(entry.clock_in_time).toLocaleTimeString()}</td>
+            <td>${entry.clock_out_time ? new Date(entry.clock_out_time).toLocaleTimeString() : 'Active'}</td>
+            <td>${entry.total_hours || '0.00'}</td>
+        `;
+        tableBody.appendChild(row);
+    });
 }
 
-// Quick Action Functions
+// Quick Actions
 function showTimesheet() {
-    window.location.href = '/time-entries';
+    window.location.href = '/time/timecard';
 }
 
 function showProfile() {
@@ -550,71 +333,41 @@ function showProfile() {
 }
 
 function showHelp() {
-    flashMessages.show('Help documentation is available in the user manual. Contact your system administrator for assistance.', 'info');
+    window.flashMessages.show('Help documentation coming soon!', 'info');
 }
 
 function toggleQuickActionsView() {
-    const grid = document.getElementById('quickActionsGrid');
-    const icon = document.getElementById('viewToggleIcon');
-    
-    if (grid && icon) {
-        grid.classList.toggle('expanded');
-        // Toggle between grid and list view icons
-        const isExpanded = grid.classList.contains('expanded');
-        icon.setAttribute('data-feather', isExpanded ? 'list' : 'grid');
-        feather.replace();
+    const quickActions = document.getElementById('quick-actions-section');
+    if (quickActions) {
+        quickActions.style.display = quickActions.style.display === 'none' ? 'block' : 'none';
     }
 }
 
-// Initialize components when DOM is loaded
-let dbStatus, flashMessages, sampleDataManager, liveTimer;
-
+// Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Content Loaded - Initializing components');
-    
-    // Initialize components
-    dbStatus = new DatabaseStatus();
-    flashMessages = new FlashMessages();
-    sampleDataManager = new SampleDataManager();
-    
-    // Initialize live timer for clock tracking
+    // Initialize global instances
+    window.dbStatus = new DatabaseStatus();
+    window.flashMessages = new FlashMessages();
+    window.sampleDataManager = new SampleDataManager();
     window.liveTimer = new LiveClockTimer();
-
-    // Add fade-in animation to main content
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        mainContent.classList.add('fade-in');
-    }
-
-    // Initialize feather icons
+    
+    // Initialize all components
+    window.dbStatus.init();
+    window.flashMessages.init();
+    window.sampleDataManager.init();
+    window.liveTimer.init();
+    
+    // Initialize Feather icons if available
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
-
-    // Initialize tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-
-    // Initialize popovers
-    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    popoverTriggerList.map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
     
-    // Disable all JavaScript interference with clock buttons
-    const clockButtons = document.querySelectorAll('[onclick*="clock"]');
-    clockButtons.forEach(btn => {
-        btn.removeAttribute('onclick');
-        console.log('Removed onclick from clock button');
-    });
-    
-    console.log('Initialization complete');
+    console.log('WFM System initialized successfully');
 });
 
-// Global error handler
-window.addEventListener('error', function(e) {
-    console.error('Global error:', e.error);
-});
-
-// Global unhandled promise rejection handler
-window.addEventListener('unhandledrejection', function(e) {
-    console.error('Unhandled promise rejection:', e.reason);
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    if (window.liveTimer) {
+        window.liveTimer.destroy();
+    }
 });
