@@ -219,8 +219,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Workflow & Automation Status -->
+    {% if 'workflow-automation-section' in visible_sections %}
     <div class="row mb-4" id="workflow-automation-section">
         <div class="col-lg-6">
             <div class="card h-100">
@@ -303,8 +305,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Leave Management & Scheduling -->
+    {% if 'leave-scheduling-section' in visible_sections %}
     <div class="row mb-4" id="leave-scheduling-section">
         <div class="col-lg-4">
             <div class="card h-100">
@@ -387,8 +391,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- AI Insights & Reports -->
+    {% if 'ai-insights-section' in visible_sections %}
     <div class="row mb-4" id="ai-insights-section">
         <div class="col-lg-6">
             <div class="card h-100">
@@ -463,8 +469,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- System Alerts & Notifications -->
+    {% if 'alerts-notifications-section' in visible_sections %}
     <div class="row mb-4" id="alerts-notifications-section">
         <div class="col-12">
             <div class="card">
@@ -502,6 +510,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <!-- Dashboard Configuration Modal -->
