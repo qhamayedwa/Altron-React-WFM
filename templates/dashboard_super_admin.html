@@ -276,7 +276,7 @@
                     <div class="row">
                         <div class="col-6">
                             <div class="mb-3">
-                                <div class="h4 text-success">R{{ payroll_stats.total_payroll or 0 | number_format }}</div>
+                                <div class="h4 text-success">R{{ "{:,.2f}".format(payroll_stats.total_payroll or 0) }}</div>
                                 <small class="text-muted">Current Period</small>
                             </div>
                             <div class="mb-3">
@@ -296,7 +296,7 @@
                         </div>
                     </div>
                     <div class="d-grid">
-                        <a href="{{ url_for('payroll.dashboard') }}" class="btn btn-outline-success">
+                        <a href="{{ url_for('payroll.payroll_dashboard') }}" class="btn btn-outline-success">
                             <i data-feather="calculator" class="me-2"></i>
                             View Payroll
                         </a>
@@ -382,7 +382,7 @@
                         </div>
                     </div>
                     <div class="d-grid">
-                        <a href="{{ url_for('scheduling.dashboard') }}" class="btn btn-outline-primary">
+                        <a href="{{ url_for('scheduling.scheduling_dashboard') }}" class="btn btn-outline-primary">
                             <i data-feather="calendar" class="me-2"></i>
                             Manage Schedules
                         </a>
@@ -460,7 +460,7 @@
                         </a>
                     </div>
                     <div class="d-grid mt-3">
-                        <a href="{{ url_for('reports.dashboard') }}" class="btn btn-outline-info">
+                        <a href="#" class="btn btn-outline-info">
                             <i data-feather="file-text" class="me-2"></i>
                             View All Reports
                         </a>
