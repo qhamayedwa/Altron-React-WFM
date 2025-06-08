@@ -481,13 +481,13 @@ def get_dashboard_data():
                 SELECT COUNT(*) FROM schedules s 
                 JOIN users u ON s.user_id = u.id 
                 WHERE u.department_id = :dept_id
-            """), {'managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
+            """), {'dept_id': managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
             
             shifts_today = db.session.execute(text("""
                 SELECT COUNT(*) FROM schedules s 
                 JOIN users u ON s.user_id = u.id 
                 WHERE DATE(s.start_time) = :today AND u.department_id = :dept_id
-            """), {'today': today, 'managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
+            """), {'today': today, 'dept_id': managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
             
             next_week = today + timedelta(days=7)
             upcoming_shifts = db.session.execute(text("""
@@ -495,7 +495,7 @@ def get_dashboard_data():
                 JOIN users u ON s.user_id = u.id 
                 WHERE DATE(s.start_time) BETWEEN :today AND :next_week
                 AND u.department_id = :dept_id
-            """), {'today': today, 'next_week': next_week, 'managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
+            """), {'today': today, 'next_week': next_week, 'dept_id': managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
         else:
             total_schedules = db.session.execute(text(
                 "SELECT COUNT(*) FROM schedules WHERE user_id = :user_id"
@@ -657,7 +657,7 @@ def manager_dashboard():
         # Manager sees only their department's team
         team_size = db.session.execute(text(
             "SELECT COUNT(*) FROM users WHERE department_id = :dept_id AND is_active = true"
-        ), {'managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
+        ), {'dept_id': managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
         
         # Present today - users who clocked in today in manager's department
         today = datetime.now().date()
@@ -666,14 +666,14 @@ def manager_dashboard():
             JOIN users u ON te.user_id = u.id 
             WHERE u.department_id = :dept_id 
             AND DATE(te.clock_in_time) = :today
-        """), {'managed_dept_ids[0] if managed_dept_ids else 0, 'today': today}).scalar() or 0
+        """), {'dept_id': managed_dept_ids[0] if managed_dept_ids else 0, 'today': today}).scalar() or 0
         
         # Pending approvals - open entries for manager's department
         pending_approvals = db.session.execute(text("""
             SELECT COUNT(*) FROM time_entries te 
             JOIN users u ON te.user_id = u.id 
             WHERE u.department_id = :dept_id AND te.clock_out_time IS NULL
-        """), {'managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
+        """), {'dept_id': managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
     else:
         # Super user or non-manager sees full system data
         team_size = db.session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true")).scalar() or 0
