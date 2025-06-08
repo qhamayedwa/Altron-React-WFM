@@ -172,7 +172,7 @@ def get_dashboard_data():
             WHERE hourly_rate IS NOT NULL AND is_active = true
         """)).scalar() or 150
         
-        estimated_payroll = monthly_hours * avg_hourly_rate
+        estimated_payroll = float(monthly_hours) * float(avg_hourly_rate)
         
         # Calculate overtime percentage
         overtime_percentage = (actual_overtime / monthly_hours * 100) if monthly_hours > 0 else 0
@@ -197,10 +197,10 @@ def get_dashboard_data():
         """), {'month': current_month, 'year': current_year}).scalar() or 0
         
         # Calculate actual leave balance issues
-        # Count employees with negative or expiring leave balances
+        # Count employees with negative balances (using actual fields)
         balance_issues = db.session.execute(text("""
             SELECT COUNT(DISTINCT user_id) FROM leave_balances 
-            WHERE balance < 0 OR (balance > 0 AND expiry_date < CURRENT_DATE + INTERVAL '30 days')
+            WHERE balance < 0
         """)).scalar() or 0
         
         leave_stats = {
