@@ -228,20 +228,48 @@ def edit_user(user_id):
         obj=user
     )
     
-    # Populate roles
+    # Populate form fields with existing data
     if request.method == 'GET':
         form.roles.data = [role.id for role in user.roles]
+        form.department.data = user.department_id
+        form.manager_id.data = user.manager_id
     
     if form.validate_on_submit():
-        # Update user details
+        # Update basic information
         user.username = form.username.data
         user.email = form.email.data
         user.first_name = form.first_name.data
         user.last_name = form.last_name.data
-        user.employee_id = form.employee_id.data
-        user.department = form.department.data
-        user.position = form.position.data
         user.is_active = form.is_active.data
+        
+        # Update contact information
+        user.phone = form.phone.data
+        user.mobile = form.mobile.data
+        
+        # Update address information
+        user.address_line1 = form.address_line1.data
+        user.address_line2 = form.address_line2.data
+        user.city = form.city.data
+        user.postal_code = form.postal_code.data
+        
+        # Update emergency contact
+        user.emergency_contact_name = form.emergency_contact_name.data
+        user.emergency_contact_phone = form.emergency_contact_phone.data
+        user.emergency_contact_relationship = form.emergency_contact_relationship.data
+        
+        # Update employment information
+        user.employee_id = form.employee_id.data
+        user.department_id = form.department.data if form.department.data else None
+        user.position = form.position.data
+        user.employment_type = form.employment_type.data
+        user.hire_date = form.hire_date.data
+        user.manager_id = form.manager_id.data if form.manager_id.data else None
+        user.hourly_rate = form.hourly_rate.data
+        
+        # Update professional information
+        user.education_level = form.education_level.data
+        user.skills = form.skills.data
+        user.notes = form.notes.data
         
         # Update roles
         user.roles.clear()

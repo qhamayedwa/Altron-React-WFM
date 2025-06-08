@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, SelectMultipleField, TextAreaField, BooleanField, IntegerField, FloatField, SelectField
+from wtforms import StringField, PasswordField, SubmitField, SelectMultipleField, TextAreaField, BooleanField, IntegerField, FloatField, SelectField, DateField
+from wtforms.fields import DateField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, NumberRange
 from wtforms.widgets import CheckboxInput, ListWidget
 from models import User, Role
@@ -68,16 +69,59 @@ class RegistrationForm(FlaskForm):
 
 class EditUserForm(FlaskForm):
     """Form for editing user information"""
-    username = StringField('Username', validators=[
-        DataRequired(), 
-        Length(min=3, max=64)
-    ])
+    # Basic Information
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=64)])
     email = StringField('Email', validators=[DataRequired(), Email()])
     first_name = StringField('First Name', validators=[Length(max=64)])
     last_name = StringField('Last Name', validators=[Length(max=64)])
+    
+    # Contact Information
+    phone = StringField('Phone Number', validators=[Length(max=20)])
+    mobile = StringField('Mobile Number', validators=[Length(max=20)])
+    
+    # Address Information
+    address_line1 = StringField('Address Line 1', validators=[Length(max=100)])
+    address_line2 = StringField('Address Line 2', validators=[Length(max=100)])
+    city = StringField('City', validators=[Length(max=50)])
+    postal_code = StringField('Postal Code', validators=[Length(max=10)])
+    
+    # Emergency Contact
+    emergency_contact_name = StringField('Emergency Contact Name', validators=[Length(max=100)])
+    emergency_contact_phone = StringField('Emergency Contact Phone', validators=[Length(max=20)])
+    emergency_contact_relationship = StringField('Relationship', validators=[Length(max=50)])
+    
+    # Employment Information
     employee_id = StringField('Employee ID', validators=[Length(max=20)])
-    department = StringField('Department', validators=[Length(max=64)])
+    department = SelectField('Department', coerce=int, validators=[])
     position = StringField('Position/Job Title', validators=[Length(max=64)])
+    employment_type = SelectField('Employment Type', choices=[
+        ('', 'Select Employment Type'),
+        ('full_time', 'Full Time'),
+        ('part_time', 'Part Time'),
+        ('contract', 'Contract'),
+        ('temporary', 'Temporary'),
+        ('intern', 'Intern')
+    ])
+    hire_date = DateField('Hire Date')
+    manager_id = SelectField('Direct Manager', coerce=int, validators=[])
+    hourly_rate = FloatField('Hourly Rate (ZAR)', validators=[NumberRange(min=0, max=10000)])
+    
+    # Professional Information
+    education_level = SelectField('Education Level', choices=[
+        ('', 'Select Education Level'),
+        ('matric', 'Matric'),
+        ('diploma', 'Diploma'),
+        ('degree', 'Bachelor\'s Degree'),
+        ('honours', 'Honours Degree'),
+        ('masters', 'Master\'s Degree'),
+        ('doctorate', 'Doctorate'),
+        ('certificate', 'Certificate'),
+        ('other', 'Other')
+    ])
+    skills = TextAreaField('Skills & Certifications', validators=[Length(max=500)])
+    notes = TextAreaField('Additional Notes', validators=[Length(max=1000)])
+    
+    # System Information
     roles = MultiCheckboxField('Roles', coerce=int)
     is_active = BooleanField('Active User')
     submit = SubmitField('Update User')
@@ -86,8 +130,14 @@ class EditUserForm(FlaskForm):
         super(EditUserForm, self).__init__(*args, **kwargs)
         self.original_username = original_username
         self.original_email = original_email
-        # Populate roles choices
+        
+        # Import here to avoid circular imports
+        from models import Department
+        
+        # Populate choices
         self.roles.choices = [(role.id, role.name) for role in Role.query.all()]
+        self.department.choices = [('', 'Select Department')] + [(dept.id, f"{dept.name} ({dept.site.name})") for dept in Department.query.join(Department.site).filter(Department.is_active == True).all()]
+        self.manager_id.choices = [('', 'No Manager')] + [(user.id, f"{user.full_name} ({user.position or 'No Position'})") for user in User.query.filter(User.is_active == True).all()]
     
     def validate_username(self, username):
         """Validate username is unique (except for current user)"""

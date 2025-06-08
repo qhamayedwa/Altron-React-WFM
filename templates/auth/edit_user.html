@@ -51,7 +51,7 @@
                         <!-- Personal Details -->
                         <div class="row mb-4">
                             <div class="col-12">
-                                <h6 class="text-muted mb-3">Personal Details</h6>
+                                <h6 class="text-muted mb-3"><i data-feather="user" class="me-2"></i>Personal Details</h6>
                             </div>
                             
                             <div class="col-md-6 mb-3">
@@ -59,9 +59,7 @@
                                 {{ form.first_name(class="form-control" + (" is-invalid" if form.first_name.errors else "")) }}
                                 {% if form.first_name.errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form.first_name.errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form.first_name.errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
@@ -71,18 +69,102 @@
                                 {{ form.last_name(class="form-control" + (" is-invalid" if form.last_name.errors else "")) }}
                                 {% if form.last_name.errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form.last_name.errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form.last_name.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.email.label(class="form-label") }}
+                                {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+                                {% if form.email.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.email.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.username.label(class="form-label") }}
+                                {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+                                {% if form.username.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.username.errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
                         </div>
 
-                        <!-- Employee Information -->
+                        <!-- Contact Information -->
                         <div class="row mb-4">
                             <div class="col-12">
-                                <h6 class="text-muted mb-3">Employee Information</h6>
+                                <h6 class="text-muted mb-3"><i data-feather="phone" class="me-2"></i>Contact Information</h6>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.phone.label(class="form-label") }}
+                                {{ form.phone(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.mobile.label(class="form-label") }}
+                                {{ form.mobile(class="form-control") }}
+                            </div>
+                        </div>
+
+                        <!-- Address Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3"><i data-feather="map-pin" class="me-2"></i>Address Information</h6>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.address_line1.label(class="form-label") }}
+                                {{ form.address_line1(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.address_line2.label(class="form-label") }}
+                                {{ form.address_line2(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.city.label(class="form-label") }}
+                                {{ form.city(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.postal_code.label(class="form-label") }}
+                                {{ form.postal_code(class="form-control") }}
+                            </div>
+                        </div>
+
+                        <!-- Emergency Contact -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3"><i data-feather="alert-circle" class="me-2"></i>Emergency Contact</h6>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                {{ form.emergency_contact_name.label(class="form-label") }}
+                                {{ form.emergency_contact_name(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                {{ form.emergency_contact_phone.label(class="form-label") }}
+                                {{ form.emergency_contact_phone(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                {{ form.emergency_contact_relationship.label(class="form-label") }}
+                                {{ form.emergency_contact_relationship(class="form-control") }}
+                            </div>
+                        </div>
+
+                        <!-- Employment Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3"><i data-feather="briefcase" class="me-2"></i>Employment Information</h6>
                             </div>
                             
                             <div class="col-md-4 mb-3">
@@ -90,9 +172,7 @@
                                 {{ form.employee_id(class="form-control" + (" is-invalid" if form.employee_id.errors else "")) }}
                                 {% if form.employee_id.errors %}
                                     <div class="invalid-feedback">
-                                        {% for error in form.employee_id.errors %}
-                                            {{ error }}
-                                        {% endfor %}
+                                        {% for error in form.employee_id.errors %}{{ error }}{% endfor %}
                                     </div>
                                 {% endif %}
                             </div>
@@ -105,6 +185,52 @@
                             <div class="col-md-4 mb-3">
                                 {{ form.position.label(class="form-label") }}
                                 {{ form.position(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                {{ form.employment_type.label(class="form-label") }}
+                                {{ form.employment_type(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                {{ form.hire_date.label(class="form-label") }}
+                                {{ form.hire_date(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                {{ form.manager_id.label(class="form-label") }}
+                                {{ form.manager_id(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.hourly_rate.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">R</span>
+                                    {{ form.hourly_rate(class="form-control") }}
+                                    <span class="input-group-text">/hour</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Professional Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3"><i data-feather="award" class="me-2"></i>Professional Information</h6>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.education_level.label(class="form-label") }}
+                                {{ form.education_level(class="form-control") }}
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                {{ form.skills.label(class="form-label") }}
+                                {{ form.skills(class="form-control", rows=3, placeholder="List skills, certifications, and qualifications...") }}
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                {{ form.notes.label(class="form-label") }}
+                                {{ form.notes(class="form-control", rows=4, placeholder="Additional notes about the employee...") }}
                             </div>
                         </div>
 
