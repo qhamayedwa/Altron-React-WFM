@@ -7,7 +7,24 @@
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0">Reports & Analytics</h1>
+                <div>
+                    <h1 class="h3 mb-0">
+                        {% if report_type == 'attendance' %}
+                            Attendance Summary Report
+                        {% elif report_type == 'performance' %}
+                            Performance Metrics Report
+                        {% elif report_type == 'compliance' %}
+                            Compliance Report
+                        {% else %}
+                            Reports & Analytics
+                        {% endif %}
+                    </h1>
+                    {% if report_type != 'general' %}
+                        <p class="text-muted mb-0">
+                            {% if period == 'weekly' %}Weekly{% elif period == 'quarterly' %}Quarterly{% else %}Monthly{% endif %} Report
+                        </p>
+                    {% endif %}
+                </div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Dashboard</a></li>
@@ -24,6 +41,14 @@
             <div class="card">
                 <div class="card-body">
                     <form method="GET" class="row g-3">
+                        <!-- Preserve report type and period parameters -->
+                        {% if report_type %}
+                            <input type="hidden" name="report_type" value="{{ report_type }}">
+                        {% endif %}
+                        {% if period %}
+                            <input type="hidden" name="period" value="{{ period }}">
+                        {% endif %}
+                        
                         <div class="col-md-4">
                             <label for="start_date" class="form-label">Start Date</label>
                             <input type="date" class="form-control" id="start_date" name="start_date" 

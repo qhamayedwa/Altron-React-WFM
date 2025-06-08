@@ -442,25 +442,25 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group list-group-flush">
-                        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('main.reports') }}?report_type=attendance&period=weekly" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             Attendance Summary Report
                             <span class="badge bg-primary rounded-pill">Weekly</span>
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('payroll.time_summary_report') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             Payroll Analytics Report
                             <span class="badge bg-success rounded-pill">Monthly</span>
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('main.reports') }}?report_type=performance" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             Performance Metrics
                             <span class="badge bg-info rounded-pill">Real-time</span>
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('main.reports') }}?report_type=compliance&period=quarterly" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             Compliance Report
                             <span class="badge bg-warning rounded-pill">Quarterly</span>
                         </a>
                     </div>
                     <div class="d-grid mt-3">
-                        <a href="#" class="btn btn-outline-info">
+                        <a href="{{ url_for('main.reports') }}" class="btn btn-outline-info">
                             <i data-feather="file-text" class="me-2"></i>
                             View All Reports
                         </a>

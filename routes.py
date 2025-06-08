@@ -150,6 +150,10 @@ def index():
 def reports():
     """Reports dashboard with proper employee data restrictions"""
     try:
+        # Get report type and period from URL parameters
+        report_type = request.args.get('report_type', 'general')
+        period = request.args.get('period', 'monthly')
+        
         # Check user role for data access control
         is_manager_or_admin = (hasattr(current_user, 'has_role') and 
                               (current_user.has_role('Manager') or 
@@ -265,6 +269,8 @@ def reports():
         return render_template('reports.html',
                              start_date=start_date,
                              end_date=end_date,
+                             report_type=report_type,
+                             period=period,
                              total_hours=total_hours,
                              overtime_hours=overtime_hours,
                              attendance_summary=attendance_summary,
