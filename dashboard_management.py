@@ -241,9 +241,9 @@ def employee_dashboard():
         'leave_balance': 0,
         'upcoming_shifts': Schedule.query.filter(
             and_(
-                Schedule.employee_id == current_user.id,
-                Schedule.date >= today,
-                Schedule.date <= today + timedelta(days=7)
+                Schedule.user_id == current_user.id,
+                Schedule.start_time >= datetime.combine(today, datetime.min.time()),
+                Schedule.start_time <= datetime.combine(today + timedelta(days=7), datetime.max.time())
             )
         ).count()
     }
