@@ -137,13 +137,13 @@ class EditUserForm(FlaskForm):
         # Populate choices
         self.roles.choices = [(role.id, role.name) for role in Role.query.all()]
         
-        # Get departments with site information
-        departments = Department.query.join('site').filter(Department.is_active == True).all()
-        self.department.choices = [('', 'Select Department')] + [(dept.id, f"{dept.name} ({dept.site.name})") for dept in departments]
+        # Get departments for selection
+        departments = Department.query.filter(Department.is_active.is_(True)).all()
+        self.department.choices = [('', 'Select Department')] + [(dept.id, dept.name) for dept in departments]
         
         # Get users for manager selection
-        active_users = User.query.filter(User.is_active == True).all()
-        self.manager_id.choices = [('', 'No Manager')] + [(user.id, f"{user.first_name} {user.last_name} ({user.position or 'No Position'})") for user in active_users]
+        active_users = User.query.filter(User.is_active.is_(True)).all()
+        self.manager_id.choices = [('', 'No Manager')] + [(user.id, f"{user.first_name or ''} {user.last_name or ''}".strip() or user.username) for user in active_users]
     
     def validate_username(self, username):
         """Validate username is unique (except for current user)"""
