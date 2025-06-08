@@ -201,10 +201,11 @@ def get_dashboard_data():
                 AND u.department_id IN ({dept_ids_str})
             """)).scalar() or 0
         else:
-            active_employees = 1 if db.session.execute(text("""
+            active_count = db.session.execute(text("""
                 SELECT COUNT(*) FROM time_entries 
                 WHERE user_id = :user_id AND clock_in_time >= CURRENT_DATE - INTERVAL '7 days'
-            """), {'user_id': current_user.id}).scalar() > 0 else 0
+            """), {'user_id': current_user.id}).scalar()
+            active_employees = 1 if (active_count and active_count > 0) else 0
         
         org_stats = {
             'companies': companies_count,
@@ -789,12 +790,8 @@ def employee_dashboard():
         'is_clocked_in': active_entry is not None,
         'clock_in_time': active_entry.clock_in_time if active_entry else None,
         'upcoming_shifts': Schedule.query.filter(
-            and_(
-                Schedule.user_id == current_user.id,
-                Schedule.start_time >= datetime.combine(today, datetime.min.time()),
-                Schedule.start_time <= datetime.combine(today + timedelta(days=7), datetime.max.time())
-            )
-        ).count()
+            Schedule.user_id == current_user.id
+        ).count() if hasattr(Schedule, 'user_id') else 0
     }
     
     dashboard_data['personal_stats'] = personal_stats
