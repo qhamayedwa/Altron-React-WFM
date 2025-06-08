@@ -222,7 +222,7 @@ class LiveClockTimer {
 
     async checkClockStatus() {
         try {
-            const response = await fetch('/api/v1/current-status');
+            const response = await fetch('/api/v1/time/current-status');
             const data = await response.json();
             
             if (data.success && data.data.is_clocked_in && data.data.clock_in_time) {
@@ -302,7 +302,7 @@ async function clockIn() {
             button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Clocking In...';
         }
 
-        const response = await fetch('/api/v1/clock-in', {
+        const response = await fetch('/api/v1/time/clock-in', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -323,15 +323,21 @@ async function clockIn() {
             flashMessages.show('Successfully clocked in!', 'success');
             
             // Refresh time entries
-            if (typeof refreshTimeEntries === 'function') {
-                refreshTimeEntries();
-            }
+            refreshTimeEntries();
         } else {
             flashMessages.show(data.message || 'Failed to clock in', 'danger');
         }
     } catch (error) {
         console.error('Clock in error:', error);
         flashMessages.show('Error clocking in. Please try again.', 'danger');
+    } finally {
+        // Reset button state
+        const button = document.getElementById('clockInBtn');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i data-feather="clock" class="me-2"></i>Clock In<small class="d-block">Start your workday</small>';
+            feather.replace();
+        }
     }
 }
 
@@ -343,7 +349,7 @@ async function clockOut() {
             button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Clocking Out...';
         }
 
-        const response = await fetch('/api/v1/clock-out', {
+        const response = await fetch('/api/v1/time/clock-out', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -373,6 +379,14 @@ async function clockOut() {
     } catch (error) {
         console.error('Clock out error:', error);
         flashMessages.show('Error clocking out. Please try again.', 'danger');
+    } finally {
+        // Reset button state
+        const button = document.getElementById('clockOutBtn');
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i data-feather="clock" class="me-2"></i>Clock Out<small class="d-block" id="clockInTime">Started: Unknown</small><div class="live-timer mt-1"><strong class="text-white" id="liveDuration">00:00:00</strong><small class="d-block opacity-75">Working Time</small></div>';
+            feather.replace();
+        }
     }
 }
 
