@@ -42,12 +42,14 @@ def get_dashboard_data():
             total_time_entries = db.session.execute(text("SELECT COUNT(*) FROM time_entries")).scalar() or 0
             leave_applications = db.session.execute(text("SELECT COUNT(*) FROM leave_applications")).scalar() or 0
         elif is_manager and managed_dept_ids:
-            dept_ids_str = ','.join(str(id) for id in managed_dept_ids)
             # Managers see only their managed departments' data
             dept_ids_str = ','.join(str(id) for id in managed_dept_ids)
+            print(f"DEBUG: Manager {current_user.id} managing departments: {managed_dept_ids}")
+            print(f"DEBUG: dept_ids_str: {dept_ids_str}")
             total_users = db.session.execute(text(
                 f"SELECT COUNT(*) FROM users WHERE department_id IN ({dept_ids_str})"
             )).scalar() or 0
+            print(f"DEBUG: total_users: {total_users}")
             companies_count = 1  # Manager sees only their company context
             departments_count = len(managed_dept_ids)  # Manager sees their managed departments
             regions_count = 1  # Manager sees only their region context
