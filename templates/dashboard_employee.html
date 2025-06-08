@@ -401,10 +401,10 @@ function updateClockButtonUI(isClockedIn, clockInTime) {
 
 function quickClockAction() {
     // Determine current status and perform opposite action
-    fetch('/time/current-status')
+    fetch('/api/v1/time/current-status')
         .then(response => response.json())
         .then(data => {
-            if (data.is_clocked_in) {
+            if (data.success && data.data.is_clocked_in) {
                 clockOut();
             } else {
                 clockIn();
