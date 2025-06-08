@@ -44,6 +44,15 @@
         </div>
     </div>
 
+    <!-- Results Summary -->
+    {% if current_role_filter %}
+    <div class="alert alert-info">
+        <i data-feather="filter" class="me-2"></i>
+        Showing {{ users.total }} users with role: <strong>{{ current_role_filter }}</strong>
+        <a href="{{ url_for('auth.user_management') }}" class="ms-3 text-decoration-none">View All Users</a>
+    </div>
+    {% endif %}
+
     <div class="card">
         <div class="card-body">
             {% if users.items %}
