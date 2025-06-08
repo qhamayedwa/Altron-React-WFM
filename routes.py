@@ -418,7 +418,7 @@ def export_payroll_csv():
                 regular_hours, 
                 overtime_hours, 
                 total_hours, 
-                f"${gross_pay:.2f}"
+                f"R{gross_pay:.2f}"
             ])
 
         # Create response
