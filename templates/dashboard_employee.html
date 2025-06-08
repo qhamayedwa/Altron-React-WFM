@@ -14,9 +14,9 @@
             <p class="text-muted mb-0">Your personal workspace for time tracking and schedule management</p>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" onclick="quickClockAction()">
+            <button class="btn btn-primary" onclick="window.location.href='{{ url_for('time_attendance.my_timecard') }}'">
                 <i data-feather="clock" class="me-2"></i>
-                Quick Clock In/Out
+                My Timecard
             </button>
             <button class="btn btn-outline-secondary" onclick="location.reload()">
                 <i data-feather="refresh-cw" class="me-2"></i>
