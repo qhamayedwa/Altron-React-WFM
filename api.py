@@ -601,6 +601,64 @@ def api_database_status():
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }), 500
 
+@api_bp.route('/recent-time-entries', methods=['GET'])
+@login_required
+def api_recent_time_entries():
+    """Get recent time entries for dashboard updates"""
+    try:
+        # Determine scope based on user role
+        is_manager_or_admin = (
+            hasattr(current_user, 'has_role') and 
+            (current_user.has_role('Manager') or current_user.has_role('Admin') or current_user.has_role('Super User'))
+        )
+        
+        # Base query for recent entries (last 7 days)
+        week_ago = datetime.now() - timedelta(days=7)
+        
+        if is_manager_or_admin:
+            # Managers see all recent entries
+            recent_entries = TimeEntry.query.filter(
+                TimeEntry.clock_in_time >= week_ago
+            ).order_by(TimeEntry.clock_in_time.desc()).limit(10).all()
+        else:
+            # Regular users see only their entries
+            recent_entries = TimeEntry.query.filter(
+                and_(
+                    TimeEntry.user_id == current_user.id,
+                    TimeEntry.clock_in_time >= week_ago
+                )
+            ).order_by(TimeEntry.clock_in_time.desc()).limit(10).all()
+        
+        # Format entries for API response
+        entries_data = []
+        for entry in recent_entries:
+            employee_name = f"{entry.employee.first_name or ''} {entry.employee.last_name or ''}".strip() or entry.employee.username
+            
+            entry_data = {
+                'id': entry.id,
+                'employee_name': employee_name,
+                'employee_username': entry.employee.username,
+                'date': entry.clock_in_time.strftime('%m/%d') if entry.clock_in_time else 'N/A',
+                'clock_in_time': entry.clock_in_time.strftime('%H:%M') if entry.clock_in_time else 'N/A',
+                'clock_out_time': entry.clock_out_time.strftime('%H:%M') if entry.clock_out_time else None,
+                'total_hours': entry.total_hours or 0,
+                'status': entry.status or 'Open'
+            }
+            entries_data.append(entry_data)
+        
+        return api_response(True, data={
+            'entries': entries_data,
+            'count': len(entries_data),
+            'is_manager_view': is_manager_or_admin
+        })
+        
+    except Exception as e:
+        logging.error(f"Recent time entries API error: {e}")
+        return api_response(False, error={
+            'code': 'SERVER_ERROR',
+            'message': 'Failed to fetch recent time entries'
+        }, status_code=500)
+
 # ====================
 # USER MANAGEMENT APIs
 # ====================
