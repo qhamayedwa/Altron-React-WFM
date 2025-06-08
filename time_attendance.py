@@ -41,8 +41,7 @@ def clock_in():
                 flash('You already have an open time entry. Please clock out first.', 'warning')
                 return redirect(url_for('main.index'))
         
-        # Get GPS coordinates if provided
-        json_data = request.get_json() or {}
+        # Get GPS coordinates if provided  
         latitude = json_data.get('latitude') if request.is_json else None
         longitude = json_data.get('longitude') if request.is_json else None
         notes = json_data.get('notes', '') if request.is_json else ''
@@ -86,6 +85,13 @@ def clock_in():
 def clock_out():
     """Employee clock-out endpoint"""
     try:
+        # Handle both JSON and form requests properly
+        json_data = {}
+        if request.is_json and request.content_length and request.content_length > 0:
+            try:
+                json_data = request.get_json() or {}
+            except Exception:
+                json_data = {}
         # Find the open time entry for the user
         open_entry = TimeEntry.query.filter_by(
             user_id=current_user.id,
@@ -103,7 +109,6 @@ def clock_out():
                 return redirect(url_for('main.index'))
         
         # Get GPS coordinates if provided
-        json_data = request.get_json() or {}
         latitude = json_data.get('latitude') if request.is_json else None
         longitude = json_data.get('longitude') if request.is_json else None
         notes = json_data.get('notes', '') if request.is_json else ''
