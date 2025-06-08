@@ -376,11 +376,12 @@ def team_timecard():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
-    query = TimeEntry.query
+    # Build query with joins to include user and department information
+    query = TimeEntry.query.join(User, TimeEntry.user_id == User.id)
     
     # Filter by user if specified
     if user_id:
-        query = query.filter_by(user_id=user_id)
+        query = query.filter(TimeEntry.user_id == user_id)
     
     # Filter by date range
     if start_date:

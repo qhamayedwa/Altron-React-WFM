@@ -57,6 +57,7 @@
                     <thead>
                         <tr>
                             <th>Employee</th>
+                            <th>Department</th>
                             <th>Date</th>
                             <th>Clock In</th>
                             <th>Clock Out</th>
@@ -74,6 +75,9 @@
                             <td>
                                 <strong>{{ entry.employee.username }}</strong>
                                 <br><small class="text-muted">{{ entry.employee.full_name }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ entry.employee.department or 'Unassigned' }}</span>
                             </td>
                             <td>{{ entry.work_date.strftime('%b %d, %Y') }}</td>
                             <td>{{ entry.clock_in_time.strftime('%I:%M %p') }}</td>
