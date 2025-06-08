@@ -22,14 +22,14 @@
 }
 
 :root {
-    /* Altron Brand Colors */
-    --primary-gradient: linear-gradient(135deg, #27C1E3 0%, #1FA3C7 100%);
-    --primary-dark: #1B8AA3;
-    --primary-light: #27C1E3;
+    /* Updated Brand Colors */
+    --primary-gradient: linear-gradient(135deg, #3A9CA8 0%, #2F7D87 100%);
+    --primary-dark: #2F7D87;
+    --primary-light: #3A9CA8;
     
-    /* Altron Accent Colors */
+    /* Updated Accent Colors */
     --accent-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    --accent-warning: linear-gradient(135deg, #27C1E3 0%, #1FA3C7 100%);
+    --accent-warning: linear-gradient(135deg, #3A9CA8 0%, #2F7D87 100%);
     --accent-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     --accent-info: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
     
@@ -81,14 +81,175 @@
     --app-info: #06b6d4;
     --app-warning: #f59e0b;
     --app-danger: #ef4444;
-    --bs-primary: #27C1E3;
+    --bs-primary: #3A9CA8;
     --bs-secondary: var(--neutral-500);
     --bs-success: #10b981;
     --bs-info: #1E3A8A;
-    --bs-warning: #27C1E3;
+    --bs-warning: #3A9CA8;
     --bs-danger: #ef4444;
     --bs-dark: var(--neutral-800);
     --bs-light: var(--neutral-100);
+}
+
+/* Bootstrap Primary Color Override */
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active,
+.btn-primary:not(:disabled):not(.disabled):active {
+    background-color: #3A9CA8 !important;
+    border-color: #3A9CA8 !important;
+    background-image: var(--primary-gradient) !important;
+}
+
+.btn-primary:hover {
+    background-color: #2F7D87 !important;
+    border-color: #2F7D87 !important;
+}
+
+.bg-primary,
+.badge.bg-primary,
+.alert-primary {
+    background-color: #3A9CA8 !important;
+}
+
+.text-primary {
+    color: #3A9CA8 !important;
+}
+
+.border-primary {
+    border-color: #3A9CA8 !important;
+}
+
+.card-header {
+    background: var(--primary-gradient) !important;
+    color: white !important;
+}
+
+.navbar-brand,
+.navbar-nav .nav-link {
+    color: #3A9CA8 !important;
+}
+
+.pagination .page-item.active .page-link,
+.pagination .page-link:hover {
+    background-color: #3A9CA8 !important;
+    border-color: #3A9CA8 !important;
+}
+
+/* Enhanced Modern Styling */
+.card {
+    border: none !important;
+    box-shadow: var(--shadow-md) !important;
+    border-radius: var(--radius-lg) !important;
+    transition: all 0.3s ease !important;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg) !important;
+    transform: translateY(-2px) !important;
+}
+
+.card-header {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+    border-bottom: none !important;
+    font-weight: 600 !important;
+    padding: 1.25rem 1.5rem !important;
+}
+
+.card-body {
+    padding: 1.5rem !important;
+}
+
+.btn {
+    border-radius: var(--radius-md) !important;
+    font-weight: 500 !important;
+    padding: 0.75rem 1.5rem !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+}
+
+.btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+
+.btn-outline-primary {
+    color: #3A9CA8 !important;
+    border: 2px solid #3A9CA8 !important;
+    background: transparent !important;
+}
+
+.btn-outline-primary:hover {
+    background: #3A9CA8 !important;
+    color: white !important;
+    border-color: #3A9CA8 !important;
+}
+
+.display-6 {
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+}
+
+.navbar {
+    box-shadow: var(--shadow-sm) !important;
+    border-bottom: 1px solid var(--neutral-200) !important;
+}
+
+.sidebar {
+    background: linear-gradient(180deg, var(--neutral-50) 0%, var(--neutral-100) 100%) !important;
+    border-right: 1px solid var(--neutral-200) !important;
+}
+
+.table {
+    border-radius: var(--radius-lg) !important;
+    overflow: hidden !important;
+}
+
+.table thead th {
+    background: var(--primary-gradient) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    border: none !important;
+    padding: 1rem 1.5rem !important;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid var(--neutral-200) !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.table tbody tr:hover {
+    background-color: var(--neutral-50) !important;
+}
+
+.form-control,
+.form-select {
+    border-radius: var(--radius-md) !important;
+    border: 2px solid var(--neutral-200) !important;
+    padding: 0.75rem 1rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #3A9CA8 !important;
+    box-shadow: 0 0 0 0.2rem rgba(58, 156, 168, 0.25) !important;
+}
+
+.alert {
+    border-radius: var(--radius-lg) !important;
+    border: none !important;
+    padding: 1rem 1.5rem !important;
+    font-weight: 500 !important;
+}
+
+.badge {
+    border-radius: var(--radius-sm) !important;
+    padding: 0.5rem 0.75rem !important;
+    font-weight: 600 !important;
+    font-size: 0.75rem !important;
 }
 
 /* Live Timer Animations */
