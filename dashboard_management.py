@@ -651,29 +651,33 @@ def manager_dashboard():
     # Get manager-specific data - Use department-filtered authentic data
     is_super_user = current_user.has_role('Super User')
     is_manager = current_user.has_role('Manager')
-    managed_dept_ids = getattr(current_user, 'department_id', None)
+    
+    # Import the proper function to get managed departments
+    from routes import get_managed_departments
+    managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
     
     if is_manager and managed_dept_ids and not is_super_user:
-        # Manager sees only their department's team
-        team_size = db.session.execute(text(
-            "SELECT COUNT(*) FROM users WHERE department_id = :dept_id AND is_active = true"
-        ), {'dept_id': managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
+        # Manager sees only their managed departments' team
+        dept_ids_str = ','.join(str(id) for id in managed_dept_ids)
+        team_size = db.session.execute(text(f"""
+            SELECT COUNT(*) FROM users WHERE department_id IN ({dept_ids_str}) AND is_active = true
+        """)).scalar() or 0
         
-        # Present today - users who clocked in today in manager's department
+        # Present today - users who clocked in today in manager's departments
         today = datetime.now().date()
-        present_today = db.session.execute(text("""
+        present_today = db.session.execute(text(f"""
             SELECT COUNT(DISTINCT te.user_id) FROM time_entries te 
             JOIN users u ON te.user_id = u.id 
-            WHERE u.department_id = :dept_id 
+            WHERE u.department_id IN ({dept_ids_str})
             AND DATE(te.clock_in_time) = :today
-        """), {'dept_id': managed_dept_ids[0] if managed_dept_ids else 0, 'today': today}).scalar() or 0
+        """), {'today': today}).scalar() or 0
         
-        # Pending approvals - open entries for manager's department
-        pending_approvals = db.session.execute(text("""
+        # Pending approvals - open entries for manager's departments
+        pending_approvals = db.session.execute(text(f"""
             SELECT COUNT(*) FROM time_entries te 
             JOIN users u ON te.user_id = u.id 
-            WHERE u.department_id = :dept_id AND te.clock_out_time IS NULL
-        """), {'dept_id': managed_dept_ids[0] if managed_dept_ids else 0}).scalar() or 0
+            WHERE u.department_id IN ({dept_ids_str}) AND te.clock_out_time IS NULL
+        """)).scalar() or 0
     else:
         # Super user or non-manager sees full system data
         team_size = db.session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true")).scalar() or 0
