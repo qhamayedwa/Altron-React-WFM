@@ -84,10 +84,14 @@ def clock_out():
         ).first()
         
         if not open_entry:
-            return jsonify({
-                'success': False,
-                'message': 'No open time entry found. Please clock in first.'
-            }), 400
+            if request.is_json:
+                return jsonify({
+                    'success': False,
+                    'message': 'No open time entry found. Please clock in first.'
+                }), 400
+            else:
+                flash('No open time entry found. Please clock in first.', 'warning')
+                return redirect(url_for('main.index'))
         
         # Get GPS coordinates if provided
         latitude = request.json.get('latitude') if request.is_json else None
@@ -104,20 +108,32 @@ def clock_out():
         
         db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'message': 'Successfully clocked out',
-            'time_entry_id': open_entry.id,
-            'clock_out_time': open_entry.clock_out_time.isoformat(),
-            'total_hours': open_entry.total_hours
-        })
+        # Calculate duration for display
+        duration = open_entry.clock_out_time - open_entry.clock_in_time
+        total_hours = duration.total_seconds() / 3600
+        
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'message': 'Successfully clocked out',
+                'time_entry_id': open_entry.id,
+                'clock_out_time': open_entry.clock_out_time.isoformat(),
+                'total_hours': round(total_hours, 2)
+            })
+        else:
+            flash(f'Successfully clocked out! Total time: {total_hours:.2f} hours', 'success')
+            return redirect(url_for('main.index'))
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Error clocking out: {str(e)}'
-        }), 500
+        if request.is_json:
+            return jsonify({
+                'success': False,
+                'message': f'Error clocking out: {str(e)}'
+            }), 500
+        else:
+            flash(f'Error clocking out: {str(e)}', 'danger')
+            return redirect(url_for('main.index'))
 
 @time_attendance_bp.route('/start-break', methods=['POST'])
 @login_required

@@ -125,14 +125,16 @@
                             <small class="text-muted mb-2 d-block">Time Tracking</small>
                             <div id="clockButtonContainer">
                             {% if current_status and current_status.get('is_clocked_in') %}
-                            <button class="btn btn-danger w-100 mb-2" onclick="clockOut()" id="clockOutBtn">
-                                <i data-feather="clock" class="me-2"></i>Clock Out
-                                <small class="d-block" id="clockInTime">Started: {{ current_status.get('clock_in_time') or 'Unknown' }}</small>
-                                <div class="live-timer mt-1">
-                                    <strong class="text-white" id="liveDuration">00:00:00</strong>
-                                    <small class="d-block opacity-75">Working Time</small>
-                                </div>
-                            </button>
+                            <form method="POST" action="/time/clock-out" style="display: inline;">
+                                <button type="submit" class="btn btn-danger w-100 mb-2" id="clockOutBtn">
+                                    <i data-feather="clock" class="me-2"></i>Clock Out
+                                    <small class="d-block" id="clockInTime">Started: {{ current_status.get('clock_in_time') or 'Unknown' }}</small>
+                                    <div class="live-timer mt-1">
+                                        <strong class="text-white" id="liveDuration">00:00:00</strong>
+                                        <small class="d-block opacity-75">Working Time</small>
+                                    </div>
+                                </button>
+                            </form>
                             {% else %}
                             <form method="POST" action="/time/clock-in" style="display: inline;">
                                 <button type="submit" class="btn btn-success w-100 mb-2" id="clockInBtn">
