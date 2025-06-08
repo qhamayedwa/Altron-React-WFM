@@ -672,6 +672,13 @@ def manager_dashboard():
     if is_manager and managed_dept_ids and not is_super_user:
         # Manager sees only their managed departments' team
         dept_ids_str = ','.join(str(id) for id in managed_dept_ids)
+        
+        # Get managed department names
+        managed_departments = db.session.execute(text(f"""
+            SELECT name FROM departments WHERE id IN ({dept_ids_str})
+        """)).fetchall()
+        managed_dept_names = [dept.name for dept in managed_departments]
+        
         team_size = db.session.execute(text(f"""
             SELECT COUNT(*) FROM users WHERE department_id IN ({dept_ids_str}) AND is_active = true
         """)).scalar() or 0
@@ -693,6 +700,7 @@ def manager_dashboard():
         """)).scalar() or 0
     else:
         # Super user or non-manager sees full system data
+        managed_dept_names = ['All Departments']
         team_size = db.session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true")).scalar() or 0
         today = datetime.now().date()
         present_today = db.session.execute(text("""
@@ -711,6 +719,7 @@ def manager_dashboard():
     
     return render_template('dashboard_manager.html', 
                          visible_sections=visible_sections,
+                         managed_dept_names=managed_dept_names,
                          **dashboard_data)
 
 @dashboard_bp.route('/employee')

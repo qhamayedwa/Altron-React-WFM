@@ -11,7 +11,7 @@
                 <i data-feather="users" class="me-2"></i>
                 Manager Dashboard
             </h2>
-            <p class="text-muted mb-0">Team oversight and management tools for {{ current_user.department.name if current_user.department else 'All Departments' }}</p>
+            <p class="text-muted mb-0">Managing: {{ managed_dept_names | join(', ') if managed_dept_names else 'All Departments' }}</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ url_for('organization.my_department') }}" class="btn btn-primary">
