@@ -147,7 +147,7 @@
                                     
                                     {% if daily_total > 0 %}
                                     <div class="daily-total">
-                                        Total: <strong>{{ "%.1f"|format(daily_total) }}h</strong>
+                                        Total: <strong>{{ daily_total|hours_minutes }}</strong>
                                     </div>
                                     {% endif %}
                                 {% else %}
@@ -160,10 +160,10 @@
                             
                             <td class="weekly-total-cell text-center">
                                 <div class="total-display">
-                                    <strong class="h5 text-primary">{{ "%.1f"|format(user_data.weekly_total) }}h</strong>
+                                    <strong class="h5 text-primary">{{ user_data.weekly_total|hours_minutes }}</strong>
                                     {% if user_data.overtime_hours > 0 %}
                                     <div class="overtime-indicator">
-                                        <span class="badge bg-warning">{{ "%.1f"|format(user_data.overtime_hours) }}h OT</span>
+                                        <span class="badge bg-warning">{{ user_data.overtime_hours|hours_minutes }} OT</span>
                                     </div>
                                     {% endif %}
                                 </div>
