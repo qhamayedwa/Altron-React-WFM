@@ -986,7 +986,7 @@ def employee_timecards():
                 
                 # Get leave applications for this date
                 leave_app = LeaveApplication.query.filter(
-                    LeaveApplication.employee_id == user.id,
+                    LeaveApplication.user_id == user.id,
                     LeaveApplication.start_date <= current_date,
                     LeaveApplication.end_date >= current_date,
                     LeaveApplication.status == 'Approved'

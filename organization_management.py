@@ -689,3 +689,11 @@ def my_department():
                          active_count=active_count,
                          on_leave_count=on_leave_count,
                          scheduled_count=scheduled_count)
+
+def get_managed_departments(user_id):
+    """Get list of department IDs that a user manages"""
+    managed_departments = Department.query.filter_by(
+        manager_id=user_id, 
+        is_active=True
+    ).all()
+    return [dept.id for dept in managed_departments]
