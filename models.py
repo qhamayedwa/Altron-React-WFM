@@ -822,15 +822,16 @@ class LeaveBalance(db.Model):
     
     def add_accrual(self, hours):
         """Add accrued leave hours"""
-        self.balance += hours
-        self.accrued_this_year += hours
+        self.balance = (self.balance or 0.0) + hours
+        self.accrued_this_year = (self.accrued_this_year or 0.0) + hours
         self.last_accrual_date = datetime.utcnow().date()
     
     def deduct_usage(self, hours):
         """Deduct used leave hours"""
-        if self.balance >= hours:
-            self.balance -= hours
-            self.used_this_year += hours
+        current_balance = self.balance or 0.0
+        if current_balance >= hours:
+            self.balance = current_balance - hours
+            self.used_this_year = (self.used_this_year or 0.0) + hours
             return True
         return False
     
