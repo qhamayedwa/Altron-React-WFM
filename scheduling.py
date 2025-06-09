@@ -548,6 +548,136 @@ def api_check_schedule_conflicts():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# Batch Management Routes
+
+@scheduling_bp.route('/batch/<batch_id>/edit', methods=['GET', 'POST'])
+@role_required('Manager', 'Admin', 'Super User')
+def edit_batch(batch_id):
+    """Edit an entire batch of schedules"""
+    # Get all schedules in this batch
+    batch_schedules = Schedule.query.filter_by(batch_id=batch_id).all()
+    
+    if not batch_schedules:
+        flash('Batch not found.', 'danger')
+        return redirect(url_for('scheduling.manage_schedules'))
+    
+    # Apply department filtering for managers
+    is_super_user = current_user.has_role('Super User')
+    is_manager = current_user.has_role('Manager')
+    managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
+    
+    if is_manager and managed_dept_ids and not is_super_user:
+        # Check if all schedules in batch belong to managed departments
+        for schedule in batch_schedules:
+            if schedule.employee.department_id not in managed_dept_ids:
+                flash('You do not have permission to edit this batch.', 'danger')
+                return redirect(url_for('scheduling.manage_schedules'))
+    
+    if request.method == 'POST':
+        try:
+            # Get form data
+            start_date = request.form.get('start_date')
+            start_time = request.form.get('start_time')
+            end_time = request.form.get('end_time')
+            shift_type_id = request.form.get('shift_type_id')
+            notes = request.form.get('notes')
+            
+            if not all([start_date, start_time, end_time]):
+                flash('All fields are required.', 'danger')
+                return redirect(url_for('scheduling.edit_batch', batch_id=batch_id))
+            
+            # Parse datetime
+            start_datetime = datetime.strptime(f"{start_date} {start_time}", '%Y-%m-%d %H:%M')
+            end_datetime = datetime.strptime(f"{start_date} {end_time}", '%Y-%m-%d %H:%M')
+            
+            if end_datetime <= start_datetime:
+                flash('End time must be after start time.', 'danger')
+                return redirect(url_for('scheduling.edit_batch', batch_id=batch_id))
+            
+            # Check for conflicts for each employee in the batch
+            conflict_employees = []
+            for schedule in batch_schedules:
+                existing_schedules = Schedule.query.filter(
+                    Schedule.user_id == schedule.user_id,
+                    Schedule.id != schedule.id,
+                    Schedule.start_time < end_datetime,
+                    Schedule.end_time > start_datetime
+                ).first()
+                
+                if existing_schedules:
+                    conflict_employees.append(schedule.employee.full_name or schedule.employee.username)
+            
+            if conflict_employees:
+                flash(f'Schedule conflicts found for: {", ".join(conflict_employees)}. Please choose different times.', 'danger')
+                return redirect(url_for('scheduling.edit_batch', batch_id=batch_id))
+            
+            # Update all schedules in the batch
+            updated_count = 0
+            for schedule in batch_schedules:
+                schedule.start_time = start_datetime
+                schedule.end_time = end_datetime
+                schedule.shift_type_id = shift_type_id if shift_type_id else None
+                schedule.notes = notes
+                updated_count += 1
+            
+            db.session.commit()
+            flash(f'Successfully updated {updated_count} schedules in batch {batch_id[:8]}...', 'success')
+            return redirect(url_for('scheduling.manage_schedules'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating batch: {str(e)}', 'danger')
+            return redirect(url_for('scheduling.edit_batch', batch_id=batch_id))
+    
+    # GET request - show edit form
+    # Use first schedule as template for the form
+    template_schedule = batch_schedules[0]
+    shift_types = ShiftType.query.filter_by(is_active=True).order_by(ShiftType.name).all()
+    
+    return render_template('scheduling/edit_batch.html',
+                         batch_schedules=batch_schedules,
+                         template_schedule=template_schedule,
+                         batch_id=batch_id,
+                         shift_types=shift_types)
+
+@scheduling_bp.route('/batch/<batch_id>/delete', methods=['POST'])
+@role_required('Manager', 'Admin', 'Super User')
+def delete_batch(batch_id):
+    """Delete an entire batch of schedules"""
+    try:
+        # Get all schedules in this batch
+        batch_schedules = Schedule.query.filter_by(batch_id=batch_id).all()
+        
+        if not batch_schedules:
+            flash('Batch not found.', 'danger')
+            return redirect(url_for('scheduling.manage_schedules'))
+        
+        # Apply department filtering for managers
+        is_super_user = current_user.has_role('Super User')
+        is_manager = current_user.has_role('Manager')
+        managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
+        
+        if is_manager and managed_dept_ids and not is_super_user:
+            # Check if all schedules in batch belong to managed departments
+            for schedule in batch_schedules:
+                if schedule.employee.department_id not in managed_dept_ids:
+                    flash('You do not have permission to delete this batch.', 'danger')
+                    return redirect(url_for('scheduling.manage_schedules'))
+        
+        # Delete all schedules in the batch
+        deleted_count = len(batch_schedules)
+        for schedule in batch_schedules:
+            db.session.delete(schedule)
+        
+        db.session.commit()
+        flash(f'Successfully deleted batch {batch_id[:8]}... containing {deleted_count} schedules.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting batch: {str(e)}', 'danger')
+    
+    return redirect(url_for('scheduling.manage_schedules'))
+
 # Helper Functions
 
 def _trigger_schedule_notification(schedule, action):

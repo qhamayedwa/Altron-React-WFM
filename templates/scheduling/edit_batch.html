@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Batch Schedule{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Edit Batch Schedule</h2>
+                <a href="{{ url_for('scheduling.manage_schedules') }}" class="btn btn-secondary">
+                    <i data-feather="arrow-left"></i> Back to Schedules
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Information -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i data-feather="users" width="16" height="16"></i> 
+                Batch Information
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Batch ID:</strong>
+                    <br><small class="text-muted">{{ batch_id }}</small>
+                </div>
+                <div class="col-md-3">
+                    <strong>Employees in Batch:</strong>
+                    <br><span class="badge bg-info">{{ batch_schedules|length }} employees</span>
+                </div>
+                <div class="col-md-6">
+                    <strong>Current Schedule:</strong>
+                    <br><small class="text-muted">
+                        {{ template_schedule.start_time.strftime('%a, %b %d at %I:%M %p') }} - 
+                        {{ template_schedule.end_time.strftime('%I:%M %p') }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employees in Batch -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">Employees Affected by This Change</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for schedule in batch_schedules %}
+                <div class="col-md-3 mb-2">
+                    <div class="p-2 border rounded bg-light">
+                        <strong>{{ schedule.employee.username }}</strong>
+                        {% if schedule.employee.full_name %}
+                        <br><small class="text-muted">{{ schedule.employee.full_name }}</small>
+                        {% endif %}
+                        {% if schedule.employee.department %}
+                        <br><span class="badge bg-secondary">{{ schedule.employee.department.name }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Edit Schedule Details</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="start_date" class="form-label">Date *</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" 
+                               value="{{ template_schedule.start_time.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="start_time" class="form-label">Start Time *</label>
+                        <input type="time" class="form-control" id="start_time" name="start_time" 
+                               value="{{ template_schedule.start_time.strftime('%H:%M') }}" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="end_time" class="form-label">End Time *</label>
+                        <input type="time" class="form-control" id="end_time" name="end_time" 
+                               value="{{ template_schedule.end_time.strftime('%H:%M') }}" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="shift_type_id" class="form-label">Shift Type</label>
+                        <select class="form-control" id="shift_type_id" name="shift_type_id">
+                            <option value="">Custom Schedule</option>
+                            {% for shift_type in shift_types %}
+                            <option value="{{ shift_type.id }}" 
+                                    {% if template_schedule.shift_type_id == shift_type.id %}selected{% endif %}>
+                                {{ shift_type.name }} ({{ shift_type.default_start_time.strftime('%H:%M') }} - {{ shift_type.default_end_time.strftime('%H:%M') }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3 d-flex align-items-end">
+                        <span id="duration" class="badge bg-info">
+                            {{ "%.1f"|format(template_schedule.duration_hours()) }}h
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Add any additional notes for this batch schedule...">{{ template_schedule.notes or '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="alert alert-warning">
+                            <i data-feather="alert-triangle" width="16" height="16"></i>
+                            <strong>Warning:</strong> This will update all {{ batch_schedules|length }} schedules in this batch. 
+                            Each employee's schedule will be changed to the same date and time specified above.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('scheduling.manage_schedules') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i data-feather="save" width="16" height="16"></i>
+                        Update Batch ({{ batch_schedules|length }} schedules)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startTimeInput = document.getElementById('start_time');
+    const endTimeInput = document.getElementById('end_time');
+    const durationBadge = document.getElementById('duration');
+    const shiftTypeSelect = document.getElementById('shift_type_id');
+
+    // Shift type data for auto-fill
+    const shiftTypes = {
+        {% for shift_type in shift_types %}
+        '{{ shift_type.id }}': {
+            start: '{{ shift_type.default_start_time.strftime('%H:%M') }}',
+            end: '{{ shift_type.default_end_time.strftime('%H:%M') }}',
+            duration: {{ shift_type.duration_hours() }}
+        },
+        {% endfor %}
+    };
+
+    function calculateDuration() {
+        const startTime = startTimeInput.value;
+        const endTime = endTimeInput.value;
+        
+        if (startTime && endTime) {
+            const start = new Date(`2000-01-01T${startTime}:00`);
+            const end = new Date(`2000-01-01T${endTime}:00`);
+            
+            if (end <= start) {
+                end.setDate(end.getDate() + 1); // Next day
+            }
+            
+            const diffMs = end - start;
+            const diffHours = diffMs / (1000 * 60 * 60);
+            durationBadge.textContent = diffHours.toFixed(1) + 'h';
+        }
+    }
+
+    function handleShiftTypeChange() {
+        const selectedId = shiftTypeSelect.value;
+        if (selectedId && shiftTypes[selectedId]) {
+            const shiftType = shiftTypes[selectedId];
+            startTimeInput.value = shiftType.start;
+            endTimeInput.value = shiftType.end;
+            durationBadge.textContent = shiftType.duration.toFixed(1) + 'h';
+        }
+    }
+
+    // Event listeners
+    startTimeInput.addEventListener('change', calculateDuration);
+    endTimeInput.addEventListener('change', calculateDuration);
+    shiftTypeSelect.addEventListener('change', handleShiftTypeChange);
+
+    // Initialize Feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+});
+</script>
+{% endblock %}
