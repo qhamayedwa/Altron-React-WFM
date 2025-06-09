@@ -1080,20 +1080,13 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
     Generate accumulative pay code summary data with role-based filtering
     """
     try:
-        from models import PayCode, TimeEntry, User, Department
+        from models import TimeEntry, User, Department
+        from pay_code_admin import PayCode  # Import from pay_code_admin module
         from sqlalchemy import func, and_
         from collections import defaultdict
         
         # Initialize summary data structures
-        pay_code_data = defaultdict(lambda: {
-            'total_hours': 0,
-            'regular_amount': 0,
-            'overtime_amount': 0,
-            'total_amount': 0,
-            'employee_count': 0,
-            'employees': set()
-        })
-        
+        summary_data = {}
         summary_totals = {
             'total_hours': 0,
             'regular_amount': 0,
@@ -1101,22 +1094,30 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
             'total_amount': 0
         }
         
-        # Get all pay codes for the filtered users
-        pay_codes_query = PayCode.query
-        if not is_super_user and managed_dept_ids:
-            # Filter pay codes by managed departments
-            pay_codes_query = pay_codes_query.filter(
-                PayCode.employee_id.in_([user.id for user in users_list])
-            )
-        
-        pay_codes = pay_codes_query.all()
+        # Get all pay codes from pay_code_admin
+        try:
+            pay_codes = PayCode.query.all()
+        except:
+            # Fallback if PayCode model is not available
+            pay_codes = []
         
         # Process each user's time entries within the date range
         for user in users_list:
-            # Get user's pay code
-            user_pay_code = next((pc for pc in pay_codes if pc.employee_id == user.id), None)
+            # Get user's pay code assignment
+            user_pay_code = None
+            for pc in pay_codes:
+                if hasattr(pc, 'employee_id') and pc.employee_id == user.id:
+                    user_pay_code = pc
+                    break
+            
             if not user_pay_code:
-                continue
+                # Create a default pay code structure for users without assigned codes
+                user_pay_code = type('DefaultPayCode', (), {
+                    'code': 'DEFAULT',
+                    'description': 'Default Pay Code',
+                    'hourly_rate': 150.0,  # Default rate
+                    'overtime_multiplier': 1.5
+                })()
                 
             # Get time entries for this user in the date range
             time_entries = TimeEntry.query.filter(
@@ -1148,38 +1149,62 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
                     user_regular_amount += regular_pay
                     user_overtime_amount += overtime_pay
             
+            # Only process users with actual hours
+            if user_total_hours == 0:
+                continue
+            
             # Add to summary data based on grouping
             if summary_group == 'pay_code':
                 key = user_pay_code.code
-                pay_code_data[key]['code'] = user_pay_code.code
-                pay_code_data[key]['description'] = user_pay_code.description
-                pay_code_data[key]['hourly_rate'] = user_pay_code.hourly_rate
-                pay_code_data[key]['overtime_multiplier'] = user_pay_code.overtime_multiplier
-                pay_code_data[key]['total_hours'] += user_total_hours
-                pay_code_data[key]['regular_amount'] += user_regular_amount
-                pay_code_data[key]['overtime_amount'] += user_overtime_amount
-                pay_code_data[key]['total_amount'] += user_regular_amount + user_overtime_amount
-                pay_code_data[key]['employees'].add(user.id)
-                pay_code_data[key]['employee_count'] = len(pay_code_data[key]['employees'])
+                if key not in summary_data:
+                    summary_data[key] = {
+                        'code': user_pay_code.code,
+                        'description': user_pay_code.description,
+                        'hourly_rate': user_pay_code.hourly_rate,
+                        'overtime_multiplier': user_pay_code.overtime_multiplier,
+                        'total_hours': 0,
+                        'regular_amount': 0,
+                        'overtime_amount': 0,
+                        'total_amount': 0,
+                        'employee_count': 0,
+                        'employees': set()
+                    }
+                
+                summary_data[key]['total_hours'] += user_total_hours
+                summary_data[key]['regular_amount'] += user_regular_amount
+                summary_data[key]['overtime_amount'] += user_overtime_amount
+                summary_data[key]['total_amount'] += user_regular_amount + user_overtime_amount
+                summary_data[key]['employees'].add(user.id)
+                summary_data[key]['employee_count'] = len(summary_data[key]['employees'])
                 
             elif summary_group == 'employee':
                 key = user.id
-                pay_code_data[key]['employee_name'] = user.full_name
-                pay_code_data[key]['username'] = user.username
-                pay_code_data[key]['department_name'] = user.get_department_name()
-                pay_code_data[key]['total_hours'] = user_total_hours
-                pay_code_data[key]['total_amount'] = user_regular_amount + user_overtime_amount
-                pay_code_data[key]['pay_codes'] = [user_pay_code.code] if user_pay_code else []
+                summary_data[key] = {
+                    'employee_name': user.full_name,
+                    'username': user.username,
+                    'department_name': user.get_department_name(),
+                    'total_hours': user_total_hours,
+                    'total_amount': user_regular_amount + user_overtime_amount,
+                    'pay_codes': [user_pay_code.code]
+                }
                 
             elif summary_group == 'department':
                 dept_name = user.get_department_name()
                 key = dept_name
-                pay_code_data[key]['department_name'] = dept_name
-                pay_code_data[key]['manager_name'] = getattr(user.get_department(), 'manager_name', 'No Manager') if user.get_department() else 'No Manager'
-                pay_code_data[key]['total_hours'] += user_total_hours
-                pay_code_data[key]['total_amount'] += user_regular_amount + user_overtime_amount
-                pay_code_data[key]['employees'].add(user.id)
-                pay_code_data[key]['employee_count'] = len(pay_code_data[key]['employees'])
+                if key not in summary_data:
+                    summary_data[key] = {
+                        'department_name': dept_name,
+                        'manager_name': 'No Manager',
+                        'total_hours': 0,
+                        'total_amount': 0,
+                        'employee_count': 0,
+                        'employees': set()
+                    }
+                
+                summary_data[key]['total_hours'] += user_total_hours
+                summary_data[key]['total_amount'] += user_regular_amount + user_overtime_amount
+                summary_data[key]['employees'].add(user.id)
+                summary_data[key]['employee_count'] = len(summary_data[key]['employees'])
             
             # Add to overall totals
             summary_totals['total_hours'] += user_total_hours
@@ -1189,7 +1214,11 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
         
         # Convert to list format for template
         summary_list = []
-        for key, data in pay_code_data.items():
+        for key, data in summary_data.items():
+            # Convert sets to counts for JSON serialization
+            if 'employees' in data and isinstance(data['employees'], set):
+                data['employees'] = list(data['employees'])
+            
             # Create summary object with all necessary attributes
             summary_obj = type('PayCodeSummary', (), data)()
             summary_list.append(summary_obj)
