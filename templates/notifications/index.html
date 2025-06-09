@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - WFM System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i data-feather="bell" class="me-2"></i>
+                Notifications
+            </h2>
+            <p class="text-muted mb-0">Stay updated with important system events</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="markAllAsRead()">
+                <i data-feather="check-circle" class="me-2"></i>
+                Mark All Read
+            </button>
+            <a href="{{ url_for('notifications.notification_preferences') }}" class="btn btn-outline-secondary">
+                <i data-feather="settings" class="me-2"></i>
+                Preferences
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="filter" class="form-label">Filter</label>
+                    <select name="filter" id="filter" class="form-select">
+                        <option value="all" {{ 'selected' if filter_type == 'all' }}>All Notifications</option>
+                        <option value="unread" {{ 'selected' if filter_type == 'unread' }}>Unread Only</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="category" class="form-label">Category</label>
+                    <select name="category" id="category" class="form-select">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}" {{ 'selected' if category == cat }}>{{ cat.title() }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-feather="filter" class="me-2"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="card">
+        <div class="card-body">
+            {% if notifications.items %}
+            <div class="list-group list-group-flush">
+                {% for notification in notifications.items %}
+                <div class="list-group-item {% if not notification.is_read %}bg-light{% endif %} notification-item" 
+                     data-notification-id="{{ notification.id }}">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                <i data-feather="{{ notification.notification_type.icon }}" 
+                                   class="me-2 text-{{ notification.notification_type.color }}"></i>
+                                <h6 class="mb-0 me-2">{{ notification.title }}</h6>
+                                {% if notification.priority == 'urgent' %}
+                                <span class="badge bg-danger">Urgent</span>
+                                {% elif notification.priority == 'high' %}
+                                <span class="badge bg-warning">High</span>
+                                {% endif %}
+                                {% if not notification.is_read %}
+                                <span class="badge bg-primary ms-2">New</span>
+                                {% endif %}
+                            </div>
+                            <p class="mb-2 text-muted">{{ notification.message }}</p>
+                            <div class="d-flex align-items-center">
+                                <small class="text-muted me-3">
+                                    <i data-feather="clock" class="me-1" style="width: 14px; height: 14px;"></i>
+                                    {{ notification.get_time_ago() }}
+                                </small>
+                                {% if notification.category %}
+                                <span class="badge bg-secondary me-2">{{ notification.category.title() }}</span>
+                                {% endif %}
+                                {% if notification.action_url %}
+                                <a href="{{ notification.action_url }}" 
+                                   class="btn btn-sm btn-outline-primary"
+                                   onclick="markAsRead({{ notification.id }})">
+                                    {{ notification.action_text or 'View' }}
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            {% if not notification.is_read %}
+                            <button class="btn btn-sm btn-outline-success" 
+                                    onclick="markAsRead({{ notification.id }})">
+                                <i data-feather="check" style="width: 14px; height: 14px;"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if notifications.pages > 1 %}
+            <nav aria-label="Notifications pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if notifications.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('notifications.notifications_page', page=notifications.prev_num, filter=filter_type, category=category) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in notifications.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != notifications.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('notifications.notifications_page', page=page_num, filter=filter_type, category=category) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if notifications.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('notifications.notifications_page', page=notifications.next_num, filter=filter_type, category=category) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            
+            {% else %}
+            <div class="text-center py-5">
+                <i data-feather="bell-off" class="text-muted mb-3" width="64" height="64"></i>
+                <h5>No Notifications</h5>
+                <p class="text-muted">
+                    {% if filter_type == 'unread' %}
+                    You have no unread notifications.
+                    {% else %}
+                    You don't have any notifications yet.
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function markAsRead(notificationId) {
+    fetch(`/notifications/api/mark-read/${notificationId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the notification item visually
+            const notificationItem = document.querySelector(`[data-notification-id="${notificationId}"]`);
+            if (notificationItem) {
+                notificationItem.classList.remove('bg-light');
+                const newBadge = notificationItem.querySelector('.badge.bg-primary');
+                if (newBadge) {
+                    newBadge.remove();
+                }
+                const checkButton = notificationItem.querySelector('.btn-outline-success');
+                if (checkButton) {
+                    checkButton.remove();
+                }
+            }
+            // Update notification count in header
+            updateNotificationCount();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notification as read:', error);
+    });
+}
+
+function markAllAsRead() {
+    fetch('/notifications/api/mark-all-read', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to show updated state
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking all notifications as read:', error);
+    });
+}
+
+function updateNotificationCount() {
+    fetch('/notifications/api/unread-count')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const countBadge = document.getElementById('notification-count');
+            if (countBadge) {
+                if (data.count > 0) {
+                    countBadge.textContent = data.count;
+                    countBadge.style.display = 'inline';
+                } else {
+                    countBadge.style.display = 'none';
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error updating notification count:', error);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    feather.replace();
+});
+</script>
+{% endblock %}

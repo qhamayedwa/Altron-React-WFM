@@ -1296,3 +1296,147 @@ class DashboardConfig(db.Model):
                 'super_admin': True
             }
         }
+
+
+# Notification System Models
+
+class NotificationType(db.Model):
+    """Notification types for different events"""
+    __tablename__ = 'notification_types'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    display_name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    icon = db.Column(db.String(50), default='bell')
+    color = db.Column(db.String(20), default='primary')
+    is_active = db.Column(db.Boolean, default=True)
+    priority = db.Column(db.String(10), default='medium')  # low, medium, high, urgent
+    
+    # Auto-clear settings
+    auto_clear_hours = db.Column(db.Integer, nullable=True)  # Auto-clear after X hours
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<NotificationType {self.name}>'
+
+
+class Notification(db.Model):
+    """User notifications for various system events"""
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Target user
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Notification details
+    type_id = db.Column(db.Integer, db.ForeignKey('notification_types.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    
+    # Optional action URL
+    action_url = db.Column(db.String(500), nullable=True)
+    action_text = db.Column(db.String(50), nullable=True)
+    
+    # Status
+    is_read = db.Column(db.Boolean, default=False)
+    read_at = db.Column(db.DateTime, nullable=True)
+    
+    # Priority and categorization
+    priority = db.Column(db.String(10), default='medium')  # low, medium, high, urgent
+    category = db.Column(db.String(50), nullable=True)  # timecard, leave, schedule, system, etc.
+    
+    # Related entity tracking (optional)
+    related_entity_type = db.Column(db.String(50), nullable=True)  # LeaveApplication, Schedule, etc.
+    related_entity_id = db.Column(db.Integer, nullable=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships
+    user = db.relationship('User', backref='notifications')
+    notification_type = db.relationship('NotificationType', backref='notifications')
+    
+    def mark_as_read(self):
+        """Mark notification as read"""
+        self.is_read = True
+        self.read_at = datetime.utcnow()
+        db.session.commit()
+    
+    def is_expired(self):
+        """Check if notification has expired"""
+        if self.expires_at:
+            return datetime.utcnow() > self.expires_at
+        return False
+    
+    def get_time_ago(self):
+        """Get human-readable time ago string"""
+        now = datetime.utcnow()
+        diff = now - self.created_at
+        
+        if diff.days > 0:
+            return f"{diff.days} day{'s' if diff.days > 1 else ''} ago"
+        elif diff.seconds > 3600:
+            hours = diff.seconds // 3600
+            return f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif diff.seconds > 60:
+            minutes = diff.seconds // 60
+            return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+        else:
+            return "Just now"
+    
+    def to_dict(self):
+        """Convert notification to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'message': self.message,
+            'is_read': self.is_read,
+            'priority': self.priority,
+            'category': self.category,
+            'action_url': self.action_url,
+            'action_text': self.action_text,
+            'created_at': self.created_at.isoformat(),
+            'time_ago': self.get_time_ago(),
+            'type': {
+                'name': self.notification_type.name,
+                'display_name': self.notification_type.display_name,
+                'icon': self.notification_type.icon,
+                'color': self.notification_type.color
+            }
+        }
+    
+    def __repr__(self):
+        return f'<Notification {self.title} for User {self.user_id}>'
+
+
+class NotificationPreference(db.Model):
+    """User preferences for notification types"""
+    __tablename__ = 'notification_preferences'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    type_id = db.Column(db.Integer, db.ForeignKey('notification_types.id'), nullable=False)
+    
+    # Notification channels
+    web_enabled = db.Column(db.Boolean, default=True)
+    email_enabled = db.Column(db.Boolean, default=False)
+    sms_enabled = db.Column(db.Boolean, default=False)
+    
+    # Frequency settings
+    immediate = db.Column(db.Boolean, default=True)
+    daily_digest = db.Column(db.Boolean, default=False)
+    weekly_digest = db.Column(db.Boolean, default=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='notification_preferences')
+    notification_type = db.relationship('NotificationType', backref='user_preferences')
+    
+    def __repr__(self):
+        return f'<NotificationPreference User {self.user_id} Type {self.type_id}>'
