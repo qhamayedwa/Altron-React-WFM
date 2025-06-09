@@ -227,15 +227,17 @@ def reports():
         # Total hours worked in period - filtered by user access
         period_entries = TimeEntry.query.filter(base_time_filter).all()
         
-        # Calculate total hours from actual time entries
+        # Calculate total hours from actual time entries (consistent method)
         total_hours = 0
         for entry in period_entries:
-            if entry.total_hours:
+            if entry.total_hours and entry.total_hours > 0:  # Only count positive hours
                 total_hours += entry.total_hours
             elif entry.clock_in_time and entry.clock_out_time:
                 # Calculate hours if not stored
                 duration = entry.clock_out_time - entry.clock_in_time
-                total_hours += duration.total_seconds() / 3600
+                calculated_hours = duration.total_seconds() / 3600
+                if calculated_hours > 0:  # Only count positive hours
+                    total_hours += calculated_hours
         
         overtime_hours = max(0, total_hours - (len(period_entries) * 8))
         
@@ -271,7 +273,18 @@ def reports():
             user_entries = TimeEntry.query.filter(user_filter).all()
             
             days_worked = len(user_entries)
-            user_total_hours = sum(entry.total_hours or 0 for entry in user_entries)
+            # Use consistent calculation method (same as summary statistics)
+            user_total_hours = 0
+            for entry in user_entries:
+                if entry.total_hours and entry.total_hours > 0:  # Only count positive hours
+                    user_total_hours += entry.total_hours
+                elif entry.clock_in_time and entry.clock_out_time:
+                    # Calculate hours if not stored
+                    duration = entry.clock_out_time - entry.clock_in_time
+                    calculated_hours = duration.total_seconds() / 3600
+                    if calculated_hours > 0:  # Only count positive hours
+                        user_total_hours += calculated_hours
+            
             avg_hours = user_total_hours / days_worked if days_worked > 0 else 0
             
             # Create summary with proper user identification
