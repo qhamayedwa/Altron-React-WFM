@@ -68,6 +68,10 @@ class PayRuleEngine:
         # Process each employee's time entries
         for user_id, user_entries in entries_by_employee.items():
             user = User.query.get(user_id)
+            if not user:
+                self.log_debug(f"User {user_id} not found, skipping")
+                continue
+                
             self.log_debug(f"Processing {len(user_entries)} entries for user {user.username}")
             
             employee_result = self._calculate_employee_pay(user_entries, pay_rules, user)
@@ -89,7 +93,7 @@ class PayRuleEngine:
         # Create context for rule evaluation
         context = {
             'user': user,
-            'user_roles': [role.name for role in user.roles],
+            'user_roles': [role.name for role in user.roles] if hasattr(user, 'roles') and user.roles else [],
             'total_entries': len(time_entries)
         }
         
@@ -171,7 +175,7 @@ class PayRuleEngine:
     
     def _calculate_regular_hours(self, time_entries: List[TimeEntry], pay_components: Dict[str, Any]) -> float:
         """Calculate regular hours not covered by other rules"""
-        total_hours = sum(entry.total_hours() for entry in time_entries)
+        total_hours = sum(entry.total_hours for entry in time_entries)
         
         # Subtract hours already accounted for by other rules
         accounted_hours = 0.0
