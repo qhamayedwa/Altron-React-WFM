@@ -921,143 +921,148 @@ def api_quick_punch():
 @role_required('Manager', 'Admin', 'Super User')
 def employee_timecards():
     """Comprehensive employee time card management interface"""
-    from models import User, Schedule, TimeEntry, LeaveApplication
-    from organization_management import get_managed_departments
-    from datetime import datetime, date, timedelta
-    
-    # Get filter parameters
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
-    user_id = request.args.get('user_id', type=int)
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    
-    # Default to current week if no dates provided
-    if not start_date and not end_date:
-        today = date.today()
-        start_date = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
-        end_date = (today + timedelta(days=6-today.weekday())).strftime('%Y-%m-%d')
-    
-    # Convert string dates to date objects for queries
-    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
-    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
-    
-    # Apply role-based filtering
-    is_super_user = current_user.has_role('Super User')
-    is_manager = current_user.has_role('Manager')
-    managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
-    
-    # Get users based on permissions
-    users_query = User.query.filter_by(is_active=True)
-    
-    if is_super_user:
-        # Super Users see all active users
-        users = users_query.order_by(User.username).all()
-    elif is_manager and managed_dept_ids:
-        # Managers see only users in departments they manage
-        users = users_query.filter(User.department_id.in_(managed_dept_ids)).order_by(User.username).all()
-    else:
-        # Regular employees see only themselves
-        users = [current_user] if current_user.is_active else []
-    
-    # If specific user selected, filter to that user
-    if user_id:
-        users = [user for user in users if user.id == user_id]
-    
-    # Build comprehensive time card data
-    timecard_data = []
-    
-    for user in users:
-        if start_date_obj and end_date_obj:
-            # Generate date range for the period
-            current_date = start_date_obj
-            while current_date <= end_date_obj:
-                # Get schedule for this date
-                schedule = Schedule.query.filter(
-                    Schedule.user_id == user.id,
-                    func.date(Schedule.start_time) == current_date
-                ).first()
-                
-                # Get time entries for this date
-                time_entries = TimeEntry.query.filter(
-                    TimeEntry.user_id == user.id,
-                    func.date(TimeEntry.clock_in_time) == current_date
-                ).all()
-                
-                # Get leave applications for this date
-                leave_app = LeaveApplication.query.filter(
-                    LeaveApplication.user_id == user.id,
-                    LeaveApplication.start_date <= current_date,
-                    LeaveApplication.end_date >= current_date,
-                    LeaveApplication.status == 'Approved'
-                ).first()
-                
-                # Calculate total hours worked
-                total_hours = 0
-                clock_in_time = None
-                clock_out_time = None
-                
-                if time_entries:
-                    for entry in time_entries:
-                        if entry.clock_in_time and entry.clock_out_time:
-                            hours = entry.total_hours
-                            total_hours += hours
-                            
-                            # Get first clock in and last clock out
-                            if not clock_in_time or entry.clock_in_time < clock_in_time:
-                                clock_in_time = entry.clock_in_time
-                            if not clock_out_time or entry.clock_out_time > clock_out_time:
-                                clock_out_time = entry.clock_out_time
-                
-                # Calculate amount earned (if hourly rate available)
-                amount_earned = 0
-                if user.hourly_rate and total_hours > 0:
-                    amount_earned = total_hours * user.hourly_rate
-                
-                timecard_data.append({
-                    'user': user,
-                    'date': current_date,
-                    'schedule': schedule,
-                    'absence': leave_app,
-                    'clock_in': clock_in_time,
-                    'clock_out': clock_out_time,
-                    'total_hours': round(total_hours, 2),
-                    'amount_earned': round(amount_earned, 2),
-                    'time_entries': time_entries
-                })
-                
-                current_date += timedelta(days=1)
-    
-    # Pagination for timecard data
-    total_records = len(timecard_data)
-    start_index = (page - 1) * per_page
-    end_index = start_index + per_page
-    paginated_data = timecard_data[start_index:end_index]
-    
-    # Create pagination object
-    class PaginationHelper:
-        def __init__(self, page, per_page, total, items):
-            self.page = page
-            self.per_page = per_page
-            self.total = total
-            self.items = items
-            self.pages = (total + per_page - 1) // per_page
-            self.has_prev = page > 1
-            self.has_next = page < self.pages
-            self.prev_num = page - 1 if self.has_prev else None
-            self.next_num = page + 1 if self.has_next else None
-    
-    pagination = PaginationHelper(page, per_page, total_records, paginated_data)
-    
-    # Get all users for dropdown (not filtered by selection)
-    all_users = User.query.filter_by(is_active=True)
-    if is_manager and managed_dept_ids and not is_super_user:
-        all_users = all_users.filter(User.department_id.in_(managed_dept_ids))
-    all_users = all_users.order_by(User.username).all()
-    
-    return render_template('time_attendance/employee_timecards.html',
-                         timecard_data=pagination,
-                         users=all_users,
-                         selected_user_id=user_id,
-                         start_date=start_date,
-                         end_date=end_date)
+    try:
+        from models import User, Schedule, TimeEntry, LeaveApplication
+        from organization_management import get_managed_departments
+        from datetime import datetime, date, timedelta
+        
+        # Get filter parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        user_id = request.args.get('user_id', type=int)
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        # Default to current week if no dates provided
+        if not start_date and not end_date:
+            today = date.today()
+            start_date = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+            end_date = (today + timedelta(days=6-today.weekday())).strftime('%Y-%m-%d')
+        
+        # Convert string dates to date objects for queries
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
+        
+        # Apply role-based filtering
+        is_super_user = current_user.has_role('Super User')
+        is_manager = current_user.has_role('Manager')
+        managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
+        
+        # Get users based on permissions
+        users_query = User.query.filter_by(is_active=True)
+        
+        if is_super_user:
+            # Super Users see all active users
+            users = users_query.order_by(User.username).all()
+        elif is_manager and managed_dept_ids:
+            # Managers see only users in departments they manage
+            users = users_query.filter(User.department_id.in_(managed_dept_ids)).order_by(User.username).all()
+        else:
+            # Regular employees see only themselves
+            users = [current_user] if current_user.is_active else []
+        
+        # If specific user selected, filter to that user
+        if user_id:
+            users = [user for user in users if user.id == user_id]
+        
+        # Build comprehensive time card data
+        timecard_data = []
+        
+        for user in users:
+            if start_date_obj and end_date_obj:
+                # Generate date range for the period
+                current_date = start_date_obj
+                while current_date <= end_date_obj:
+                    # Get schedule for this date
+                    schedule = Schedule.query.filter(
+                        Schedule.user_id == user.id,
+                        func.date(Schedule.start_time) == current_date
+                    ).first()
+                    
+                    # Get time entries for this date
+                    time_entries = TimeEntry.query.filter(
+                        TimeEntry.user_id == user.id,
+                        func.date(TimeEntry.clock_in_time) == current_date
+                    ).all()
+                    
+                    # Get leave applications for this date
+                    leave_app = LeaveApplication.query.filter(
+                        LeaveApplication.user_id == user.id,
+                        LeaveApplication.start_date <= current_date,
+                        LeaveApplication.end_date >= current_date,
+                        LeaveApplication.status == 'Approved'
+                    ).first()
+                    
+                    # Calculate total hours worked
+                    total_hours = 0
+                    clock_in_time = None
+                    clock_out_time = None
+                    
+                    if time_entries:
+                        for entry in time_entries:
+                            if entry.clock_in_time and entry.clock_out_time:
+                                hours = entry.total_hours or 0
+                                total_hours += hours
+                                
+                                # Get first clock in and last clock out
+                                if not clock_in_time or entry.clock_in_time < clock_in_time:
+                                    clock_in_time = entry.clock_in_time
+                                if not clock_out_time or entry.clock_out_time > clock_out_time:
+                                    clock_out_time = entry.clock_out_time
+                    
+                    # Calculate amount earned (if hourly rate available)
+                    amount_earned = 0
+                    if hasattr(user, 'hourly_rate') and user.hourly_rate and total_hours > 0:
+                        amount_earned = total_hours * float(user.hourly_rate)
+                    
+                    timecard_data.append({
+                        'user': user,
+                        'date': current_date,
+                        'schedule': schedule,
+                        'absence': leave_app,
+                        'clock_in': clock_in_time,
+                        'clock_out': clock_out_time,
+                        'total_hours': round(total_hours, 2),
+                        'amount_earned': round(amount_earned, 2),
+                        'time_entries': time_entries
+                    })
+                    
+                    current_date += timedelta(days=1)
+        
+        # Pagination for timecard data
+        total_records = len(timecard_data)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        paginated_data = timecard_data[start_index:end_index]
+        
+        # Create pagination object
+        class PaginationHelper:
+            def __init__(self, page, per_page, total, items):
+                self.page = page
+                self.per_page = per_page
+                self.total = total
+                self.items = items
+                self.pages = (total + per_page - 1) // per_page
+                self.has_prev = page > 1
+                self.has_next = page < self.pages
+                self.prev_num = page - 1 if self.has_prev else None
+                self.next_num = page + 1 if self.has_next else None
+        
+        pagination = PaginationHelper(page, per_page, total_records, paginated_data)
+        
+        # Get all users for dropdown (not filtered by selection)
+        all_users = User.query.filter_by(is_active=True)
+        if is_manager and managed_dept_ids and not is_super_user:
+            all_users = all_users.filter(User.department_id.in_(managed_dept_ids))
+        all_users = all_users.order_by(User.username).all()
+        
+        return render_template('time_attendance/employee_timecards.html',
+                             timecard_data=pagination,
+                             users=all_users,
+                             selected_user_id=user_id,
+                             start_date=start_date,
+                             end_date=end_date)
+                             
+    except Exception as e:
+        flash(f'Error loading employee timecards: {str(e)}', 'danger')
+        return redirect(url_for('main.dashboard'))
