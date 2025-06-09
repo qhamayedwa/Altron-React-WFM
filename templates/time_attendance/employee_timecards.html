@@ -129,7 +129,13 @@
                                         <br><small class="text-muted">{{ record.user.full_name }}</small>
                                         {% endif %}
                                         {% if record.user.department %}
-                                        <br><span class="badge bg-secondary">{{ record.user.department.name if record.user.department.name else record.user.department }}</span>
+                                        <br><span class="badge bg-secondary">
+                                            {% if record.user.department.name %}
+                                                {{ record.user.department.name }}
+                                            {% else %}
+                                                {{ record.user.department }}
+                                            {% endif %}
+                                        </span>
                                         {% endif %}
                                     </div>
                                 </div>
