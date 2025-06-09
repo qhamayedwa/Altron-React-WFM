@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trigger.name }} - Trigger Configuration{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('notifications.admin_dashboard') }}">Notification Management</a></li>
+                            <li class="breadcrumb-item active">{{ trigger.name }}</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i data-feather="{{ trigger.icon }}" class="me-2 text-{{ trigger.color }}"></i>
+                        {{ trigger.name }} Configuration
+                    </h1>
+                    <p class="text-muted">{{ trigger.description }}</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary" onclick="testTrigger()">
+                        <i data-feather="play" class="me-1"></i>
+                        Test Trigger
+                    </button>
+                    <button type="button" class="btn btn-{{ 'success' if trigger.enabled else 'danger' }}" onclick="toggleTrigger()">
+                        <i data-feather="{{ 'pause' if trigger.enabled else 'play' }}" class="me-1"></i>
+                        {{ 'Disable' if trigger.enabled else 'Enable' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Trigger Settings -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Trigger Settings</h6>
+                </div>
+                <div class="card-body">
+                    <form id="triggerSettingsForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Trigger Name</label>
+                                    <input type="text" class="form-control" value="{{ trigger.name }}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Module</label>
+                                    <input type="text" class="form-control" value="{{ trigger.module }}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="triggerEnabled" 
+                                               {{ 'checked' if trigger.enabled else '' }}>
+                                        <label class="form-check-label" for="triggerEnabled">
+                                            {{ 'Enabled' if trigger.enabled else 'Disabled' }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="triggerPriority" class="form-label">Default Priority</label>
+                                    <select class="form-select" id="triggerPriority">
+                                        <option value="low" {{ 'selected' if trigger.default_priority == 'low' else '' }}>Low</option>
+                                        <option value="medium" {{ 'selected' if trigger.default_priority == 'medium' else '' }}>Medium</option>
+                                        <option value="high" {{ 'selected' if trigger.default_priority == 'high' else '' }}>High</option>
+                                        <option value="urgent" {{ 'selected' if trigger.default_priority == 'urgent' else '' }}>Urgent</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="triggerDelay" class="form-label">Trigger Delay (minutes)</label>
+                                    <input type="number" class="form-control" id="triggerDelay" 
+                                           value="{{ trigger.delay_minutes or 0 }}" min="0" max="1440">
+                                    <div class="form-text">Delay before sending notifications (0 = immediate)</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="batchSize" class="form-label">Batch Size</label>
+                                    <input type="number" class="form-control" id="batchSize" 
+                                           value="{{ trigger.batch_size or 50 }}" min="1" max="1000">
+                                    <div class="form-text">Maximum notifications per batch</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="triggerDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="triggerDescription" rows="3">{{ trigger.description }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Notification Categories</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_leave" 
+                                               {{ 'checked' if 'leave' in trigger.categories else '' }}>
+                                        <label class="form-check-label" for="cat_leave">Leave Management</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_timecard" 
+                                               {{ 'checked' if 'timecard' in trigger.categories else '' }}>
+                                        <label class="form-check-label" for="cat_timecard">Timecard & Attendance</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_schedule" 
+                                               {{ 'checked' if 'schedule' in trigger.categories else '' }}>
+                                        <label class="form-check-label" for="cat_schedule">Schedule Changes</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cat_system" 
+                                               {{ 'checked' if 'system' in trigger.categories else '' }}>
+                                        <label class="form-check-label" for="cat_system">System Alerts</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Target Roles</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="role_employee" 
+                                               {{ 'checked' if 'Employee' in trigger.target_roles else '' }}>
+                                        <label class="form-check-label" for="role_employee">Employees</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="role_manager" 
+                                               {{ 'checked' if 'Manager' in trigger.target_roles else '' }}>
+                                        <label class="form-check-label" for="role_manager">Managers</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="role_admin" 
+                                               {{ 'checked' if 'Admin' in trigger.target_roles else '' }}>
+                                        <label class="form-check-label" for="role_admin">Admins</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="role_super" 
+                                               {{ 'checked' if 'Super User' in trigger.target_roles else '' }}>
+                                        <label class="form-check-label" for="role_super">Super Users</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetSettings()">
+                                <i data-feather="refresh-ccw" class="me-1"></i>
+                                Reset to Defaults
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="save" class="me-1"></i>
+                                Save Configuration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trigger Statistics and Activity -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Trigger Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Total Triggers</span>
+                            <strong>{{ trigger.total_triggers }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Last 24 Hours</span>
+                            <strong>{{ trigger.recent_triggers }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Success Rate</span>
+                            <strong>{{ trigger.success_rate }}%</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Avg. Processing Time</span>
+                            <strong>{{ trigger.avg_processing_time }}ms</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Last Triggered</span>
+                            <strong>{{ trigger.last_triggered or 'Never' }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Activity</h6>
+                </div>
+                <div class="card-body">
+                    {% if trigger.recent_activity %}
+                        {% for activity in trigger.recent_activity %}
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <div class="bg-{{ activity.color }} rounded-circle p-2" style="width: 32px; height: 32px;">
+                                    <i data-feather="{{ activity.icon }}" class="text-white" style="width: 16px; height: 16px;"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="small font-weight-bold">{{ activity.title }}</div>
+                                <div class="small text-muted">{{ activity.time }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-3">
+                            <i data-feather="activity" class="mb-2"></i>
+                            <div>No recent activity</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="viewLogs()">
+                            <i data-feather="file-text" class="me-1"></i>
+                            View Trigger Logs
+                        </button>
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="testTrigger()">
+                            <i data-feather="play-circle" class="me-1"></i>
+                            Run Test Trigger
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm" onclick="duplicateTrigger()">
+                            <i data-feather="copy" class="me-1"></i>
+                            Duplicate Trigger
+                        </button>
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="exportConfig()">
+                            <i data-feather="download" class="me-1"></i>
+                            Export Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleTrigger() {
+    const enabled = document.getElementById('triggerEnabled').checked;
+    fetch(`/notifications/admin/trigger/{{ trigger.slug }}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({enabled: !enabled})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error toggling trigger: ' + data.message);
+        }
+    });
+}
+
+function testTrigger() {
+    if (confirm('Run a test trigger to verify configuration?')) {
+        fetch(`/notifications/admin/trigger/{{ trigger.slug }}/test`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Test trigger executed successfully!');
+            } else {
+                alert('Test failed: ' + data.message);
+            }
+        });
+    }
+}
+
+function resetSettings() {
+    if (confirm('Reset all settings to defaults?')) {
+        // Reset form fields to default values
+        document.getElementById('triggerPriority').value = 'medium';
+        document.getElementById('triggerDelay').value = '0';
+        document.getElementById('batchSize').value = '50';
+        
+        // Reset checkboxes
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            if (cb.id !== 'triggerEnabled') {
+                cb.checked = false;
+            }
+        });
+    }
+}
+
+function viewLogs() {
+    window.open(`/notifications/admin/trigger/{{ trigger.slug }}/logs`, '_blank');
+}
+
+function duplicateTrigger() {
+    const newName = prompt('Enter name for the duplicated trigger:');
+    if (newName) {
+        fetch(`/notifications/admin/trigger/{{ trigger.slug }}/duplicate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({name: newName})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Trigger duplicated successfully!');
+                window.location.href = `/notifications/admin/trigger/${data.new_slug}`;
+            } else {
+                alert('Error duplicating trigger: ' + data.message);
+            }
+        });
+    }
+}
+
+function exportConfig() {
+    window.location.href = `/notifications/admin/trigger/{{ trigger.slug }}/export`;
+}
+
+// Form submission
+document.getElementById('triggerSettingsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        enabled: document.getElementById('triggerEnabled').checked,
+        default_priority: document.getElementById('triggerPriority').value,
+        delay_minutes: document.getElementById('triggerDelay').value,
+        batch_size: document.getElementById('batchSize').value,
+        description: document.getElementById('triggerDescription').value,
+        categories: [],
+        target_roles: []
+    };
+    
+    // Collect selected categories
+    ['leave', 'timecard', 'schedule', 'system'].forEach(cat => {
+        if (document.getElementById('cat_' + cat).checked) {
+            formData.categories.push(cat);
+        }
+    });
+    
+    // Collect selected roles
+    ['employee', 'manager', 'admin', 'super'].forEach(role => {
+        if (document.getElementById('role_' + role).checked) {
+            const roleMap = {
+                'employee': 'Employee',
+                'manager': 'Manager',
+                'admin': 'Admin',
+                'super': 'Super User'
+            };
+            formData.target_roles.push(roleMap[role]);
+        }
+    });
+    
+    fetch(`/notifications/admin/trigger/{{ trigger.slug }}/save`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Configuration saved successfully!');
+        } else {
+            alert('Error saving configuration: ' + data.message);
+        }
+    });
+});
+</script>
+{% endblock %}

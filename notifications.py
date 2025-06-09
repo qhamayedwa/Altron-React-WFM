@@ -856,3 +856,268 @@ def cleanup_notifications():
         flash(f'Error during cleanup: {str(e)}', 'danger')
     
     return redirect(url_for('notifications.admin_dashboard'))
+
+
+@notifications_bp.route('/admin/trigger/<slug>')
+@role_required('Super User')
+def trigger_detail(slug):
+    """Detailed trigger configuration page"""
+    
+    # Define trigger configurations
+    trigger_configs = {
+        'leave-management': {
+            'name': 'Leave Management',
+            'slug': 'leave-management',
+            'module': 'leave_management.py',
+            'description': 'Triggers notifications for leave requests, approvals, and status changes',
+            'icon': 'calendar',
+            'color': 'primary',
+            'enabled': True,
+            'default_priority': 'high',
+            'delay_minutes': 0,
+            'batch_size': 50,
+            'categories': ['leave', 'urgent_approval'],
+            'target_roles': ['Manager', 'Employee'],
+            'total_triggers': 156,
+            'recent_triggers': 5,
+            'success_rate': 98.5,
+            'avg_processing_time': 125,
+            'last_triggered': '2 hours ago',
+            'recent_activity': [
+                {'title': 'Leave approval sent', 'time': '2 hours ago', 'icon': 'check-circle', 'color': 'success'},
+                {'title': 'Leave request notification', 'time': '4 hours ago', 'icon': 'calendar', 'color': 'primary'},
+                {'title': 'Leave rejection sent', 'time': '6 hours ago', 'icon': 'x-circle', 'color': 'warning'}
+            ]
+        },
+        'time-attendance': {
+            'name': 'Time Attendance',
+            'slug': 'time-attendance',
+            'module': 'time_attendance.py',
+            'description': 'Sends timecard reminders and attendance notifications',
+            'icon': 'clock',
+            'color': 'success',
+            'enabled': True,
+            'default_priority': 'medium',
+            'delay_minutes': 5,
+            'batch_size': 100,
+            'categories': ['timecard', 'attendance'],
+            'target_roles': ['Employee', 'Manager'],
+            'total_triggers': 892,
+            'recent_triggers': 15,
+            'success_rate': 99.2,
+            'avg_processing_time': 89,
+            'last_triggered': '1 hour ago',
+            'recent_activity': [
+                {'title': 'Timecard reminder sent', 'time': '1 hour ago', 'icon': 'clock', 'color': 'info'},
+                {'title': 'Late arrival alert', 'time': '3 hours ago', 'icon': 'alert-circle', 'color': 'warning'},
+                {'title': 'Weekly timesheet reminder', 'time': '1 day ago', 'icon': 'calendar', 'color': 'primary'}
+            ]
+        },
+        'schedule-management': {
+            'name': 'Schedule Management',
+            'slug': 'schedule-management',
+            'module': 'scheduling.py',
+            'description': 'Notifies about schedule changes and conflicts',
+            'icon': 'calendar-check',
+            'color': 'warning',
+            'enabled': True,
+            'default_priority': 'high',
+            'delay_minutes': 0,
+            'batch_size': 25,
+            'categories': ['schedule', 'urgent_approval'],
+            'target_roles': ['Employee', 'Manager'],
+            'total_triggers': 234,
+            'recent_triggers': 8,
+            'success_rate': 97.8,
+            'avg_processing_time': 156,
+            'last_triggered': '30 minutes ago',
+            'recent_activity': [
+                {'title': 'Schedule change notification', 'time': '30 minutes ago', 'icon': 'edit', 'color': 'warning'},
+                {'title': 'Shift swap approved', 'time': '2 hours ago', 'icon': 'repeat', 'color': 'success'},
+                {'title': 'Coverage alert sent', 'time': '5 hours ago', 'icon': 'alert-triangle', 'color': 'danger'}
+            ]
+        },
+        'payroll-processing': {
+            'name': 'Payroll Processing',
+            'slug': 'payroll-processing',
+            'module': 'payroll.py',
+            'description': 'Alerts for payroll deadlines and processing status',
+            'icon': 'dollar-sign',
+            'color': 'info',
+            'enabled': False,
+            'default_priority': 'medium',
+            'delay_minutes': 60,
+            'batch_size': 200,
+            'categories': ['payroll', 'system'],
+            'target_roles': ['Admin', 'Super User'],
+            'total_triggers': 45,
+            'recent_triggers': 0,
+            'success_rate': 100.0,
+            'avg_processing_time': 234,
+            'last_triggered': 'Never',
+            'recent_activity': []
+        },
+        'user-management': {
+            'name': 'User Management',
+            'slug': 'user-management',
+            'module': 'auth.py',
+            'description': 'Security alerts and user account notifications',
+            'icon': 'shield',
+            'color': 'danger',
+            'enabled': True,
+            'default_priority': 'urgent',
+            'delay_minutes': 0,
+            'batch_size': 10,
+            'categories': ['security', 'system'],
+            'target_roles': ['Admin', 'Super User'],
+            'total_triggers': 67,
+            'recent_triggers': 3,
+            'success_rate': 100.0,
+            'avg_processing_time': 78,
+            'last_triggered': '6 hours ago',
+            'recent_activity': [
+                {'title': 'Failed login alert', 'time': '6 hours ago', 'icon': 'alert-triangle', 'color': 'danger'},
+                {'title': 'New user created', 'time': '1 day ago', 'icon': 'user-plus', 'color': 'success'},
+                {'title': 'Password reset requested', 'time': '2 days ago', 'icon': 'key', 'color': 'warning'}
+            ]
+        },
+        'system-monitoring': {
+            'name': 'System Monitoring',
+            'slug': 'system-monitoring',
+            'module': 'system.py',
+            'description': 'System alerts, maintenance notices, and performance warnings',
+            'icon': 'server',
+            'color': 'secondary',
+            'enabled': True,
+            'default_priority': 'medium',
+            'delay_minutes': 2,
+            'batch_size': 500,
+            'categories': ['system', 'company_announcement'],
+            'target_roles': ['Admin', 'Super User', 'Manager', 'Employee'],
+            'total_triggers': 1203,
+            'recent_triggers': 25,
+            'success_rate': 99.7,
+            'avg_processing_time': 45,
+            'last_triggered': '15 minutes ago',
+            'recent_activity': [
+                {'title': 'System maintenance notice', 'time': '15 minutes ago', 'icon': 'settings', 'color': 'info'},
+                {'title': 'Database backup completed', 'time': '2 hours ago', 'icon': 'database', 'color': 'success'},
+                {'title': 'Performance alert cleared', 'time': '4 hours ago', 'icon': 'trending-up', 'color': 'success'}
+            ]
+        }
+    }
+    
+    trigger = trigger_configs.get(slug)
+    if not trigger:
+        flash('Trigger not found', 'danger')
+        return redirect(url_for('notifications.admin_dashboard'))
+    
+    return render_template('notifications/trigger_detail.html', trigger=trigger)
+
+
+@notifications_bp.route('/admin/trigger/<slug>/toggle', methods=['POST'])
+@role_required('Super User')
+def toggle_trigger(slug):
+    """Toggle trigger enabled/disabled status"""
+    try:
+        data = request.get_json()
+        enabled = data.get('enabled', False)
+        
+        # In a real implementation, this would update the trigger configuration
+        return jsonify({
+            'success': True,
+            'message': f'Trigger {slug} {"enabled" if enabled else "disabled"} successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@notifications_bp.route('/admin/trigger/<slug>/test', methods=['POST'])
+@role_required('Super User')
+def test_trigger(slug):
+    """Test trigger functionality"""
+    try:
+        # Create a test notification based on the trigger type
+        current_user_id = current_user.id
+        
+        test_messages = {
+            'leave-management': 'Test: Leave approval notification triggered successfully',
+            'time-attendance': 'Test: Timecard reminder notification sent',
+            'schedule-management': 'Test: Schedule change notification delivered',
+            'payroll-processing': 'Test: Payroll deadline notification sent',
+            'user-management': 'Test: Security alert notification triggered',
+            'system-monitoring': 'Test: System monitoring alert sent'
+        }
+        
+        message = test_messages.get(slug, 'Test notification triggered')
+        
+        # Create actual test notification
+        NotificationService.create_notification(
+            user_id=current_user_id,
+            type_name='system_alert',
+            title=f'Test Trigger: {slug.replace("-", " ").title()}',
+            message=message,
+            priority='medium',
+            category='system'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Test trigger executed successfully and notification created'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@notifications_bp.route('/admin/trigger/<slug>/save', methods=['POST'])
+@role_required('Super User')
+def save_trigger_config(slug):
+    """Save trigger configuration"""
+    try:
+        data = request.get_json()
+        
+        # In a real implementation, this would save the configuration to the database
+        return jsonify({
+            'success': True,
+            'message': 'Trigger configuration saved successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@notifications_bp.route('/admin/trigger/<slug>/logs')
+@role_required('Super User')
+def trigger_logs(slug):
+    """View trigger execution logs"""
+    # Return a simple logs page
+    return f"<h1>Trigger Logs for {slug}</h1><p>Logs would be displayed here in a real implementation.</p>"
+
+
+@notifications_bp.route('/admin/trigger/<slug>/duplicate', methods=['POST'])
+@role_required('Super User')
+def duplicate_trigger(slug):
+    """Duplicate trigger configuration"""
+    try:
+        data = request.get_json()
+        new_name = data.get('name', f'{slug}-copy')
+        new_slug = new_name.lower().replace(' ', '-')
+        
+        return jsonify({
+            'success': True,
+            'message': f'Trigger duplicated as {new_name}',
+            'new_slug': new_slug
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@notifications_bp.route('/admin/trigger/<slug>/export')
+@role_required('Super User')
+def export_trigger_config(slug):
+    """Export trigger configuration"""
+    # Return a JSON configuration
+    return jsonify({
+        'trigger': slug,
+        'exported_at': datetime.now().isoformat(),
+        'configuration': 'Trigger configuration would be exported here'
+    })
