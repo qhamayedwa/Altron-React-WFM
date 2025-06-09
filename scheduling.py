@@ -219,14 +219,21 @@ def create_schedule():
     """Create a new schedule"""
     if request.method == 'POST':
         try:
-            user_id = request.form.get('user_id', type=int)
+            # Handle multiple employee selection
+            user_ids = request.form.getlist('user_ids[]')
+            if not user_ids:
+                # Fallback to single user selection
+                single_user_id = request.form.get('user_id', type=int)
+                if single_user_id:
+                    user_ids = [str(single_user_id)]
+            
             shift_type_id = request.form.get('shift_type_id', type=int) or None
             start_datetime = request.form.get('start_datetime')
             end_datetime = request.form.get('end_datetime')
             notes = request.form.get('notes')
             
-            if not all([user_id, start_datetime, end_datetime]):
-                flash('Employee, start time, and end time are required.', 'danger')
+            if not all([user_ids, start_datetime, end_datetime]):
+                flash('At least one employee, start time, and end time are required.', 'danger')
                 return redirect(url_for('scheduling.create_schedule'))
             
             # Parse datetime strings
@@ -237,37 +244,67 @@ def create_schedule():
                 flash('End time must be after start time.', 'danger')
                 return redirect(url_for('scheduling.create_schedule'))
             
-            # Check for scheduling conflicts
-            conflicts = Schedule.query.filter(
-                Schedule.user_id == user_id,
-                Schedule.status.in_(['Scheduled', 'Confirmed']),
-                or_(
-                    and_(Schedule.start_time <= start_time, Schedule.end_time > start_time),
-                    and_(Schedule.start_time < end_time, Schedule.end_time >= end_time),
-                    and_(Schedule.start_time >= start_time, Schedule.end_time <= end_time)
+            # Process batch scheduling for multiple employees
+            created_schedules = []
+            conflict_employees = []
+            
+            for user_id_str in user_ids:
+                user_id = int(user_id_str)
+                
+                # Check for scheduling conflicts for this employee
+                conflicts = Schedule.query.filter(
+                    Schedule.user_id == user_id,
+                    Schedule.status.in_(['Scheduled', 'Confirmed']),
+                    or_(
+                        and_(Schedule.start_time <= start_time, Schedule.end_time > start_time),
+                        and_(Schedule.start_time < end_time, Schedule.end_time >= end_time),
+                        and_(Schedule.start_time >= start_time, Schedule.end_time <= end_time)
+                    )
+                ).first()
+                
+                if conflicts:
+                    # Get employee name for conflict reporting
+                    user = User.query.get(user_id)
+                    conflict_employees.append(user.full_name or user.username)
+                    continue
+                
+                # Create the schedule for this employee
+                schedule = Schedule(
+                    user_id=user_id,
+                    shift_type_id=shift_type_id,
+                    start_time=start_time,
+                    end_time=end_time,
+                    assigned_by_manager_id=current_user.id,
+                    notes=notes
                 )
-            ).first()
+                
+                db.session.add(schedule)
+                created_schedules.append(schedule)
+                
+                # Trigger notification for each schedule
+                _trigger_schedule_notification(schedule, 'created')
             
-            if conflicts:
-                flash('This schedule conflicts with an existing schedule.', 'danger')
-                return redirect(url_for('scheduling.create_schedule'))
+            # Commit all successful schedule creations
+            if created_schedules:
+                db.session.commit()
+                
+                # Create success message
+                if len(created_schedules) == 1:
+                    flash('Schedule created successfully!', 'success')
+                else:
+                    flash(f'Batch schedule created for {len(created_schedules)} employees!', 'success')
+                
+                # Report conflicts if any
+                if conflict_employees:
+                    conflict_msg = f"Schedule conflicts detected for: {', '.join(conflict_employees)}"
+                    flash(conflict_msg, 'warning')
+            else:
+                # All employees had conflicts
+                if conflict_employees:
+                    flash('All selected employees have scheduling conflicts. Please choose a different time.', 'danger')
+                else:
+                    flash('No employees were scheduled.', 'danger')
             
-            schedule = Schedule(
-                user_id=user_id,
-                shift_type_id=shift_type_id,
-                start_time=start_time,
-                end_time=end_time,
-                assigned_by_manager_id=current_user.id,
-                notes=notes
-            )
-            
-            db.session.add(schedule)
-            db.session.commit()
-            
-            # Trigger notification (stub for now)
-            _trigger_schedule_notification(schedule, 'created')
-            
-            flash('Schedule created successfully!', 'success')
             return redirect(url_for('scheduling.manage_schedules'))
             
         except Exception as e:

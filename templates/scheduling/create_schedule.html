@@ -38,14 +38,33 @@
                                    onkeyup="searchEmployees(this.value)">
                         </div>
                     </div>
+                    <!-- Batch Selection Controls -->
+                    <div class="mb-3">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllEmployees()">
+                                <i data-feather="check-square" width="14" height="14"></i>
+                                Select All
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">
+                                <i data-feather="square" width="14" height="14"></i>
+                                Clear All
+                            </button>
+                        </div>
+                        <small class="text-muted">Click employees to select multiple for batch scheduling</small>
+                    </div>
+
                     <div class="employee-list">
                         {% for user in users %}
                         <div class="employee-card mb-2 p-2 border rounded" 
                              data-user-id="{{ user.id }}" 
                              data-user-name="{{ user.full_name or user.username }}"
                              data-department="{{ user.department_name or 'Unassigned' }}"
-                             onclick="selectEmployee(this)">
+                             onclick="toggleEmployee(this)">
                             <div class="d-flex align-items-center">
+                                <div class="selection-checkbox me-2">
+                                    <input type="checkbox" class="form-check-input employee-checkbox" 
+                                           value="{{ user.id }}" id="emp_{{ user.id }}" onchange="updateEmployeeCard(this)">
+                                </div>
                                 <div class="avatar-initials me-2">
                                     {{ (user.first_name or user.username[:1])|upper }}{{ (user.last_name[:1] if user.last_name else '')|upper }}
                                 </div>
@@ -82,29 +101,30 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" id="scheduleForm">
-                        <!-- Selected Employee Display -->
-                        <div id="selectedEmployeeInfo" class="alert alert-info d-none mb-3">
+                        <!-- Selected Employees Display -->
+                        <div id="selectedEmployeesInfo" class="alert alert-info d-none mb-3">
                             <div class="d-flex align-items-center">
-                                <i data-feather="user" class="me-2"></i>
-                                <div>
-                                    <strong>Selected Employee:</strong>
-                                    <span id="selectedEmployeeName">None</span>
-                                    <br>
-                                    <small>Department: <span id="selectedEmployeeDept">-</span></small>
+                                <i data-feather="users" class="me-2"></i>
+                                <div class="flex-grow-1">
+                                    <strong>Selected Employees (<span id="selectedCount">0</span>):</strong>
+                                    <div id="selectedEmployeesList" class="mt-1"></div>
                                 </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">
+                                    <i data-feather="x" width="14" height="14"></i>
+                                </button>
                             </div>
                         </div>
 
+                        <!-- Hidden inputs for selected employees -->
+                        <div id="selectedEmployeeInputs"></div>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="user_id" class="form-label">Employee *</label>
-                                <select class="form-select" id="user_id" name="user_id" required>
-                                    <option value="">Select Employee from List</option>
-                                    {% for user in users %}
-                                    <option value="{{ user.id }}">{{ user.full_name or user.username }} - {{ user.department_name or 'Unassigned' }}</option>
-                                    {% endfor %}
-                                </select>
-                                <div class="form-text">Click on an employee from the left panel or select from dropdown</div>
+                                <label class="form-label">Batch Schedule Creation</label>
+                                <div class="form-control-plaintext">
+                                    <span id="batchModeIndicator" class="badge bg-secondary">Select employees from the left panel</span>
+                                </div>
+                                <div class="form-text">Multiple employees can be scheduled with the same time parameters</div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="shift_type_id" class="form-label">Shift Type</label>
@@ -183,6 +203,27 @@
     border-width: 2px !important;
 }
 
+.selection-checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.employee-checkbox {
+    cursor: pointer;
+}
+
+.selected-employee-tag {
+    background: #e3f2fd;
+    border: 1px solid #007bff;
+    color: #0056b3;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.25rem;
+    display: inline-block;
+}
+
 .avatar-initials {
     width: 40px;
     height: 40px;
@@ -252,55 +293,116 @@
 
 {% block scripts %}
 <script>
-    let selectedEmployeeId = null;
+    let selectedEmployees = new Set();
+    let employeeData = {};
 
     // Initialize page
     document.addEventListener('DOMContentLoaded', function() {
         feather.replace();
         setDefaultTimes();
         
-        // Sync dropdown with employee cards
-        document.getElementById('user_id').addEventListener('change', function() {
-            const selectedId = this.value;
-            if (selectedId) {
-                const employeeCard = document.querySelector(`[data-user-id="${selectedId}"]`);
-                if (employeeCard) {
-                    selectEmployeeCard(employeeCard);
-                }
-            }
+        // Initialize employee data
+        document.querySelectorAll('.employee-card').forEach(card => {
+            const id = card.dataset.userId;
+            employeeData[id] = {
+                id: id,
+                name: card.dataset.userName,
+                department: card.dataset.department
+            };
         });
     });
 
-    // Employee selection from cards
-    function selectEmployee(card) {
-        // Remove previous selection
-        document.querySelectorAll('.employee-card').forEach(c => c.classList.remove('selected'));
-        
-        // Select current card
-        card.classList.add('selected');
-        
-        const userId = card.dataset.userId;
-        const userName = card.dataset.userName;
-        const userDept = card.dataset.department;
-        
-        // Update form
-        document.getElementById('user_id').value = userId;
-        selectedEmployeeId = userId;
-        
-        // Show selected employee info
-        const infoPanel = document.getElementById('selectedEmployeeInfo');
-        document.getElementById('selectedEmployeeName').textContent = userName;
-        document.getElementById('selectedEmployeeDept').textContent = userDept;
-        infoPanel.classList.remove('d-none');
-        
-        // Show notification
-        showNotification(`Selected employee: ${userName}`, 'success');
-        
-        feather.replace();
+    // Toggle employee selection
+    function toggleEmployee(card) {
+        const checkbox = card.querySelector('.employee-checkbox');
+        checkbox.checked = !checkbox.checked;
+        updateEmployeeCard(checkbox);
     }
 
-    function selectEmployeeCard(card) {
-        selectEmployee(card);
+    // Update employee card based on checkbox state
+    function updateEmployeeCard(checkbox) {
+        const card = checkbox.closest('.employee-card');
+        const userId = checkbox.value;
+        
+        if (checkbox.checked) {
+            selectedEmployees.add(userId);
+            card.classList.add('selected');
+        } else {
+            selectedEmployees.delete(userId);
+            card.classList.remove('selected');
+        }
+        
+        updateSelectedEmployeesDisplay();
+    }
+
+    // Select all employees
+    function selectAllEmployees() {
+        document.querySelectorAll('.employee-checkbox').forEach(checkbox => {
+            checkbox.checked = true;
+            updateEmployeeCard(checkbox);
+        });
+        showNotification('All employees selected for batch scheduling', 'success');
+    }
+
+    // Clear all selections
+    function clearSelection() {
+        document.querySelectorAll('.employee-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+            updateEmployeeCard(checkbox);
+        });
+        showNotification('Selection cleared', 'info');
+    }
+
+    // Update the selected employees display
+    function updateSelectedEmployeesDisplay() {
+        const count = selectedEmployees.size;
+        const infoPanel = document.getElementById('selectedEmployeesInfo');
+        const countSpan = document.getElementById('selectedCount');
+        const listDiv = document.getElementById('selectedEmployeesList');
+        const inputsDiv = document.getElementById('selectedEmployeeInputs');
+        const indicator = document.getElementById('batchModeIndicator');
+        
+        countSpan.textContent = count;
+        
+        if (count > 0) {
+            infoPanel.classList.remove('d-none');
+            
+            // Update employee list display
+            listDiv.innerHTML = '';
+            selectedEmployees.forEach(id => {
+                const employee = employeeData[id];
+                const tag = document.createElement('span');
+                tag.className = 'selected-employee-tag';
+                tag.textContent = employee.name;
+                listDiv.appendChild(tag);
+            });
+            
+            // Update hidden inputs
+            inputsDiv.innerHTML = '';
+            selectedEmployees.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'user_ids[]';
+                input.value = id;
+                inputsDiv.appendChild(input);
+            });
+            
+            // Update indicator
+            if (count === 1) {
+                indicator.textContent = `1 employee selected`;
+                indicator.className = 'badge bg-primary';
+            } else {
+                indicator.textContent = `${count} employees selected for batch scheduling`;
+                indicator.className = 'badge bg-success';
+            }
+        } else {
+            infoPanel.classList.add('d-none');
+            inputsDiv.innerHTML = '';
+            indicator.textContent = 'Select employees from the left panel';
+            indicator.className = 'badge bg-secondary';
+        }
+        
+        feather.replace();
     }
 
     // Set default times when shift type is selected
@@ -362,9 +464,9 @@
         const startDateTime = new Date(document.getElementById('start_datetime').value);
         const endDateTime = new Date(document.getElementById('end_datetime').value);
         
-        if (!selectedEmployeeId && !document.getElementById('user_id').value) {
+        if (selectedEmployees.size === 0) {
             e.preventDefault();
-            showNotification('Please select an employee first.', 'warning');
+            showNotification('Please select at least one employee for scheduling.', 'warning');
             return false;
         }
         
