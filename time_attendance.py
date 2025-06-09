@@ -1081,9 +1081,9 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
     """
     try:
         from models import TimeEntry, User, Department
-        from pay_code_admin import PayCode  # Import from pay_code_admin module
         from sqlalchemy import func, and_
         from collections import defaultdict
+        import sqlite3
         
         # Initialize summary data structures
         summary_data = {}
@@ -1094,12 +1094,31 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
             'total_amount': 0
         }
         
-        # Get all pay codes from pay_code_admin
+        # Get pay codes from database - use simplified approach
+        pay_codes_map = {}
         try:
-            pay_codes = PayCode.query.all()
-        except:
-            # Fallback if PayCode model is not available
-            pay_codes = []
+            from app import db
+            # Check if pay_codes table exists and get data
+            cursor = db.session.connection().execute("SELECT * FROM pay_codes WHERE is_active = true")
+            for row in cursor:
+                employee_id = row[5] if len(row) > 5 else None
+                if employee_id:
+                    pay_codes_map[employee_id] = {
+                        'code': row[1],
+                        'description': row[2], 
+                        'hourly_rate': float(row[3]) if row[3] else 150.0,
+                        'overtime_multiplier': float(row[4]) if row[4] else 1.5
+                    }
+        except Exception as e:
+            print(f"Pay codes table not available or error: {str(e)}")
+            # Use default pay code for all employees
+            for user in users_list:
+                pay_codes_map[user.id] = {
+                    'code': 'REG001',
+                    'description': 'Regular Hours',
+                    'hourly_rate': 150.0,
+                    'overtime_multiplier': 1.5
+                }
         
         # Process each user's time entries within the date range
         for user in users_list:
