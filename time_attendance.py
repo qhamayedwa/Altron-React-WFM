@@ -15,7 +15,7 @@ def get_managed_departments(user_id):
     return [dept.id for dept in managed_depts]
 
 # Create time attendance blueprint
-time_attendance_bp = Blueprint('time_attendance', __name__, url_prefix='/time')
+time_attendance_bp = Blueprint('time_attendance', __name__, url_prefix='/time-attendance')
 
 # Employee Routes
 
@@ -1098,9 +1098,10 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
         pay_codes_map = {}
         try:
             from app import db
+            from sqlalchemy import text
             # Check if pay_codes table exists and get data
-            cursor = db.session.connection().execute("SELECT * FROM pay_codes WHERE is_active = true")
-            for row in cursor:
+            result = db.session.execute(text("SELECT * FROM pay_codes WHERE is_active = true"))
+            for row in result:
                 employee_id = row[5] if len(row) > 5 else None
                 if employee_id:
                     pay_codes_map[employee_id] = {
@@ -1122,21 +1123,13 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
         
         # Process each user's time entries within the date range
         for user in users_list:
-            # Get user's pay code assignment
-            user_pay_code = None
-            for pc in pay_codes:
-                if hasattr(pc, 'employee_id') and pc.employee_id == user.id:
-                    user_pay_code = pc
-                    break
-            
-            if not user_pay_code:
-                # Create a default pay code structure for users without assigned codes
-                user_pay_code = type('DefaultPayCode', (), {
-                    'code': 'DEFAULT',
-                    'description': 'Default Pay Code',
-                    'hourly_rate': 150.0,  # Default rate
-                    'overtime_multiplier': 1.5
-                })()
+            # Get user's pay code from the map
+            user_pay_code = pay_codes_map.get(user.id, {
+                'code': 'DEFAULT',
+                'description': 'Default Pay Code', 
+                'hourly_rate': 150.0,
+                'overtime_multiplier': 1.5
+            })
                 
             # Get time entries for this user in the date range
             time_entries = TimeEntry.query.filter(
@@ -1162,8 +1155,8 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
                     regular_hours = min(hours, 8)  # Standard 8-hour workday
                     overtime_hours = max(0, hours - 8)
                     
-                    regular_pay = regular_hours * user_pay_code.hourly_rate
-                    overtime_pay = overtime_hours * user_pay_code.hourly_rate * user_pay_code.overtime_multiplier
+                    regular_pay = regular_hours * user_pay_code['hourly_rate']
+                    overtime_pay = overtime_hours * user_pay_code['hourly_rate'] * user_pay_code['overtime_multiplier']
                     
                     user_regular_amount += regular_pay
                     user_overtime_amount += overtime_pay
@@ -1174,13 +1167,13 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
             
             # Add to summary data based on grouping
             if summary_group == 'pay_code':
-                key = user_pay_code.code
+                key = user_pay_code['code']
                 if key not in summary_data:
                     summary_data[key] = {
-                        'code': user_pay_code.code,
-                        'description': user_pay_code.description,
-                        'hourly_rate': user_pay_code.hourly_rate,
-                        'overtime_multiplier': user_pay_code.overtime_multiplier,
+                        'code': user_pay_code['code'],
+                        'description': user_pay_code['description'],
+                        'hourly_rate': user_pay_code['hourly_rate'],
+                        'overtime_multiplier': user_pay_code['overtime_multiplier'],
                         'total_hours': 0,
                         'regular_amount': 0,
                         'overtime_amount': 0,
@@ -1204,7 +1197,7 @@ def generate_pay_code_summary(users_list, start_date, end_date, summary_group, i
                     'department_name': user.get_department_name(),
                     'total_hours': user_total_hours,
                     'total_amount': user_regular_amount + user_overtime_amount,
-                    'pay_codes': [user_pay_code.code]
+                    'pay_codes': [user_pay_code['code']]
                 }
                 
             elif summary_group == 'department':
