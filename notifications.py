@@ -548,6 +548,7 @@ def admin_dashboard():
     workflow_triggers = [
         {
             'name': 'Leave Management',
+            'slug': 'leave-management',
             'module': 'leave_management.py',
             'description': 'Triggers notifications for leave requests, approvals, and status changes',
             'icon': 'calendar',
@@ -557,6 +558,7 @@ def admin_dashboard():
         },
         {
             'name': 'Time Attendance',
+            'slug': 'time-attendance',
             'module': 'time_attendance.py',
             'description': 'Sends timecard reminders and attendance notifications',
             'icon': 'clock',
@@ -566,6 +568,7 @@ def admin_dashboard():
         },
         {
             'name': 'Schedule Management',
+            'slug': 'schedule-management',
             'module': 'scheduling.py',
             'description': 'Notifies about schedule changes and conflicts',
             'icon': 'calendar-check',
@@ -575,6 +578,7 @@ def admin_dashboard():
         },
         {
             'name': 'Payroll Processing',
+            'slug': 'payroll-processing',
             'module': 'payroll.py',
             'description': 'Alerts for payroll deadlines and processing status',
             'icon': 'dollar-sign',
@@ -584,6 +588,7 @@ def admin_dashboard():
         },
         {
             'name': 'User Management',
+            'slug': 'user-management',
             'module': 'auth.py',
             'description': 'Security alerts and user account notifications',
             'icon': 'shield',
@@ -593,6 +598,7 @@ def admin_dashboard():
         },
         {
             'name': 'System Monitoring',
+            'slug': 'system-monitoring',
             'module': 'system.py',
             'description': 'System alerts, maintenance notices, and performance warnings',
             'icon': 'server',

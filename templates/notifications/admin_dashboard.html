@@ -200,13 +200,33 @@
                             <div class="row">
                                 {% for workflow in workflow_triggers %}
                                 <div class="col-md-6 col-lg-4 mb-3">
-                                    <div class="card h-100">
+                                    <div class="card h-100 trigger-card" style="cursor: pointer;" onclick="window.location.href='{{ url_for('notifications.trigger_detail', slug=workflow.slug) }}'">
                                         <div class="card-body">
                                             <div class="d-flex align-items-start mb-2">
                                                 <i data-feather="{{ workflow.icon }}" class="text-{{ workflow.color }} me-2 mt-1"></i>
-                                                <div>
+                                                <div class="flex-grow-1">
                                                     <h6 class="card-title mb-1">{{ workflow.name }}</h6>
                                                     <small class="text-muted">{{ workflow.module }}</small>
+                                                </div>
+                                                <div class="dropdown" onclick="event.stopPropagation();">
+                                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                        <i data-feather="more-horizontal" style="width: 12px; height: 12px;"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li><a class="dropdown-item" href="{{ url_for('notifications.trigger_detail', slug=workflow.slug) }}">
+                                                            <i data-feather="settings" class="me-1" style="width: 12px; height: 12px;"></i>
+                                                            Configure
+                                                        </a></li>
+                                                        <li><a class="dropdown-item" href="#" onclick="testTrigger('{{ workflow.slug }}'); return false;">
+                                                            <i data-feather="play" class="me-1" style="width: 12px; height: 12px;"></i>
+                                                            Test Trigger
+                                                        </a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><a class="dropdown-item" href="{{ url_for('notifications.trigger_logs', slug=workflow.slug) }}" target="_blank">
+                                                            <i data-feather="file-text" class="me-1" style="width: 12px; height: 12px;"></i>
+                                                            View Logs
+                                                        </a></li>
+                                                    </ul>
                                                 </div>
                                             </div>
                                             <p class="card-text small">{{ workflow.description }}</p>
@@ -215,10 +235,10 @@
                                                     <i data-feather="zap" class="me-1" style="width: 12px; height: 12px;"></i>
                                                     {{ workflow.trigger_count }} triggers
                                                 </small>
-                                                <div class="form-check form-switch">
+                                                <div class="form-check form-switch" onclick="event.stopPropagation();">
                                                     <input class="form-check-input" type="checkbox" id="trigger{{ loop.index }}" 
                                                            {{ 'checked' if workflow.enabled else '' }}
-                                                           onchange="toggleTrigger('{{ workflow.name }}', this.checked)">
+                                                           onchange="toggleTrigger('{{ workflow.slug }}', this.checked)">
                                                     <label class="form-check-label" for="trigger{{ loop.index }}">
                                                         <small>{{ 'Enabled' if workflow.enabled else 'Disabled' }}</small>
                                                     </label>
@@ -508,6 +528,30 @@
     border-bottom: 2px solid #007bff;
     color: #007bff;
 }
+
+.trigger-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e3e6f0;
+}
+
+.trigger-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+.trigger-card .card-body {
+    position: relative;
+}
+
+.trigger-card .dropdown {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.trigger-card:hover .dropdown {
+    opacity: 1;
+}
 </style>
 
 <script>
@@ -521,24 +565,54 @@ function editType(typeId) {
     alert('Edit type functionality would be implemented here');
 }
 
-function toggleTrigger(triggerName, enabled) {
+function toggleTrigger(triggerSlug, enabled) {
     // Toggle workflow trigger
-    fetch('/notifications/admin/toggle-trigger', {
+    fetch(`/notifications/admin/trigger/${triggerSlug}/toggle`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            trigger: triggerName,
             enabled: enabled
         })
     })
     .then(response => response.json())
     .then(data => {
-        if (!data.success) {
+        if (data.success) {
+            // Update the UI to reflect the change
+            const label = document.querySelector(`label[for="trigger${triggerSlug}"]`);
+            if (label) {
+                label.innerHTML = `<small>${enabled ? 'Enabled' : 'Disabled'}</small>`;
+            }
+        } else {
             alert('Error toggling trigger: ' + data.message);
+            // Revert the checkbox state
+            event.target.checked = !enabled;
         }
+    })
+    .catch(error => {
+        alert('Error toggling trigger: ' + error);
+        event.target.checked = !enabled;
     });
+}
+
+function testTrigger(triggerSlug) {
+    if (confirm('Run a test trigger to verify configuration?')) {
+        fetch(`/notifications/admin/trigger/${triggerSlug}/test`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Test trigger executed successfully! Check your notifications.');
+            } else {
+                alert('Test failed: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error running test: ' + error);
+        });
+    }
 }
 
 function resetSettings() {
