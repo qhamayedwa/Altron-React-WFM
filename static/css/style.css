@@ -3,6 +3,15 @@
 
 /* Universal white text for all purple/indigo backgrounds */
 .card-header,
+.card-header h1,
+.card-header h2,
+.card-header h3,
+.card-header h4,
+.card-header h5,
+.card-header h6,
+.card-header p,
+.card-header span,
+.card-header .mb-0,
 .table thead th,
 .stats-card,
 .btn-primary,
@@ -18,7 +27,7 @@
 .alert-primary,
 *[class*="bg-primary"],
 *[style*="primary-gradient"] {
-    color: white !important;
+    color: #ffffff !important;
 }
 
 :root {
