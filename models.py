@@ -348,6 +348,9 @@ class User(UserMixin, db.Model):
     job_title = db.Column(db.String(100), nullable=True)
     job_grade = db.Column(db.String(10), nullable=True)
     salary = db.Column(db.Float, nullable=True)
+    
+    # Payroll integration
+    pay_code = db.Column(db.String(20), nullable=True, index=True)  # Employee pay code for payroll system
     hourly_rate = db.Column(db.Float, nullable=True)
     
     # Professional information
