@@ -417,6 +417,10 @@ def manage_notification_types():
                          notification_types=notification_types)
 
 
+def init_notification_types():
+    """Initialize default notification types - called during app startup"""
+    initialize_default_notification_types()
+
 def initialize_default_notification_types():
     """Initialize default notification types"""
     default_types = [
@@ -469,3 +473,75 @@ def initialize_default_notification_types():
             db.session.add(notification_type)
     
     db.session.commit()
+
+
+def create_test_notifications():
+    """Create test notifications for demonstration purposes"""
+    try:
+        # Get some users to create notifications for
+        users = User.query.filter_by(is_active=True).limit(10).all()
+        
+        if not users:
+            print("No active users found for test notifications")
+            return
+        
+        # Create various types of test notifications
+        test_notifications = [
+            {
+                'type_name': 'leave_approval_required',
+                'title': 'Leave Request Pending Approval',
+                'message': 'John Doe has submitted a leave request for 3 days starting next Monday. Please review and approve.',
+                'priority': 'high',
+                'action_url': '/leave/manage',
+                'action_text': 'Review Request'
+            },
+            {
+                'type_name': 'leave_status_update',
+                'title': 'Leave Request Approved',
+                'message': 'Your leave request for Dec 15-17 has been approved by your manager.',
+                'priority': 'medium',
+                'action_url': '/leave/my-applications',
+                'action_text': 'View Details'
+            },
+            {
+                'type_name': 'schedule_change',
+                'title': 'Schedule Updated',
+                'message': 'Your shift on Friday has been moved from 9:00 AM to 10:00 AM.',
+                'priority': 'high',
+                'action_url': '/scheduling',
+                'action_text': 'View Schedule'
+            },
+            {
+                'type_name': 'timecard_reminder',
+                'title': 'Timecard Submission Reminder',
+                'message': 'Don\'t forget to submit your timecard for this week. Due by Friday 5:00 PM.',
+                'priority': 'medium',
+                'action_url': '/time-attendance',
+                'action_text': 'Submit Timecard'
+            },
+            {
+                'type_name': 'system_alert',
+                'title': 'System Maintenance Notice',
+                'message': 'Scheduled maintenance will occur tonight from 11:00 PM to 1:00 AM. Limited functionality expected.',
+                'priority': 'urgent',
+                'expires_hours': 24
+            }
+        ]
+        
+        notifications_created = 0
+        for user in users[:5]:  # Create notifications for first 5 users
+            for i, notification_data in enumerate(test_notifications):
+                # Don't create all notifications for all users to avoid spam
+                if i < 3 or user.id % 2 == 0:  # Vary which notifications each user gets
+                    NotificationService.create_notification(
+                        user_id=user.id,
+                        **notification_data
+                    )
+                    notifications_created += 1
+        
+        print(f"Created {notifications_created} test notifications for {len(users[:5])} users")
+        return notifications_created
+        
+    except Exception as e:
+        print(f"Error creating test notifications: {e}")
+        return 0
