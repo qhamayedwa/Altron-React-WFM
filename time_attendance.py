@@ -433,7 +433,7 @@ def team_timecard():
         query = query.join(User.roles).filter(Role.name == role_filter)
     
     if department_filter:
-        query = query.filter(User.employee_department_id == department_filter)
+        query = query.filter(User.department_id == department_filter)
     
     if status_filter:
         query = query.filter(TimeEntry.status == status_filter)
@@ -484,7 +484,7 @@ def team_timecard():
         if managed_dept_ids:
             users = User.query.filter(
                 User.is_active == True,
-                User.employee_department_id.in_(managed_dept_ids)
+                User.department_id.in_(managed_dept_ids)
             ).order_by(User.username).all()
             
             departments = Department.query.filter(
