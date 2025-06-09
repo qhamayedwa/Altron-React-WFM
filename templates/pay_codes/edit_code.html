@@ -9,7 +9,7 @@
             <i data-feather="edit" class="me-2"></i>
             Edit Pay Code: {{ pay_code.code }}
         </h2>
-        <a href="{{ url_for('pay_codes.manage_codes') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('pay_codes.manage_pay_codes') }}" class="btn btn-outline-secondary">
             <i data-feather="arrow-left" class="me-2"></i>
             Back to Pay Codes
         </a>
@@ -93,7 +93,7 @@
                         {% endif %}
 
                         <div class="d-flex justify-content-end gap-2">
-                            <a href="{{ url_for('pay_codes.manage_codes') }}" class="btn btn-secondary">Cancel</a>
+                            <a href="{{ url_for('pay_codes.manage_pay_codes') }}" class="btn btn-secondary">Cancel</a>
                             <button type="submit" class="btn btn-primary">
                                 <i data-feather="save" class="me-2"></i>
                                 Update Pay Code
