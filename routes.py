@@ -214,13 +214,17 @@ def reports():
         # Apply user-specific filters for data access with multi-tenant isolation
         if hasattr(current_user, 'tenant_id') and current_user.tenant_id:
             # Multi-tenant filtering: join with User table to filter by tenant
+            tenant_filters = [
+                TimeEntry.clock_in_time >= start_date,
+                TimeEntry.clock_in_time <= end_date + timedelta(days=1),
+                User.tenant_id == current_user.tenant_id
+            ]
+            
+            if not is_manager_or_admin:
+                tenant_filters.append(TimeEntry.user_id == current_user.id)
+            
             period_entries = TimeEntry.query.join(User, TimeEntry.user_id == User.id).filter(
-                and_(
-                    TimeEntry.clock_in_time >= start_date,
-                    TimeEntry.clock_in_time <= end_date + timedelta(days=1),
-                    User.tenant_id == current_user.tenant_id,
-                    TimeEntry.user_id == current_user.id if not is_manager_or_admin else True
-                )
+                and_(*tenant_filters)
             ).all()
         else:
             # Non-tenant system or system admin
@@ -258,62 +262,29 @@ def reports():
         managed_dept_ids = get_managed_departments(current_user.id) if is_manager else []
         
         # Employee attendance summary with tenant isolation
+        base_attendance_filters = [
+            TimeEntry.clock_in_time >= start_date,
+            TimeEntry.clock_in_time <= end_date + timedelta(days=1)
+        ]
+        
+        # Add tenant filtering if applicable
         if hasattr(current_user, 'tenant_id') and current_user.tenant_id:
-            # Multi-tenant system: filter by tenant first
-            tenant_filter = User.tenant_id == current_user.tenant_id
-            
-            if is_super_user:
-                # Super Users see all employees in their tenant
-                users_with_entries = db.session.query(User).join(
-                    TimeEntry, User.id == TimeEntry.user_id
-                ).filter(
-                    and_(
-                        TimeEntry.clock_in_time >= start_date,
-                        TimeEntry.clock_in_time <= end_date + timedelta(days=1),
-                        tenant_filter
-                    )
-                ).distinct().all()
-            elif is_manager and managed_dept_ids:
-                # Managers see only employees in departments they manage within their tenant
-                users_with_entries = db.session.query(User).join(
-                    TimeEntry, User.id == TimeEntry.user_id
-                ).filter(
-                    and_(
-                        TimeEntry.clock_in_time >= start_date,
-                        TimeEntry.clock_in_time <= end_date + timedelta(days=1),
-                        User.department_id.in_(managed_dept_ids),
-                        tenant_filter
-                    )
-                ).distinct().all()
-            else:
-                # Employees see only themselves
-                users_with_entries = [current_user] if period_entries else []
+            base_attendance_filters.append(User.tenant_id == current_user.tenant_id)
+        
+        if is_super_user:
+            # Super Users see all employees (in their tenant if multi-tenant)
+            users_with_entries = db.session.query(User).join(
+                TimeEntry, User.id == TimeEntry.user_id
+            ).filter(and_(*base_attendance_filters)).distinct().all()
+        elif is_manager and managed_dept_ids:
+            # Managers see only employees in departments they manage
+            manager_filters = base_attendance_filters + [User.department_id.in_(managed_dept_ids)]
+            users_with_entries = db.session.query(User).join(
+                TimeEntry, User.id == TimeEntry.user_id
+            ).filter(and_(*manager_filters)).distinct().all()
         else:
-            # Non-tenant system or system admin
-            if is_super_user:
-                # Super Users see all employees
-                users_with_entries = db.session.query(User).join(
-                    TimeEntry, User.id == TimeEntry.user_id
-                ).filter(
-                    and_(
-                        TimeEntry.clock_in_time >= start_date,
-                        TimeEntry.clock_in_time <= end_date + timedelta(days=1)
-                    )
-                ).distinct().all()
-            elif is_manager and managed_dept_ids:
-                # Managers see only employees in departments they manage
-                users_with_entries = db.session.query(User).join(
-                    TimeEntry, User.id == TimeEntry.user_id
-                ).filter(
-                    and_(
-                        TimeEntry.clock_in_time >= start_date,
-                        TimeEntry.clock_in_time <= end_date + timedelta(days=1),
-                        User.department_id.in_(managed_dept_ids)
-                    )
-                ).distinct().all()
-            else:
-                # Employees see only themselves
-                users_with_entries = [current_user] if period_entries else []
+            # Employees see only themselves
+            users_with_entries = [current_user] if period_entries else []
         
         attendance_summary = []
         for user in users_with_entries:
