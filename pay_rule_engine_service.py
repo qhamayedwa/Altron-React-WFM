@@ -95,10 +95,10 @@ class PayRuleEngine:
         
         # Process each time entry
         for entry in time_entries:
-            entry_hours = entry.total_hours()
+            entry_hours = entry.total_hours
             total_hours += entry_hours
             
-            self.log_debug(f"Processing entry {entry.id}: {entry_hours} hours on {entry.work_date()}")
+            self.log_debug(f"Processing entry {entry.id}: {entry_hours} hours on {entry.work_date}")
             
             # Apply pay rules in priority order
             entry_components = self._apply_rules_to_entry(entry, pay_rules, context)
