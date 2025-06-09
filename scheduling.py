@@ -281,7 +281,7 @@ def create_schedule():
     if is_super_user:
         # Super Users see all active users with department information
         users = db.session.query(User).join(Department, User.department_id == Department.id, isouter=True)\
-            .filter(User.is_active.is_(True))\
+            .filter(User.is_active == True)\
             .add_columns(Department.name.label('department_name'))\
             .order_by(User.username).all()
         # Convert to objects with department_name attribute
@@ -296,7 +296,7 @@ def create_schedule():
         managed_dept_ids = get_managed_departments(current_user.id)
         if managed_dept_ids:
             users = db.session.query(User).join(Department, User.department_id == Department.id)\
-                .filter(and_(User.is_active.is_(True), User.department_id.in_(managed_dept_ids)))\
+                .filter(and_(User.is_active == True, User.department_id.in_(managed_dept_ids)))\
                 .add_columns(Department.name.label('department_name'))\
                 .order_by(User.username).all()
             # Convert to objects with department_name attribute
