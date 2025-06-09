@@ -22,19 +22,15 @@
                 
                 <!-- Break Toggle Form -->
                 {% if current_status.on_break %}
-                    <form method="POST" action="{{ url_for('time_attendance.end_break') }}" class="d-inline">
-                        <button type="submit" class="btn btn-success">
-                            <i data-feather="play" class="me-2"></i>
-                            End Break
-                        </button>
-                    </form>
+                    <button type="button" class="btn btn-success" onclick="handleBreak('end')">
+                        <i data-feather="play" class="me-2"></i>
+                        End Break
+                    </button>
                 {% else %}
-                    <form method="POST" action="{{ url_for('time_attendance.start_break') }}" class="d-inline">
-                        <button type="submit" class="btn btn-warning">
-                            <i data-feather="pause" class="me-2"></i>
-                            Start Break
-                        </button>
-                    </form>
+                    <button type="button" class="btn btn-warning" onclick="handleBreak('start')">
+                        <i data-feather="pause" class="me-2"></i>
+                        Start Break
+                    </button>
                 {% endif %}
             {% else %}
                 <!-- Clock In Form -->
@@ -225,6 +221,63 @@
 
 {% block scripts %}
 <script>
+    // Handle break functionality with AJAX
+    async function handleBreak(action) {
+        const url = action === 'start' ? '/time/start-break' : '/time/end-break';
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        
+        // Disable button and show loading
+        button.disabled = true;
+        button.innerHTML = '<i data-feather="clock" class="me-2"></i>Processing...';
+        feather.replace();
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Show success message
+                if (window.flashMessages) {
+                    window.flashMessages.show(data.message, 'success');
+                }
+                
+                // Reload page to update status
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                // Show error message
+                if (window.flashMessages) {
+                    window.flashMessages.show(data.message, 'danger');
+                }
+                
+                // Restore button
+                button.disabled = false;
+                button.innerHTML = originalText;
+                feather.replace();
+            }
+        } catch (error) {
+            console.error('Break action failed:', error);
+            
+            // Show error message
+            if (window.flashMessages) {
+                window.flashMessages.show('Network error. Please try again.', 'danger');
+            }
+            
+            // Restore button
+            button.disabled = false;
+            button.innerHTML = originalText;
+            feather.replace();
+        }
+    }
+
     // Initialize Feather icons and live timer on page load
     document.addEventListener('DOMContentLoaded', function() {
         feather.replace();
