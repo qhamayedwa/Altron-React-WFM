@@ -246,80 +246,76 @@ def edit_user(user_id):
     user = User.query.get_or_404(user_id)
     form = EditUserForm(user.username, user.email)
     
-    print(f"DEBUG: Form submitted. Method: {request.method}")
     if request.method == 'POST':
-        print(f"DEBUG: Raw form data: {request.form}")
-        print(f"DEBUG: Form data - hourly_rate: {form.hourly_rate.data}")
-        print(f"DEBUG: Current user hourly_rate: {user.hourly_rate}")
-        print(f"DEBUG: Form validation: {form.validate()}")
-        print(f"DEBUG: Form errors: {form.errors}")
-        print(f"DEBUG: CSRF token valid: {form.csrf_token.validate(form)}")
-    
-    if form.validate_on_submit():
-        print(f"DEBUG: Form validation passed, updating user...")
+        # Process form data directly from request
         try:
             # Basic Information
-            user.username = form.username.data
-            user.email = form.email.data
-            user.first_name = form.first_name.data
-            user.last_name = form.last_name.data
-            user.date_of_birth = form.date_of_birth.data
-            user.id_number = form.id_number.data
-            user.gender = form.gender.data
-            user.nationality = form.nationality.data
+            user.username = request.form.get('username', user.username)
+            user.email = request.form.get('email', user.email)
+            user.first_name = request.form.get('first_name', user.first_name)
+            user.last_name = request.form.get('last_name', user.last_name)
+            user.date_of_birth = request.form.get('date_of_birth') or None
+            user.id_number = request.form.get('id_number', user.id_number)
+            user.gender = request.form.get('gender', user.gender)
+            user.nationality = request.form.get('nationality', user.nationality)
             
             # Contact Information
-            user.phone = form.phone.data
-            user.mobile = form.mobile.data
+            user.phone = request.form.get('phone', user.phone)
+            user.mobile = request.form.get('mobile', user.mobile)
             
             # Address Information
-            user.address_line1 = form.address_line1.data
-            user.address_line2 = form.address_line2.data
-            user.city = form.city.data
-            user.postal_code = form.postal_code.data
+            user.address_line1 = request.form.get('address_line1', user.address_line1)
+            user.address_line2 = request.form.get('address_line2', user.address_line2)
+            user.city = request.form.get('city', user.city)
+            user.postal_code = request.form.get('postal_code', user.postal_code)
             
             # Emergency Contact
-            user.emergency_contact_name = form.emergency_contact_name.data
-            user.emergency_contact_phone = form.emergency_contact_phone.data
-            user.emergency_contact_relationship = form.emergency_contact_relationship.data
+            user.emergency_contact_name = request.form.get('emergency_contact_name', user.emergency_contact_name)
+            user.emergency_contact_phone = request.form.get('emergency_contact_phone', user.emergency_contact_phone)
+            user.emergency_contact_relationship = request.form.get('emergency_contact_relationship', user.emergency_contact_relationship)
             
             # Employment Information
-            user.employee_id = form.employee_id.data
-            user.department_id = form.department.data if form.department.data else None
-            user.position = form.position.data
-            user.employment_type = form.employment_type.data
-            user.hire_date = form.hire_date.data
-            user.manager_id = form.manager_id.data if form.manager_id.data else None
-            user.hourly_rate = form.hourly_rate.data
+            user.employee_id = request.form.get('employee_id', user.employee_id)
+            department_id = request.form.get('department')
+            user.department_id = int(department_id) if department_id and department_id != '' else None
+            user.position = request.form.get('position', user.position)
+            user.employment_type = request.form.get('employment_type', user.employment_type)
+            hire_date = request.form.get('hire_date')
+            user.hire_date = hire_date if hire_date else None
+            manager_id = request.form.get('manager_id')
+            user.manager_id = int(manager_id) if manager_id and manager_id != '' else None
+            
+            # Process hourly rate
+            hourly_rate = request.form.get('hourly_rate')
+            if hourly_rate and hourly_rate.strip():
+                try:
+                    user.hourly_rate = float(hourly_rate)
+                except ValueError:
+                    user.hourly_rate = None
             
             # Professional Information
-            user.education_level = form.education_level.data
-            user.skills = form.skills.data
-            user.notes = form.notes.data
+            user.education_level = request.form.get('education_level', user.education_level)
+            user.skills = request.form.get('skills', user.skills)
+            user.notes = request.form.get('notes', user.notes)
             
             # System Information
-            user.is_active = form.is_active.data
+            user.is_active = 'is_active' in request.form
             
             # Update roles
             user.roles.clear()
-            if form.roles.data:
-                for role_id in form.roles.data:
-                    role = Role.query.get(role_id)
-                    if role:
-                        user.add_role(role)
+            selected_roles = request.form.getlist('roles')
+            for role_id in selected_roles:
+                role = Role.query.get(int(role_id))
+                if role:
+                    user.add_role(role)
             
             db.session.commit()
             flash(f'User {user.username} has been updated successfully!', 'success')
             return redirect(url_for('auth.user_management'))
+            
         except Exception as e:
             db.session.rollback()
             flash(f'Error updating user: {str(e)}', 'danger')
-    else:
-        # Show form validation errors if any
-        if request.method == 'POST' and form.errors:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    flash(f'{field}: {error}', 'danger')
     
     if request.method == 'GET':
         # Basic Information
