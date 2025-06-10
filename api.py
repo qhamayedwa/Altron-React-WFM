@@ -957,6 +957,216 @@ def api_drill_down_hourly_patterns():
             'message': 'Failed to retrieve pattern data'
         }, status_code=500)
 
+@api_bp.route('/drill-down/<kpi_type>')
+@login_required
+def api_drill_down_kpi(kpi_type):
+    """Get drill-down data for dashboard KPIs"""
+    try:
+        today = datetime.now().date()
+        
+        if kpi_type == 'today-hours':
+            # Get today's time entries for current user
+            entries = TimeEntry.query.filter(
+                TimeEntry.user_id == current_user.id,
+                TimeEntry.clock_in_time >= datetime.combine(today, datetime.min.time()),
+                TimeEntry.clock_in_time <= datetime.combine(today, datetime.max.time())
+            ).all()
+            
+            total_hours = sum(entry.total_hours for entry in entries)
+            regular_hours = sum(entry.regular_hours for entry in entries)
+            overtime_hours = sum(entry.overtime_hours for entry in entries)
+            
+            return api_response(True, {
+                "total_hours": round(total_hours, 2),
+                "regular_hours": round(regular_hours, 2),
+                "overtime_hours": round(overtime_hours, 2),
+                "entries": [{
+                    "clock_in_time": entry.clock_in_time.isoformat(),
+                    "clock_out_time": entry.clock_out_time.isoformat() if entry.clock_out_time else None,
+                    "total_hours": entry.total_hours,
+                    "status": entry.status,
+                    "break_minutes": entry.total_break_minutes or 0
+                } for entry in entries]
+            })
+            
+        elif kpi_type == 'week-hours':
+            # Get this week's time entries for current user
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)
+            
+            entries = TimeEntry.query.filter(
+                TimeEntry.user_id == current_user.id,
+                TimeEntry.clock_in_time.between(
+                    datetime.combine(week_start, datetime.min.time()),
+                    datetime.combine(week_end, datetime.max.time())
+                )
+            ).all()
+            
+            # Group by day
+            daily_breakdown = []
+            days_worked = 0
+            total_hours = 0
+            
+            for i in range(7):
+                current_date = week_start + timedelta(days=i)
+                day_entries = [e for e in entries if e.work_date == current_date]
+                day_hours = sum(e.total_hours for e in day_entries)
+                
+                if day_hours > 0:
+                    days_worked += 1
+                
+                total_hours += day_hours
+                
+                daily_breakdown.append({
+                    "date": current_date.strftime("%Y-%m-%d"),
+                    "hours": round(day_hours, 2)
+                })
+            
+            return api_response(True, {
+                "total_hours": round(total_hours, 2),
+                "days_worked": days_worked,
+                "daily_breakdown": daily_breakdown
+            })
+            
+        elif kpi_type == 'leave-balance':
+            # Get leave balance information
+            try:
+                from models import LeaveBalance
+                balance = LeaveBalance.query.filter_by(user_id=current_user.id).first()
+            except:
+                balance = None
+            
+            current_balance = balance.balance if balance else 21
+            annual_allowance = 21  # Standard allowance
+            used_this_year = annual_allowance - current_balance
+            
+            return api_response(True, {
+                "current_balance": current_balance,
+                "annual_allowance": annual_allowance,
+                "used_this_year": used_this_year,
+                "pending_requests": 0
+            })
+            
+        elif kpi_type == 'total-staff':
+            # Manager/Super User only
+            if not current_user.has_role('Manager') and not current_user.has_role('Super User'):
+                return api_response(False, error="Access denied", status_code=403)
+            
+            users = User.query.all()
+            by_role = {}
+            
+            for user in users:
+                for role in user.roles:
+                    if role.name not in by_role:
+                        by_role[role.name] = 0
+                    by_role[role.name] += 1
+            
+            return api_response(True, {
+                "total_count": len(users),
+                "by_role": by_role
+            })
+            
+        elif kpi_type == 'active-today':
+            # Manager/Super User only
+            if not current_user.has_role('Manager') and not current_user.has_role('Super User'):
+                return api_response(False, error="Access denied", status_code=403)
+            
+            # Get active employees (those with open time entries today)
+            active_entries = TimeEntry.query.filter(
+                TimeEntry.clock_in_time >= datetime.combine(today, datetime.min.time()),
+                TimeEntry.clock_in_time <= datetime.combine(today, datetime.max.time()),
+                TimeEntry.status == 'Open'
+            ).all()
+            
+            employees = []
+            total_clock_ins = TimeEntry.query.filter(
+                TimeEntry.clock_in_time >= datetime.combine(today, datetime.min.time()),
+                TimeEntry.clock_in_time <= datetime.combine(today, datetime.max.time())
+            ).count()
+            
+            # Calculate average start time
+            clock_in_times = [e.clock_in_time.time() for e in active_entries]
+            avg_start_time = "N/A"
+            if clock_in_times:
+                avg_seconds = sum(t.hour * 3600 + t.minute * 60 + t.second for t in clock_in_times) / len(clock_in_times)
+                avg_hour = int(avg_seconds // 3600)
+                avg_minute = int((avg_seconds % 3600) // 60)
+                avg_start_time = f"{avg_hour:02d}:{avg_minute:02d}"
+            
+            for entry in active_entries:
+                employee = entry.employee
+                current_duration = (datetime.now() - entry.clock_in_time).total_seconds() / 3600
+                
+                employees.append({
+                    "full_name": f"{getattr(employee, 'first_name', '') or ''} {getattr(employee, 'last_name', '') or ''}".strip() or employee.username,
+                    "username": employee.username,
+                    "department": getattr(employee, 'department_name', 'Not Assigned'),
+                    "clock_in_time": entry.clock_in_time.isoformat(),
+                    "current_duration": round(current_duration, 2)
+                })
+            
+            return api_response(True, {
+                "employees": employees,
+                "total_clock_ins": total_clock_ins,
+                "average_start_time": avg_start_time
+            })
+            
+        elif kpi_type == 'overtime-hours':
+            # Manager/Super User only
+            if not current_user.has_role('Manager') and not current_user.has_role('Super User'):
+                return api_response(False, error="Access denied", status_code=403)
+            
+            # Get overtime data for today
+            overtime_entries = TimeEntry.query.filter(
+                TimeEntry.clock_in_time >= datetime.combine(today, datetime.min.time()),
+                TimeEntry.clock_in_time <= datetime.combine(today, datetime.max.time()),
+                TimeEntry.clock_out_time.isnot(None)
+            ).all()
+            
+            total_overtime = 0
+            employees_with_overtime = set()
+            
+            for entry in overtime_entries:
+                if entry.overtime_hours > 0:
+                    total_overtime += entry.overtime_hours
+                    employees_with_overtime.add(entry.user_id)
+            
+            return api_response(True, {
+                "total_overtime": round(total_overtime, 2),
+                "employees_with_overtime": len(employees_with_overtime),
+                "average_overtime": round(total_overtime / len(employees_with_overtime) if employees_with_overtime else 0, 2)
+            })
+            
+        elif kpi_type == 'present-today':
+            # Manager/Super User only
+            if not current_user.has_role('Manager') and not current_user.has_role('Super User'):
+                return api_response(False, error="Access denied", status_code=403)
+            
+            # Get present employees count
+            present_count = TimeEntry.query.filter(
+                TimeEntry.clock_in_time >= datetime.combine(today, datetime.min.time()),
+                TimeEntry.clock_in_time <= datetime.combine(today, datetime.max.time())
+            ).distinct(TimeEntry.user_id).count()
+            
+            # Get total expected (all active employees with Employee role)
+            total_expected = User.query.filter(
+                User.roles.any(name='Employee')
+            ).count()
+            
+            attendance_rate = round((present_count / total_expected * 100) if total_expected > 0 else 0, 1)
+            
+            return api_response(True, {
+                "present_count": present_count,
+                "total_expected": total_expected,
+                "attendance_rate": attendance_rate
+            })
+        
+        else:
+            return api_response(False, error="Invalid KPI type", status_code=400)
+            
+    except Exception as e:
+        return api_response(False, error=str(e), status_code=500)
+
 # Error handlers
 @api_bp.errorhandler(400)
 def bad_request(error):
