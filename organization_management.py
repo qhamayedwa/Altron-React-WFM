@@ -497,6 +497,41 @@ def view_department(department_id):
     return render_template('organization/view_department.html', 
                          department=department, employees=employees, stats=stats)
 
+@org_bp.route('/departments/<int:department_id>/assign_employee', methods=['GET', 'POST'])
+@login_required
+@role_required('Super User', 'Admin', 'HR Manager')
+def assign_employee(department_id):
+    """Assign existing employee to department"""
+    department = Department.query.get_or_404(department_id)
+    
+    if request.method == 'POST':
+        employee_id = request.form.get('employee_id')
+        if employee_id:
+            employee = User.query.get_or_404(employee_id)
+            
+            # Update employee's department
+            old_department = employee.department.name if employee.department_id else 'Unassigned'
+            employee.department_id = department_id
+            
+            try:
+                db.session.commit()
+                flash(f'Successfully assigned {employee.full_name} from {old_department} to {department.name}!', 'success')
+                return redirect(url_for('organization.view_department', department_id=department_id))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error assigning employee: {str(e)}', 'danger')
+    
+    # Get all active employees
+    available_employees = User.query.filter_by(is_active=True).all()
+    
+    # Get all departments for filter dropdown
+    all_departments = Department.query.filter_by(is_active=True).all()
+    
+    return render_template('organization/assign_employee.html', 
+                         department=department, 
+                         available_employees=available_employees,
+                         all_departments=all_departments)
+
 # API Endpoints
 @org_bp.route('/api/hierarchy/<int:company_id>')
 @login_required

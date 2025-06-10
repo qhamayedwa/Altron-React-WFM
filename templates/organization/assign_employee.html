@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Assign Employee to {{ department.name }} - WFM System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('organization.departments') }}">Departments</a></li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('organization.view_department', department_id=department.id) }}">{{ department.name }}</a>
+                    </li>
+                    <li class="breadcrumb-item active">Assign Employee</li>
+                </ol>
+            </nav>
+            <h2>
+                <i data-feather="user-plus" class="me-2"></i>
+                Assign Employee to {{ department.name }}
+            </h2>
+            <p class="text-muted">Select an employee to assign to this department</p>
+        </div>
+        <a href="{{ url_for('organization.view_department', department_id=department.id) }}" class="btn btn-outline-secondary">
+            <i data-feather="arrow-left" class="me-2"></i>
+            Back to Department
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i data-feather="users" class="me-2"></i>
+                        Available Employees
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if available_employees %}
+                    <!-- Search and Filter -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" id="employeeSearch" placeholder="Search employees...">
+                        </div>
+                        <div class="col-md-6">
+                            <select class="form-select" id="departmentFilter">
+                                <option value="">All Departments</option>
+                                <option value="unassigned">Unassigned</option>
+                                {% for dept in all_departments %}
+                                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Employee List -->
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="employeeTable">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>ID</th>
+                                    <th>Current Department</th>
+                                    <th>Position</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for employee in available_employees %}
+                                <tr data-employee-id="{{ employee.id }}" data-department="{{ employee.department_id or 'unassigned' }}" data-name="{{ employee.full_name|lower }}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                                {{ employee.first_name[0] if employee.first_name }}{{ employee.last_name[0] if employee.last_name }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ employee.full_name }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ employee.email }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ employee.employee_id }}</span>
+                                    </td>
+                                    <td>
+                                        {% if employee.department_id %}
+                                            <span class="badge bg-info">{{ employee.department.name }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ employee.position or 'Not specified' }}</td>
+                                    <td>
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Assign {{ employee.full_name }} to {{ department.name }}?');">
+                                            <input type="hidden" name="employee_id" value="{{ employee.id }}">
+                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                <i data-feather="user-plus" class="me-1"></i>
+                                                Assign
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i data-feather="users" class="text-muted" style="width: 64px; height: 64px;"></i>
+                        <h5 class="text-muted mt-3">No Employees Available</h5>
+                        <p class="text-muted">There are no employees available to assign to this department.</p>
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
+                            <i data-feather="user-plus" class="me-2"></i>
+                            Create New Employee
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Department Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i data-feather="info" class="me-2"></i>
+                        Department Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Name:</strong></td>
+                            <td>{{ department.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Code:</strong></td>
+                            <td><span class="badge bg-secondary">{{ department.code }}</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Site:</strong></td>
+                            <td>{{ department.site.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Current Employees:</strong></td>
+                            <td><span class="badge bg-primary">{{ department.employees|length }}</span></td>
+                        </tr>
+                    </table>
+                    {% if department.description %}
+                    <hr>
+                    <small class="text-muted">{{ department.description }}</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i data-feather="zap" class="me-2"></i>
+                        Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('auth.register', department_id=department.id) }}" class="btn btn-outline-primary btn-sm">
+                            <i data-feather="user-plus" class="me-2"></i>
+                            Create New Employee
+                        </a>
+                        <a href="{{ url_for('organization.view_department', department_id=department.id) }}" class="btn btn-outline-secondary btn-sm">
+                            <i data-feather="eye" class="me-2"></i>
+                            View Department
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('employeeSearch');
+    const departmentFilter = document.getElementById('departmentFilter');
+    const table = document.getElementById('employeeTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const departmentValue = departmentFilter.value;
+
+        for (let row of rows) {
+            const name = row.getAttribute('data-name');
+            const department = row.getAttribute('data-department');
+            const employeeId = row.cells[1].textContent.toLowerCase();
+            const position = row.cells[3].textContent.toLowerCase();
+
+            const matchesSearch = name.includes(searchTerm) || 
+                                employeeId.includes(searchTerm) || 
+                                position.includes(searchTerm);
+            
+            const matchesDepartment = !departmentValue || 
+                                    department === departmentValue || 
+                                    (departmentValue === 'unassigned' && department === 'unassigned');
+
+            row.style.display = (matchesSearch && matchesDepartment) ? '' : 'none';
+        }
+    }
+
+    searchInput.addEventListener('keyup', filterTable);
+    departmentFilter.addEventListener('change', filterTable);
+});
+</script>
+
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.breadcrumb {
+    background: none;
+    padding: 0;
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}
