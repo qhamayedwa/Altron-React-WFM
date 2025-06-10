@@ -127,14 +127,22 @@ def register():
     """User registration route (Super User only)"""
     form = RegistrationForm()
     
+    # Auto-generate employee ID on form load
+    if request.method == 'GET':
+        form.employee_id.data = generate_employee_id()
+    
     if form.validate_on_submit():
+        # Generate employee ID if not provided
+        employee_id = form.employee_id.data or generate_employee_id()
+        
         user = User(
             username=form.username.data,
             email=form.email.data,
             first_name=form.first_name.data,
             last_name=form.last_name.data,
-            employee_id=form.employee_id.data if form.employee_id.data else None,
-            department=form.department.data if form.department.data else None,
+            employee_id=employee_id,
+            department_id=form.department_id.data if form.department_id.data else None,
+            job_id=form.job_id.data if form.job_id.data else None,
             position=form.position.data if form.position.data else None,
             is_active=form.is_active.data
         )
@@ -155,10 +163,10 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        flash(f'User {user.username} has been registered successfully!', 'success')
+        flash(f'Employee {user.full_name} (ID: {employee_id}) has been registered successfully!', 'success')
         return redirect(url_for('auth.user_management'))
     
-    return render_template('auth/register.html', title='Register User', form=form)
+    return render_template('auth/register.html', title='Register Employee', form=form)
 
 @auth_bp.route('/users')
 @super_user_required

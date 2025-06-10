@@ -59,22 +59,37 @@
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label for="employee_id" class="form-label">Employee ID *</label>
-                                        {{ form.employee_id(class="form-control", placeholder="e.g., EMP001", required=true) }}
-                                        <small class="text-muted">Required unique identifier for the employee</small>
+                                        {{ form.employee_id(class="form-control bg-light", readonly=true) }}
+                                        <small class="text-success">
+                                            <i data-feather="check-circle" class="me-1"></i>
+                                            Automatically generated unique ID
+                                        </small>
                                         {% for error in form.employee_id.errors %}
                                             <div class="text-danger small">{{ error }}</div>
                                         {% endfor %}
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        {{ form.department.label(class="form-label") }}
-                                        {{ form.department(class="form-control", placeholder="e.g., Operations, HR, IT") }}
-                                        {% for error in form.department.errors %}
+                                        {{ form.department_id.label(class="form-label") }}
+                                        {{ form.department_id(class="form-control") }}
+                                        <small class="text-muted">Select the employee's department</small>
+                                        {% for error in form.department_id.errors %}
                                             <div class="text-danger small">{{ error }}</div>
                                         {% endfor %}
                                     </div>
                                     <div class="col-md-4 mb-3">
+                                        {{ form.job_id.label(class="form-label") }}
+                                        {{ form.job_id(class="form-control") }}
+                                        <small class="text-muted">Select the employee's job position</small>
+                                        {% for error in form.job_id.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
                                         {{ form.position.label(class="form-label") }}
-                                        {{ form.position(class="form-control", placeholder="e.g., Staff Member, Manager") }}
+                                        {{ form.position(class="form-control", placeholder="Custom position title (optional)") }}
+                                        <small class="text-muted">Override job title if needed</small>
                                         {% for error in form.position.errors %}
                                             <div class="text-danger small">{{ error }}</div>
                                         {% endfor %}
