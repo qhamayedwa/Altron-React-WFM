@@ -3,7 +3,7 @@ Payroll Processing and Reporting Blueprint
 Handles payroll preparation, processing, and advanced reporting functionality
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response, current_app
 from flask_login import login_required, current_user
 from app import db
 from models import User, TimeEntry, PayCode, PayRule, LeaveApplication, Schedule
@@ -147,8 +147,8 @@ def payroll_processing():
                     'total_hours': total_hours,
                     'pay_code_breakdown': pay_code_breakdown,
                     'gross_pay': pay_calculation.get('gross_pay', calculated_gross_pay) if pay_calculation else calculated_gross_pay,
-                    'net_pay': pay_calculation.get('net_pay', calculated_gross_pay * 0.75) if pay_calculation else calculated_gross_pay * 0.75,  # 25% tax/deductions
-                    'deductions': pay_calculation.get('deductions', calculated_gross_pay * 0.25) if pay_calculation else calculated_gross_pay * 0.25
+                    'net_pay': pay_calculation.get('net_pay', calculated_gross_pay * (1 - current_app.config['PAYROLL_DEDUCTION_RATE'])) if pay_calculation else calculated_gross_pay * (1 - current_app.config['PAYROLL_DEDUCTION_RATE']),
+                    'deductions': pay_calculation.get('deductions', calculated_gross_pay * current_app.config['PAYROLL_DEDUCTION_RATE']) if pay_calculation else calculated_gross_pay * current_app.config['PAYROLL_DEDUCTION_RATE']
                 }
                 
                 payroll_data.append(employee_payroll)
@@ -293,7 +293,7 @@ def export_payroll():
                 ot_20_pay = pay_code_data.get('DT', {}).get('amount', 0)
                 gross_pay = sum([data['amount'] for data in pay_code_data.values()])
             
-            deductions = gross_pay * 0.25  # 25% deductions
+            deductions = gross_pay * current_app.config['PAYROLL_DEDUCTION_RATE']
             net_pay = gross_pay - deductions
             
             # Build row data
@@ -620,3 +620,71 @@ def api_payroll_data():
     except Exception as e:
         logging.error(f"Error getting payroll data: {e}")
         return jsonify({'error': 'Failed to retrieve payroll data'}), 500
+
+@payroll_bp.route('/configuration')
+@login_required
+@role_required('Super User')
+def payroll_configuration():
+    """Payroll configuration interface for Super Users"""
+    current_config = {
+        'base_rate': current_app.config.get('PAYROLL_BASE_RATE', 150.0),
+        'overtime_multiplier': current_app.config.get('PAYROLL_OVERTIME_MULTIPLIER', 1.5),
+        'double_time_multiplier': current_app.config.get('PAYROLL_DOUBLE_TIME_MULTIPLIER', 2.0),
+        'deduction_rate': current_app.config.get('PAYROLL_DEDUCTION_RATE', 0.25)
+    }
+    
+    return render_template('payroll/configuration.html', config=current_config)
+
+@payroll_bp.route('/configuration/save', methods=['POST'])
+@login_required
+@role_required('Super User')
+def save_payroll_configuration():
+    """Save payroll configuration settings"""
+    try:
+        # Get form data
+        base_rate = float(request.form.get('base_rate', 150.0))
+        overtime_multiplier = float(request.form.get('overtime_multiplier', 1.5))
+        double_time_multiplier = float(request.form.get('double_time_multiplier', 2.0))
+        deduction_rate = float(request.form.get('deduction_rate', 0.25))
+        
+        # Validate ranges
+        if base_rate < 0 or base_rate > 1000:
+            flash("Base rate must be between R0 and R1000 per hour.", "error")
+            return redirect(url_for('payroll.payroll_configuration'))
+            
+        if overtime_multiplier < 1.0 or overtime_multiplier > 5.0:
+            flash("Overtime multiplier must be between 1.0x and 5.0x.", "error")
+            return redirect(url_for('payroll.payroll_configuration'))
+            
+        if double_time_multiplier < 1.0 or double_time_multiplier > 5.0:
+            flash("Double time multiplier must be between 1.0x and 5.0x.", "error")
+            return redirect(url_for('payroll.payroll_configuration'))
+            
+        if deduction_rate < 0.0 or deduction_rate > 0.5:
+            flash("Deduction rate must be between 0% and 50%.", "error")
+            return redirect(url_for('payroll.payroll_configuration'))
+        
+        # Update application config (runtime only)
+        current_app.config['PAYROLL_BASE_RATE'] = base_rate
+        current_app.config['PAYROLL_OVERTIME_MULTIPLIER'] = overtime_multiplier
+        current_app.config['PAYROLL_DOUBLE_TIME_MULTIPLIER'] = double_time_multiplier
+        current_app.config['PAYROLL_DEDUCTION_RATE'] = deduction_rate
+        
+        # Log the configuration change
+        logging.info(f"Payroll configuration updated by user {current_user.username}: "
+                    f"Base Rate: R{base_rate}, OT: {overtime_multiplier}x, DT: {double_time_multiplier}x, "
+                    f"Deductions: {deduction_rate*100}%")
+        
+        flash(f"Payroll configuration updated successfully. "
+              f"Base Rate: R{base_rate}/hour, Overtime: {overtime_multiplier}x, "
+              f"Double Time: {double_time_multiplier}x, Deductions: {deduction_rate*100}%", "success")
+        
+        return redirect(url_for('payroll.payroll_configuration'))
+        
+    except ValueError as e:
+        flash("Invalid numeric values provided. Please check your input.", "error")
+        return redirect(url_for('payroll.payroll_configuration'))
+    except Exception as e:
+        logging.error(f"Error saving payroll configuration: {e}")
+        flash("An error occurred while saving configuration.", "error")
+        return redirect(url_for('payroll.payroll_configuration'))
