@@ -57,7 +57,12 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="card-subtitle mb-2 text-muted">Today's Hours</h6>
-                            <h3 class="card-title mb-0">{{ today_stats.total_hours|hours_minutes }}</h3>
+                            <h3 class="card-title mb-0">
+                                <a href="#" onclick="showDrillDown('today-hours')" class="text-decoration-none">
+                                    {{ today_stats.total_hours|hours_minutes }}
+                                </a>
+                            </h3>
+                            <small class="text-muted">Click to view breakdown</small>
                         </div>
                         <div class="text-primary">
                             <i data-feather="clock" class="feather-xl"></i>
@@ -78,7 +83,12 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="card-subtitle mb-2 text-muted">This Week</h6>
-                            <h3 class="card-title mb-0">{{ week_stats.total_hours|hours_minutes }}</h3>
+                            <h3 class="card-title mb-0">
+                                <a href="#" onclick="showDrillDown('week-hours')" class="text-decoration-none">
+                                    {{ week_stats.total_hours|hours_minutes }}
+                                </a>
+                            </h3>
+                            <small class="text-muted">Click to view breakdown</small>
                         </div>
                         <div class="text-success">
                             <i data-feather="calendar" class="feather-xl"></i>
@@ -99,8 +109,12 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="card-subtitle mb-2 text-muted">Leave Balance</h6>
-                            <h3 class="card-title mb-0">{{ leave_balance.balance if leave_balance else '0' }}</h3>
-                            <small class="text-muted">days remaining</small>
+                            <h3 class="card-title mb-0">
+                                <a href="#" onclick="showDrillDown('leave-balance')" class="text-decoration-none">
+                                    {{ leave_balance.balance if leave_balance else '0' }}
+                                </a>
+                            </h3>
+                            <small class="text-muted">days remaining • Click to view breakdown</small>
                         </div>
                         <div class="text-warning">
                             <i data-feather="calendar-x" class="feather-xl"></i>
@@ -153,15 +167,27 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-4">
-                            <h4 class="text-primary">{{ dashboard_data.user_stats.total_users or 0 }}</h4>
+                            <h4 class="text-primary">
+                                <a href="#" onclick="showDrillDown('total-staff')" class="text-decoration-none text-primary">
+                                    {{ dashboard_data.user_stats.total_users or 0 }}
+                                </a>
+                            </h4>
                             <small class="text-muted">Total Staff</small>
                         </div>
                         <div class="col-4">
-                            <h4 class="text-success">{{ dashboard_data.user_stats.active_users or 0 }}</h4>
+                            <h4 class="text-success">
+                                <a href="#" onclick="showDrillDown('active-today')" class="text-decoration-none text-success">
+                                    {{ dashboard_data.user_stats.active_users or 0 }}
+                                </a>
+                            </h4>
                             <small class="text-muted">Active Today</small>
                         </div>
                         <div class="col-4">
-                            <h4 class="text-warning">{{ dashboard_data.attendance_stats.total_overtime_hours or 0 }}</h4>
+                            <h4 class="text-warning">
+                                <a href="#" onclick="showDrillDown('overtime-hours')" class="text-decoration-none text-warning">
+                                    {{ dashboard_data.attendance_stats.total_overtime_hours or 0 }}
+                                </a>
+                            </h4>
                             <small class="text-muted">OT Hours</small>
                         </div>
                     </div>
@@ -182,7 +208,11 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between mb-2">
                         <span>Present:</span>
-                        <span class="badge bg-success">{{ dashboard_data.attendance_stats.present_today or 0 }}</span>
+                        <span class="badge bg-success">
+                            <a href="#" onclick="showDrillDown('present-today')" class="text-decoration-none text-white">
+                                {{ dashboard_data.attendance_stats.present_today or 0 }}
+                            </a>
+                        </span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span>Late:</span>
@@ -845,5 +875,468 @@ function updateWidgetData(data) {
     // This would update the displayed values without losing layout
     console.log('Dashboard data updated:', data);
 }
+
+// KPI Drill-Down Functionality
+function showDrillDown(kpiType) {
+    const modal = new bootstrap.Modal(document.getElementById('drillDownModal'));
+    const modalTitle = document.getElementById('drillDownModalLabel');
+    const modalContent = document.getElementById('drillDownContent');
+    
+    // Set modal title based on KPI type
+    const titles = {
+        'today-hours': 'Today\'s Hours Breakdown',
+        'week-hours': 'This Week\'s Hours Breakdown',
+        'leave-balance': 'Leave Balance Details',
+        'total-staff': 'Total Staff Breakdown',
+        'active-today': 'Active Employees Today',
+        'overtime-hours': 'Overtime Hours Breakdown',
+        'present-today': 'Present Employees Today'
+    };
+    
+    modalTitle.textContent = titles[kpiType] || 'KPI Breakdown';
+    
+    // Show loading state
+    modalContent.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading ${titles[kpiType] || 'KPI breakdown'}...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Fetch drill-down data
+    fetch(`/api/drill-down/${kpiType}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayDrillDownData(kpiType, data.data);
+            } else {
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6>Error Loading Data</h6>
+                        <p>${data.error || 'Failed to load drill-down data'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            modalContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <h6>Network Error</h6>
+                    <p>Failed to fetch drill-down data: ${error.message}</p>
+                </div>
+            `;
+        });
+}
+
+function displayDrillDownData(kpiType, data) {
+    const modalContent = document.getElementById('drillDownContent');
+    let html = '';
+    
+    switch(kpiType) {
+        case 'today-hours':
+            html = generateTodayHoursBreakdown(data);
+            break;
+        case 'week-hours':
+            html = generateWeekHoursBreakdown(data);
+            break;
+        case 'leave-balance':
+            html = generateLeaveBalanceBreakdown(data);
+            break;
+        case 'total-staff':
+            html = generateTotalStaffBreakdown(data);
+            break;
+        case 'active-today':
+            html = generateActiveTodayBreakdown(data);
+            break;
+        case 'overtime-hours':
+            html = generateOvertimeBreakdown(data);
+            break;
+        case 'present-today':
+            html = generatePresentTodayBreakdown(data);
+            break;
+        default:
+            html = '<div class="alert alert-info">No drill-down data available for this KPI.</div>';
+    }
+    
+    modalContent.innerHTML = html;
+    feather.replace();
+}
+
+function generateTodayHoursBreakdown(data) {
+    if (!data.entries || data.entries.length === 0) {
+        return '<div class="alert alert-info">No time entries found for today.</div>';
+    }
+    
+    let html = `
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Calculation Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Total Hours:</strong><br>
+                        <span class="h5 text-primary">${data.total_hours} hrs</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Regular Hours:</strong><br>
+                        <span class="text-success">${data.regular_hours || 0} hrs</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Overtime Hours:</strong><br>
+                        <span class="text-warning">${data.overtime_hours || 0} hrs</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Time Entries:</strong><br>
+                        <span class="text-info">${data.entries.length}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h6>Time Entry Details</h6>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Clock In</th>
+                        <th>Clock Out</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Break Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    data.entries.forEach(entry => {
+        const duration = entry.total_hours || 0;
+        const breakTime = entry.break_minutes || 0;
+        html += `
+            <tr>
+                <td>${new Date(entry.clock_in_time).toLocaleTimeString()}</td>
+                <td>${entry.clock_out_time ? new Date(entry.clock_out_time).toLocaleTimeString() : 'Still Active'}</td>
+                <td>${duration.toFixed(2)} hrs</td>
+                <td><span class="badge bg-${entry.status === 'Closed' ? 'success' : 'warning'}">${entry.status}</span></td>
+                <td>${breakTime} min</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    return html;
+}
+
+function generateWeekHoursBreakdown(data) {
+    if (!data.daily_breakdown) {
+        return '<div class="alert alert-info">No time entries found for this week.</div>';
+    }
+    
+    let html = `
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Weekly Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Total Hours:</strong><br>
+                        <span class="h5 text-primary">${data.total_hours} hrs</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Average per Day:</strong><br>
+                        <span class="text-success">${(data.total_hours / 7).toFixed(2)} hrs</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Days Worked:</strong><br>
+                        <span class="text-info">${data.days_worked || 0}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h6>Daily Breakdown</h6>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Hours Worked</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    data.daily_breakdown.forEach(day => {
+        const dayName = new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' });
+        html += `
+            <tr>
+                <td>${day.date}</td>
+                <td>${dayName}</td>
+                <td>${day.hours || 0} hrs</td>
+                <td><span class="badge bg-${day.hours > 0 ? 'success' : 'secondary'}">${day.hours > 0 ? 'Worked' : 'No Entry'}</span></td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    return html;
+}
+
+function generateActiveTodayBreakdown(data) {
+    if (!data.employees || data.employees.length === 0) {
+        return '<div class="alert alert-info">No active employees found for today.</div>';
+    }
+    
+    let html = `
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Active Employees Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Currently Active:</strong><br>
+                        <span class="h5 text-success">${data.employees.length}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Total Clock-ins:</strong><br>
+                        <span class="text-primary">${data.total_clock_ins || 0}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Average Start Time:</strong><br>
+                        <span class="text-info">${data.average_start_time || 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h6>Active Employee Details</h6>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Department</th>
+                        <th>Clock In Time</th>
+                        <th>Current Duration</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    data.employees.forEach(emp => {
+        html += `
+            <tr>
+                <td>${emp.full_name || emp.username}</td>
+                <td>${emp.department || 'Not Assigned'}</td>
+                <td>${new Date(emp.clock_in_time).toLocaleTimeString()}</td>
+                <td>${emp.current_duration || 0} hrs</td>
+                <td><span class="badge bg-success">Active</span></td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    return html;
+}
+
+function generateLeaveBalanceBreakdown(data) {
+    let html = `
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Leave Balance Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Current Balance:</strong><br>
+                        <span class="h5 text-primary">${data.current_balance || 0} days</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Annual Allowance:</strong><br>
+                        <span class="text-success">${data.annual_allowance || 0} days</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Used This Year:</strong><br>
+                        <span class="text-warning">${data.used_this_year || 0} days</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Pending Requests:</strong><br>
+                        <span class="text-info">${data.pending_requests || 0} days</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info">
+            <h6>How Balance is Calculated:</h6>
+            <p><strong>Current Balance</strong> = Annual Allowance - Used This Year - Pending Requests</p>
+            <p><strong>Calculation:</strong> ${data.annual_allowance || 0} - ${data.used_this_year || 0} - ${data.pending_requests || 0} = ${data.current_balance || 0} days</p>
+        </div>
+    `;
+    
+    return html;
+}
+
+function generateTotalStaffBreakdown(data) {
+    let html = `
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Staff Breakdown by Role</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+    `;
+    
+    if (data.by_role) {
+        Object.entries(data.by_role).forEach(([role, count]) => {
+            html += `
+                <div class="col-md-3 mb-2">
+                    <strong>${role}:</strong><br>
+                    <span class="h6 text-primary">${count}</span>
+                </div>
+            `;
+        });
+    }
+    
+    html += `
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info">
+            <h6>How Total Staff is Calculated:</h6>
+            <p>Total includes all active users with assigned roles in the system.</p>
+            <p><strong>Calculation:</strong> Sum of all active employees across all departments and roles.</p>
+        </div>
+    `;
+    
+    return html;
+}
+
+function generateOvertimeBreakdown(data) {
+    let html = `
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Overtime Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Total OT Hours:</strong><br>
+                        <span class="h5 text-warning">${data.total_overtime || 0} hrs</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Employees with OT:</strong><br>
+                        <span class="text-primary">${data.employees_with_overtime || 0}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Average OT per Employee:</strong><br>
+                        <span class="text-info">${data.average_overtime || 0} hrs</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info">
+            <h6>How Overtime is Calculated:</h6>
+            <p><strong>Overtime Hours</strong> = Any hours worked beyond 8 hours per day</p>
+            <p><strong>Rate:</strong> 1.5x for first 2 hours, 2.0x for additional hours</p>
+        </div>
+    `;
+    
+    return html;
+}
+
+function generatePresentTodayBreakdown(data) {
+    let html = `
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Attendance Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Present Today:</strong><br>
+                        <span class="h5 text-success">${data.present_count || 0}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Total Expected:</strong><br>
+                        <span class="text-primary">${data.total_expected || 0}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Attendance Rate:</strong><br>
+                        <span class="text-info">${data.attendance_rate || 0}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info">
+            <h6>How Attendance is Calculated:</h6>
+            <p><strong>Present</strong> = Employees who have clocked in today</p>
+            <p><strong>Attendance Rate</strong> = (Present / Total Expected) × 100</p>
+        </div>
+    `;
+    
+    return html;
+}
+
+function exportDrillDown() {
+    // Export functionality could be implemented here
+    alert('Export functionality coming soon!');
+}
 </script>
+
+<!-- KPI Drill-Down Modal -->
+<div class="modal fade" id="drillDownModal" tabindex="-1" aria-labelledby="drillDownModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="drillDownModalLabel">KPI Breakdown</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="drillDownContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading KPI breakdown...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="exportDrillDown()">
+                    <i data-feather="download" class="me-2"></i>Export Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
