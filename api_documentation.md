@@ -1,7 +1,7 @@
-# WFM247 API Documentation
+# WFM24/7 API Documentation
 
 ## Overview
-This document outlines the REST API endpoints for the WFM247 Workforce Management System. These APIs are designed to support both web dashboard functionality and mobile applications with 24/7 operations support.
+This document outlines the REST API endpoints for the WFM24/7 Workforce Management System. These APIs are designed to support both web dashboard functionality and mobile applications with 24/7 operations support.
 
 ## Authentication
 All API endpoints require authentication via Flask-Login session or JWT tokens (to be implemented for mobile).
