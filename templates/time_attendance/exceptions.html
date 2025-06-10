@@ -188,6 +188,10 @@
 <script>
     feather.replace();
 
+    // Initialize flash messages system
+    const flashMessages = new FlashMessages();
+    flashMessages.init();
+
     async function approveException(entryId) {
         if (!confirm('Are you sure you want to approve this exception?')) {
             return;
