@@ -1,7 +1,7 @@
-# Time & Attendance API Documentation
+# WFM247 API Documentation
 
 ## Overview
-This document outlines the REST API endpoints for the Time & Attendance Management System. These APIs are designed to support both web dashboard functionality and future mobile applications (iOS/Android).
+This document outlines the REST API endpoints for the WFM247 Workforce Management System. These APIs are designed to support both web dashboard functionality and mobile applications with 24/7 operations support.
 
 ## Authentication
 All API endpoints require authentication via Flask-Login session or JWT tokens (to be implemented for mobile).
