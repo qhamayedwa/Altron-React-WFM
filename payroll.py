@@ -84,12 +84,23 @@ def payroll_processing():
                     if code_name not in pay_code_breakdown:
                         # Get actual pay code rate from database
                         pay_code = PayCode.query.filter_by(code=code_name, is_active=True).first()
-                        # PayCode model doesn't have hourly_rate field, use default base rate
-                        base_rate = 150.0
+                        base_rate = 150.0  # Base rate in ZAR
+                        
+                        # Calculate rate based on pay code factor
+                        if pay_code and pay_code.configuration:
+                            try:
+                                import json
+                                config = json.loads(pay_code.configuration)
+                                pay_rate_factor = config.get('pay_rate_factor', 1.0)
+                                actual_rate = base_rate * pay_rate_factor
+                            except:
+                                actual_rate = base_rate
+                        else:
+                            actual_rate = base_rate
                         
                         pay_code_breakdown[code_name] = {
                             'hours': 0,
-                            'rate': base_rate,
+                            'rate': actual_rate,
                             'amount': 0
                         }
                     
