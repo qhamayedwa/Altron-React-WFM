@@ -3,7 +3,7 @@ from wtforms import StringField, PasswordField, SubmitField, SelectMultipleField
 from wtforms.fields import DateField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, NumberRange
 from wtforms.widgets import CheckboxInput, ListWidget
-from models import User, Role
+from models import User, Role, Department, Job
 
 class MultiCheckboxField(SelectMultipleField):
     """Custom field for multiple checkboxes"""
@@ -28,8 +28,9 @@ class RegistrationForm(FlaskForm):
     last_name = StringField('Last Name', validators=[DataRequired(), Length(max=64)])
     
     # Employee-specific fields
-    employee_id = StringField('Employee ID', validators=[DataRequired(), Length(min=1, max=20, message='Employee ID is required and must be between 1 and 20 characters')])
-    department = StringField('Department', validators=[Length(max=64)])
+    employee_id = StringField('Employee ID', render_kw={'readonly': True}, validators=[Length(max=20)])
+    department_id = SelectField('Department', coerce=int, validators=[DataRequired()])
+    job_id = SelectField('Job/Position', coerce=int, validators=[DataRequired()])
     position = StringField('Position/Job Title', validators=[Length(max=64)])
     
     password = PasswordField('Password', validators=[
@@ -48,6 +49,16 @@ class RegistrationForm(FlaskForm):
         super(RegistrationForm, self).__init__(*args, **kwargs)
         # Populate roles choices
         self.roles.choices = [(role.id, role.name) for role in Role.query.all()]
+        
+        # Populate department choices
+        self.department_id.choices = [('', 'Select Department')] + [
+            (dept.id, dept.name) for dept in Department.query.filter(Department.is_active.is_(True)).all()
+        ]
+        
+        # Populate job choices
+        self.job_id.choices = [('', 'Select Job Position')] + [
+            (job.id, f"{job.title} ({job.level})") for job in Job.query.filter(Job.is_active.is_(True)).all()
+        ]
     
     def validate_username(self, username):
         """Validate username is unique"""

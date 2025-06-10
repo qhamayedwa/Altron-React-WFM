@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from urllib.parse import urlparse
 from app import db
-from models import User, Role
+from models import User, Role, Department, Job
 from forms import LoginForm, RegistrationForm, EditUserForm, ChangePasswordForm
 
 # Create authentication blueprint
@@ -54,6 +54,30 @@ def super_user_required(f):
         
         return f(*args, **kwargs)
     return decorated_function
+
+def generate_employee_id():
+    """Generate automatic employee ID"""
+    # Get the current year
+    current_year = datetime.now().year
+    year_suffix = str(current_year)[2:]  # Last 2 digits of year
+    
+    # Find the highest employee ID for this year
+    highest_id = db.session.query(User.employee_id).filter(
+        User.employee_id.like(f'EMP{year_suffix}%')
+    ).order_by(User.employee_id.desc()).first()
+    
+    if highest_id and highest_id[0]:
+        # Extract the numeric part and increment
+        try:
+            last_num = int(highest_id[0][5:])  # Remove "EMP" and year digits
+            next_num = last_num + 1
+        except (ValueError, IndexError):
+            next_num = 1
+    else:
+        next_num = 1
+    
+    # Format as EMP + year + 3-digit number (e.g., EMP25001)
+    return f"EMP{year_suffix}{next_num:03d}"
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
