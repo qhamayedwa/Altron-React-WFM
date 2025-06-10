@@ -289,21 +289,21 @@
                                         {% for entry in record.time_entries %}
                                         <tr>
                                             <td>
-                                                {{ entry.clock_in.strftime('%H:%M:%S') if entry.clock_in else '-' }}
+                                                {{ entry.clock_in_time.strftime('%H:%M:%S') if entry.clock_in_time else '-' }}
                                             </td>
                                             <td>
-                                                {{ entry.clock_out.strftime('%H:%M:%S') if entry.clock_out else 'Still active' }}
+                                                {{ entry.clock_out_time.strftime('%H:%M:%S') if entry.clock_out_time else 'Still active' }}
                                             </td>
                                             <td>
-                                                {% if entry.clock_in and entry.clock_out %}
-                                                {{ "%.2f"|format(entry.calculate_hours_worked()) }}h
+                                                {% if entry.clock_in_time and entry.clock_out_time %}
+                                                {{ "%.2f"|format(entry.total_hours) }}h
                                                 {% else %}
                                                 -
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                {% if entry.location %}
-                                                <small class="text-muted">{{ entry.location }}</small>
+                                                {% if entry.clock_in_latitude and entry.clock_in_longitude %}
+                                                <small class="text-muted">{{ "%.6f"|format(entry.clock_in_latitude) }}, {{ "%.6f"|format(entry.clock_in_longitude) }}</small>
                                                 {% else %}
                                                 -
                                                 {% endif %}
