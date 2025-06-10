@@ -30,7 +30,7 @@ class Config:
     TESTING = False
     
     # Application settings
-    APP_NAME = os.environ.get('APP_NAME', 'Flask PostgreSQL App')
+    APP_NAME = os.environ.get('APP_NAME', 'WFM247')
     
     # Timezone configuration
     TIMEZONE = SAST
