@@ -125,7 +125,7 @@ class EditUserForm(FlaskForm):
     ])
     hire_date = DateField('Hire Date')
     manager_id = SelectField('Direct Manager', coerce=lambda x: int(x) if x else None, validators=[])
-    hourly_rate = FloatField('Hourly Rate (ZAR)', validators=[NumberRange(min=0, max=10000)])
+    hourly_rate = FloatField('Hourly Rate (ZAR)', validators=[Optional(), NumberRange(min=0, max=10000)])
     
     # Professional Information
     education_level = SelectField('Education Level', choices=[

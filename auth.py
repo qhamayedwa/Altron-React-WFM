@@ -248,10 +248,12 @@ def edit_user(user_id):
     
     print(f"DEBUG: Form submitted. Method: {request.method}")
     if request.method == 'POST':
+        print(f"DEBUG: Raw form data: {request.form}")
         print(f"DEBUG: Form data - hourly_rate: {form.hourly_rate.data}")
         print(f"DEBUG: Current user hourly_rate: {user.hourly_rate}")
         print(f"DEBUG: Form validation: {form.validate()}")
         print(f"DEBUG: Form errors: {form.errors}")
+        print(f"DEBUG: CSRF token valid: {form.csrf_token.validate(form)}")
     
     if form.validate_on_submit():
         print(f"DEBUG: Form validation passed, updating user...")
