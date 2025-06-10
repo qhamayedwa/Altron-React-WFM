@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+
+{% block title %}Configure Timecard Rollup - {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Configure Timecard Rollup</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ url_for('timecard_rollup.rollup_dashboard') }}">Timecard Rollup</a></li>
+                        <li class="breadcrumb-item active">Configure</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Form -->
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i data-feather="settings" class="me-2"></i>
+                        Rollup Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="rollupConfigForm" method="POST" action="{{ url_for('timecard_rollup.generate_rollup') }}">
+                        <!-- Basic Configuration -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="rollup_type" class="form-label">
+                                        <i data-feather="layers" class="me-1"></i>
+                                        Rollup Type
+                                    </label>
+                                    <select class="form-select" id="rollup_type" name="rollup_type" required>
+                                        <option value="employee">By Employee</option>
+                                        <option value="department">By Department</option>
+                                        <option value="pay_code">By Pay Code</option>
+                                        <option value="daily">By Day</option>
+                                        <option value="combined">Combined View</option>
+                                    </select>
+                                    <div class="form-text">Choose how to aggregate timecard data</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="rollup_period" class="form-label">
+                                        <i data-feather="calendar" class="me-1"></i>
+                                        Period Type
+                                    </label>
+                                    <select class="form-select" id="rollup_period" name="rollup_period" required>
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="biweekly">Bi-weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="custom" selected>Custom Range</option>
+                                    </select>
+                                    <div class="form-text">Select time period for rollup</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Date Range -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="start_date" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="end_date" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filters Section -->
+                        <h6 class="mb-3">
+                            <i data-feather="filter" class="me-2"></i>
+                            Filters (Optional)
+                        </h6>
+
+                        <div class="row mb-4">
+                            <!-- Department Filter -->
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="department_filter" class="form-label">Department Filter</label>
+                                    <select class="form-select" id="department_filter" name="department_filter" multiple size="5">
+                                        {% for dept in departments %}
+                                            <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Hold Ctrl/Cmd to select multiple</div>
+                                </div>
+                            </div>
+
+                            <!-- Employee Filter -->
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="employee_filter" class="form-label">Employee Filter</label>
+                                    <select class="form-select" id="employee_filter" name="employee_filter" multiple size="5">
+                                        {% for emp in employees %}
+                                            <option value="{{ emp.id }}">
+                                                {{ emp.username }}{% if emp.first_name %} - {{ emp.first_name }} {{ emp.last_name }}{% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Hold Ctrl/Cmd to select multiple</div>
+                                </div>
+                            </div>
+
+                            <!-- Pay Code Filter -->
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="pay_code_filter" class="form-label">Pay Code Filter</label>
+                                    <select class="form-select" id="pay_code_filter" name="pay_code_filter" multiple size="5">
+                                        {% for pc in pay_codes %}
+                                            <option value="{{ pc.code }}">{{ pc.code }} - {{ pc.description }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Hold Ctrl/Cmd to select multiple</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Options -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i data-feather="sliders" class="me-2"></i>
+                                    Advanced Options
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="include_breaks" name="include_breaks" checked>
+                                            <label class="form-check-label" for="include_breaks">
+                                                Include Break Time
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="include_overtime" name="include_overtime" checked>
+                                            <label class="form-check-label" for="include_overtime">
+                                                Include Overtime Hours
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="exclude_incomplete" name="exclude_incomplete" checked>
+                                            <label class="form-check-label" for="exclude_incomplete">
+                                                Exclude Incomplete Entries
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="group_similar" name="group_similar">
+                                            <label class="form-check-label" for="group_similar">
+                                                Group Similar Pay Codes
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SAGE Integration Options -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i data-feather="share-2" class="me-2"></i>
+                                    SAGE Integration Options
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="auto_send_sage" name="auto_send_sage">
+                                    <label class="form-check-label" for="auto_send_sage">
+                                        Automatically send to SAGE after generation
+                                    </label>
+                                </div>
+                                
+                                <div id="sageOptions" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="sage_format" class="form-label">SAGE Data Format</label>
+                                                <select class="form-select" id="sage_format" name="sage_format">
+                                                    <option value="standard">Standard Format</option>
+                                                    <option value="payroll">Payroll Format</option>
+                                                    <option value="timesheet">Timesheet Format</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="sage_mapping" class="form-label">Field Mapping</label>
+                                                <select class="form-select" id="sage_mapping" name="sage_mapping">
+                                                    <option value="default">Default Mapping</option>
+                                                    <option value="custom">Custom Mapping</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('timecard_rollup.rollup_dashboard') }}" class="btn btn-secondary">
+                                <i data-feather="arrow-left" class="me-2"></i>
+                                Back to Dashboard
+                            </a>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-outline-primary" onclick="previewRollup()">
+                                    <i data-feather="eye" class="me-2"></i>Preview
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i data-feather="play" class="me-2"></i>Generate Rollup
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rollup Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="previewContent">
+                        <!-- Preview content will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="generateFromPreview()">
+                        <i data-feather="play" class="me-2"></i>Generate Full Rollup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    feather.replace();
+    setDefaultDates();
+    
+    // Handle SAGE auto-send checkbox
+    document.getElementById('auto_send_sage').addEventListener('change', function() {
+        const sageOptions = document.getElementById('sageOptions');
+        sageOptions.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Handle period type change
+    document.getElementById('rollup_period').addEventListener('change', function() {
+        if (this.value !== 'custom') {
+            setPresetDates(this.value);
+        }
+    });
+    
+    // Handle form submission
+    document.getElementById('rollupConfigForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        generateRollup();
+    });
+});
+
+function setDefaultDates() {
+    const today = new Date();
+    const oneWeekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    document.getElementById('start_date').value = oneWeekAgo.toISOString().split('T')[0];
+    document.getElementById('end_date').value = today.toISOString().split('T')[0];
+}
+
+function setPresetDates(period) {
+    const today = new Date();
+    let startDate;
+    
+    switch(period) {
+        case 'daily':
+            startDate = new Date(today);
+            break;
+        case 'weekly':
+            const dayOfWeek = today.getDay();
+            startDate = new Date(today.getTime() - dayOfWeek * 24 * 60 * 60 * 1000);
+            break;
+        case 'biweekly':
+            startDate = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+            break;
+        case 'monthly':
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            break;
+        default:
+            return;
+    }
+    
+    document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
+    document.getElementById('end_date').value = today.toISOString().split('T')[0];
+}
+
+function previewRollup() {
+    const form = document.getElementById('rollupConfigForm');
+    const formData = new FormData(form);
+    
+    // Show loading in modal
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    document.getElementById('previewContent').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Generating preview...</p>
+        </div>
+    `;
+    modal.show();
+    
+    // Generate preview (sample of full rollup)
+    fetch('{{ url_for("timecard_rollup.generate_rollup") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayPreview(data.data, data.config);
+        } else {
+            document.getElementById('previewContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <h6>Preview Error</h6>
+                    <p>${data.error}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('previewContent').innerHTML = `
+            <div class="alert alert-danger">
+                <h6>Network Error</h6>
+                <p>${error.message}</p>
+            </div>
+        `;
+    });
+}
+
+function displayPreview(data, config) {
+    let html = `
+        <div class="alert alert-info">
+            <h6>Preview Configuration</h6>
+            <p><strong>Type:</strong> ${config.type} | <strong>Period:</strong> ${config.start_date} to ${config.end_date}</p>
+        </div>
+    `;
+    
+    // Show summary based on rollup type
+    if (data.type === 'employee' && data.employees) {
+        html += `<p><strong>Found ${data.employees.length} employees</strong></p>`;
+        if (data.employees.length > 0) {
+            html += `<p>Sample: ${data.employees[0].full_name} - ${data.employees[0].total_hours} hours</p>`;
+        }
+    } else if (data.type === 'department' && data.departments) {
+        html += `<p><strong>Found ${data.departments.length} departments</strong></p>`;
+        if (data.departments.length > 0) {
+            html += `<p>Sample: ${data.departments[0].department_name} - ${data.departments[0].total_hours} hours</p>`;
+        }
+    } else if (data.type === 'daily' && data.periods) {
+        html += `<p><strong>Found ${data.periods.length} days</strong></p>`;
+        if (data.periods.length > 0) {
+            html += `<p>Sample: ${data.periods[0].date} - ${data.periods[0].total_hours} hours</p>`;
+        }
+    }
+    
+    document.getElementById('previewContent').innerHTML = html;
+}
+
+function generateFromPreview() {
+    bootstrap.Modal.getInstance(document.getElementById('previewModal')).hide();
+    generateRollup();
+}
+
+function generateRollup() {
+    const form = document.getElementById('rollupConfigForm');
+    const formData = new FormData(form);
+    
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+    
+    fetch('{{ url_for("timecard_rollup.generate_rollup") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Check if auto-send to SAGE is enabled
+            if (document.getElementById('auto_send_sage').checked) {
+                sendToSageAuto(data.data);
+            } else {
+                alert('Rollup generated successfully! View results in the dashboard.');
+                window.location.href = '{{ url_for("timecard_rollup.rollup_dashboard") }}';
+            }
+        } else {
+            alert('Error generating rollup: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Network error: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        feather.replace();
+    });
+}
+
+function sendToSageAuto(rollupData) {
+    fetch('{{ url_for("timecard_rollup.send_to_sage") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            rollup_data: rollupData,
+            transformation_config: {
+                format: document.getElementById('sage_format').value,
+                mapping: document.getElementById('sage_mapping').value
+            }
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Rollup generated and successfully sent to SAGE!');
+        } else {
+            alert('Rollup generated but SAGE integration failed: ' + data.error);
+        }
+        window.location.href = '{{ url_for("timecard_rollup.rollup_dashboard") }}';
+    })
+    .catch(error => {
+        alert('Rollup generated but network error sending to SAGE: ' + error.message);
+        window.location.href = '{{ url_for("timecard_rollup.rollup_dashboard") }}';
+    });
+}
+</script>
+{% endblock %}

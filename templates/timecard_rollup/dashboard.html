@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Timecard Rollup Dashboard - {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Timecard Data Rollup & Integration</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Timecard Rollup</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i data-feather="settings" class="mb-3" style="width: 48px; height: 48px; color: #0d6efd;"></i>
+                    <h5 class="card-title">Configure Rollup</h5>
+                    <p class="card-text">Set up data aggregation rules and filters</p>
+                    <a href="{{ url_for('timecard_rollup.configure_rollup') }}" class="btn btn-primary">
+                        <i data-feather="arrow-right" class="me-2"></i>Configure
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i data-feather="database" class="mb-3" style="width: 48px; height: 48px; color: #198754;"></i>
+                    <h5 class="card-title">Generate Rollup</h5>
+                    <p class="card-text">Create aggregated timecard data reports</p>
+                    <button class="btn btn-success" onclick="generateQuickRollup()">
+                        <i data-feather="play" class="me-2"></i>Generate
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i data-feather="share-2" class="mb-3" style="width: 48px; height: 48px; color: #ffc107;"></i>
+                    <h5 class="card-title">SAGE Integration</h5>
+                    <p class="card-text">Configure and manage SAGE API settings</p>
+                    {% if current_user.has_role('Super User') %}
+                    <a href="{{ url_for('timecard_rollup.sage_configuration') }}" class="btn btn-warning">
+                        <i data-feather="external-link" class="me-2"></i>Configure
+                    </a>
+                    {% else %}
+                    <button class="btn btn-secondary" disabled>
+                        <i data-feather="lock" class="me-2"></i>Restricted
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i data-feather="activity" class="mb-3" style="width: 48px; height: 48px; color: #dc3545;"></i>
+                    <h5 class="card-title">Integration History</h5>
+                    <p class="card-text">View past data transfers and logs</p>
+                    <button class="btn btn-outline-danger" onclick="viewHistory()">
+                        <i data-feather="clock" class="me-2"></i>View History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i data-feather="activity" class="me-2"></i>Recent Rollup Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="recentActivity">
+                        <div class="text-center py-4">
+                            <i data-feather="clock" class="mb-3" style="width: 32px; height: 32px; color: #6c757d;"></i>
+                            <p class="text-muted">No recent activity found. Start by configuring and generating a rollup.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Rollup Modal -->
+    <div class="modal fade" id="quickRollupModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Quick Rollup Generation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="quickRollupForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="quick_rollup_type" class="form-label">Rollup Type</label>
+                                    <select class="form-select" id="quick_rollup_type" name="rollup_type" required>
+                                        <option value="employee">By Employee</option>
+                                        <option value="department">By Department</option>
+                                        <option value="daily">By Day</option>
+                                        <option value="combined">Combined View</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="quick_rollup_period" class="form-label">Period</label>
+                                    <select class="form-select" id="quick_rollup_period" name="rollup_period" required>
+                                        <option value="weekly">This Week</option>
+                                        <option value="monthly">This Month</option>
+                                        <option value="custom">Custom Range</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row" id="customDateRange" style="display: none;">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="quick_start_date" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="quick_start_date" name="start_date">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="quick_end_date" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="quick_end_date" name="end_date">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="executeQuickRollup()">
+                        <i data-feather="play" class="me-2"></i>Generate Rollup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variables
+let currentRollupData = null;
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    feather.replace();
+    
+    // Handle period selection change
+    document.getElementById('quick_rollup_period').addEventListener('change', function() {
+        const customRange = document.getElementById('customDateRange');
+        if (this.value === 'custom') {
+            customRange.style.display = 'block';
+            setDefaultDates();
+        } else {
+            customRange.style.display = 'none';
+            setPresetDates(this.value);
+        }
+    });
+});
+
+function setDefaultDates() {
+    const today = new Date();
+    const oneWeekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    document.getElementById('quick_start_date').value = oneWeekAgo.toISOString().split('T')[0];
+    document.getElementById('quick_end_date').value = today.toISOString().split('T')[0];
+}
+
+function setPresetDates(period) {
+    const today = new Date();
+    let startDate;
+    
+    if (period === 'weekly') {
+        const dayOfWeek = today.getDay();
+        startDate = new Date(today.getTime() - dayOfWeek * 24 * 60 * 60 * 1000);
+    } else if (period === 'monthly') {
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    }
+    
+    document.getElementById('quick_start_date').value = startDate.toISOString().split('T')[0];
+    document.getElementById('quick_end_date').value = today.toISOString().split('T')[0];
+}
+
+function generateQuickRollup() {
+    const modal = new bootstrap.Modal(document.getElementById('quickRollupModal'));
+    setDefaultDates();
+    modal.show();
+}
+
+function executeQuickRollup() {
+    const form = document.getElementById('quickRollupForm');
+    const formData = new FormData(form);
+    
+    // Set dates based on period selection
+    const period = formData.get('rollup_period');
+    if (period !== 'custom') {
+        setPresetDates(period);
+        formData.set('start_date', document.getElementById('quick_start_date').value);
+        formData.set('end_date', document.getElementById('quick_end_date').value);
+    }
+    
+    // Submit rollup request
+    fetch('{{ url_for("timecard_rollup.generate_rollup") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentRollupData = data.data;
+            alert('Rollup generated successfully! Check the results.');
+            bootstrap.Modal.getInstance(document.getElementById('quickRollupModal')).hide();
+        } else {
+            alert('Error generating rollup: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Network error: ' + error.message);
+    });
+}
+
+function viewHistory() {
+    alert('Integration history feature coming soon!');
+}
+</script>
+{% endblock %}

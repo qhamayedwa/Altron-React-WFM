@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}SAGE API Configuration - {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">SAGE API Configuration</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ url_for('timecard_rollup.rollup_dashboard') }}">Timecard Rollup</a></li>
+                        <li class="breadcrumb-item active">SAGE Configuration</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Form -->
+    <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">
+                        <i data-feather="settings" class="me-2"></i>
+                        SAGE API Integration Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i data-feather="info" class="me-2"></i>
+                        <strong>Security Notice:</strong> These credentials are stored securely and used only for authenticated API communications with SAGE.
+                    </div>
+
+                    <form method="POST" action="{{ url_for('timecard_rollup.save_sage_config') }}">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="endpoint_url" class="form-label">
+                                        <i data-feather="globe" class="me-1"></i>
+                                        SAGE API Endpoint URL
+                                    </label>
+                                    <input type="url" class="form-control" id="endpoint_url" name="endpoint_url" 
+                                           placeholder="https://api.sage.com/v1" required>
+                                    <div class="form-text">Full URL to your SAGE API endpoint (including protocol)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">
+                                        <i data-feather="user" class="me-1"></i>
+                                        API Username
+                                    </label>
+                                    <input type="text" class="form-control" id="username" name="username" required>
+                                    <div class="form-text">Your SAGE API username</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">
+                                        <i data-feather="lock" class="me-1"></i>
+                                        API Password
+                                    </label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <div class="form-text">Your SAGE API password or access token</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="company_database" class="form-label">
+                                        <i data-feather="database" class="me-1"></i>
+                                        Company Database
+                                    </label>
+                                    <input type="text" class="form-control" id="company_database" name="company_database" 
+                                           placeholder="COMPANY_001" required>
+                                    <div class="form-text">SAGE company database identifier</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Test Connection Section -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h6 class="mb-3">
+                                    <i data-feather="activity" class="me-2"></i>
+                                    Connection Test
+                                </h6>
+                                <div class="d-grid gap-2 d-md-flex">
+                                    <button type="button" class="btn btn-outline-primary" onclick="testConnection()">
+                                        <i data-feather="wifi" class="me-2"></i>Test Connection
+                                    </button>
+                                    <div id="connectionStatus" class="ms-md-3 align-self-center"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('timecard_rollup.rollup_dashboard') }}" class="btn btn-secondary">
+                                <i data-feather="arrow-left" class="me-2"></i>
+                                Back to Dashboard
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i data-feather="save" class="me-2"></i>
+                                Save Configuration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Endpoints Documentation -->
+    <div class="row mt-4">
+        <div class="col-lg-8 col-md-10 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i data-feather="book" class="me-2"></i>
+                        SAGE API Integration Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Supported Endpoints</h6>
+                            <ul class="list-unstyled">
+                                <li><i data-feather="check" class="text-success me-2"></i><code>/auth/login</code> - Authentication</li>
+                                <li><i data-feather="check" class="text-success me-2"></i><code>/timecard/import</code> - Data Import</li>
+                                <li><i data-feather="check" class="text-success me-2"></i><code>/employees/sync</code> - Employee Sync</li>
+                                <li><i data-feather="check" class="text-success me-2"></i><code>/departments/sync</code> - Department Sync</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Data Transformation</h6>
+                            <ul class="list-unstyled">
+                                <li><i data-feather="arrow-right" class="text-info me-2"></i>Employee rollup → Employee records</li>
+                                <li><i data-feather="arrow-right" class="text-info me-2"></i>Department rollup → Department summaries</li>
+                                <li><i data-feather="arrow-right" class="text-info me-2"></i>Daily rollup → Time entries</li>
+                                <li><i data-feather="arrow-right" class="text-info me-2"></i>Combined rollup → Multi-format data</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    feather.replace();
+});
+
+function testConnection() {
+    const button = event.target;
+    const status = document.getElementById('connectionStatus');
+    
+    // Get form data
+    const formData = new FormData();
+    formData.append('endpoint_url', document.getElementById('endpoint_url').value);
+    formData.append('username', document.getElementById('username').value);
+    formData.append('password', document.getElementById('password').value);
+    formData.append('company_database', document.getElementById('company_database').value);
+    
+    // Validate required fields
+    if (!formData.get('endpoint_url') || !formData.get('username') || 
+        !formData.get('password') || !formData.get('company_database')) {
+        status.innerHTML = '<span class="text-danger"><i data-feather="x-circle" class="me-1"></i>Please fill all fields</span>';
+        feather.replace();
+        return;
+    }
+    
+    // Show loading state
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Testing...';
+    status.innerHTML = '<span class="text-info"><i data-feather="clock" class="me-1"></i>Connecting...</span>';
+    feather.replace();
+    
+    // Test connection
+    fetch('{{ url_for("timecard_rollup.test_sage_connection") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            endpoint_url: formData.get('endpoint_url'),
+            username: formData.get('username'),
+            password: formData.get('password'),
+            company_database: formData.get('company_database')
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            status.innerHTML = '<span class="text-success"><i data-feather="check-circle" class="me-1"></i>' + data.message + '</span>';
+        } else {
+            status.innerHTML = '<span class="text-danger"><i data-feather="x-circle" class="me-1"></i>' + data.error + '</span>';
+        }
+        feather.replace();
+    })
+    .catch(error => {
+        status.innerHTML = '<span class="text-danger"><i data-feather="x-circle" class="me-1"></i>Network error: ' + error.message + '</span>';
+        feather.replace();
+    })
+    .finally(() => {
+        button.disabled = false;
+        button.innerHTML = '<i data-feather="wifi" class="me-2"></i>Test Connection';
+        feather.replace();
+    });
+}
+</script>
+{% endblock %}
