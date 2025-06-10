@@ -35,6 +35,12 @@ class Config:
     # Timezone configuration
     TIMEZONE = SAST
     
+    # Payroll configuration
+    PAYROLL_BASE_RATE = float(os.environ.get('PAYROLL_BASE_RATE', '150.0'))  # Base hourly rate in ZAR
+    PAYROLL_OVERTIME_MULTIPLIER = float(os.environ.get('PAYROLL_OVERTIME_MULTIPLIER', '1.5'))  # 1.5x for overtime
+    PAYROLL_DOUBLE_TIME_MULTIPLIER = float(os.environ.get('PAYROLL_DOUBLE_TIME_MULTIPLIER', '2.0'))  # 2.0x for double time
+    PAYROLL_DEDUCTION_RATE = float(os.environ.get('PAYROLL_DEDUCTION_RATE', '0.25'))  # 25% default deductions
+    
 class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
