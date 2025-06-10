@@ -29,6 +29,7 @@ def payroll_processing():
         # Get processing parameters from request
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
+        employee_filter = request.args.get('employee_filter')
         
         # Default to current pay period if no dates provided
         if not start_date or not end_date:
@@ -40,15 +41,26 @@ def payroll_processing():
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
         
-        # Get all employees with time entries in the period
-        employees_with_entries = db.session.query(User).join(
+        # Get all employees for the dropdown (users who are not Super Users)
+        all_employees = User.query.filter(User.is_active.is_(True)).order_by(User.username).all()
+        # Filter out Super Users from dropdown
+        all_employees = [emp for emp in all_employees if not emp.has_role('Super User')]
+        
+        # Build query for employees with time entries in the period
+        employees_query = db.session.query(User).join(
             TimeEntry, User.id == TimeEntry.user_id
         ).filter(
             and_(
                 TimeEntry.clock_in_time >= start_date,
                 TimeEntry.clock_in_time <= end_date + timedelta(days=1)
             )
-        ).distinct().all()
+        )
+        
+        # Apply employee filter if specified
+        if employee_filter:
+            employees_query = employees_query.filter(User.id == employee_filter)
+        
+        employees_with_entries = employees_query.distinct().all()
         
         # Process payroll data for each employee
         payroll_data = []
@@ -164,6 +176,8 @@ def payroll_processing():
                              payroll_data=payroll_data,
                              start_date=start_date,
                              end_date=end_date,
+                             employees=all_employees,
+                             selected_employee_id=employee_filter,
                              available_pay_codes=available_pay_codes)
         
     except Exception as e:
@@ -180,6 +194,7 @@ def export_payroll():
         # Get parameters
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
+        employee_filter = request.args.get('employee_filter')
         include_codes = request.args.getlist('include_codes')
         exclude_codes = request.args.getlist('exclude_codes')
         
@@ -190,16 +205,22 @@ def export_payroll():
         start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
         
-        # Get payroll data (reuse logic from processing)
-        employees_with_entries = db.session.query(User).join(
+        # Build query for employees with time entries in the period
+        employees_query = db.session.query(User).join(
             TimeEntry, User.id == TimeEntry.user_id
         ).filter(
             and_(
                 TimeEntry.clock_in_time >= start_date,
                 TimeEntry.clock_in_time <= end_date + timedelta(days=1),
-                User.is_active == True
+                User.is_active.is_(True)
             )
-        ).distinct().all()
+        )
+        
+        # Apply employee filter if specified
+        if employee_filter:
+            employees_query = employees_query.filter(User.id == employee_filter)
+        
+        employees_with_entries = employees_query.distinct().all()
         
         # Create CSV content
         output = io.StringIO()

@@ -29,17 +29,32 @@
                 </div>
                 <div class="card-body">
                     <form method="GET" class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="start_date" class="form-label">Start Date</label>
                             <input type="date" class="form-control" id="start_date" name="start_date" 
                                    value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="end_date" class="form-label">End Date</label>
                             <input type="date" class="form-control" id="end_date" name="end_date" 
                                    value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label for="employee_filter" class="form-label">Filter by Employee</label>
+                            <select class="form-select" id="employee_filter" name="employee_filter">
+                                <option value="">All Employees</option>
+                                {% if employees %}
+                                    {% for employee in employees %}
+                                        <option value="{{ employee.id }}" 
+                                                {% if selected_employee_id and selected_employee_id|string == employee.id|string %}selected{% endif %}>
+                                            {{ employee.username }}{% if employee.first_name %} - {{ employee.first_name }} {{ employee.last_name }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                            <div class="form-text">Select specific employee or leave blank for all</div>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label">&nbsp;</label>
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary">
