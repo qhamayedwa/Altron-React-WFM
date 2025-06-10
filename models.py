@@ -3,6 +3,7 @@ from app import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
+import json
 
 # Organizational Hierarchy Models
 
@@ -1479,3 +1480,67 @@ class NotificationPreference(db.Model):
     
     def __repr__(self):
         return f'<NotificationPreference User {self.user_id} Type {self.type_id}>'
+
+
+class WorkflowExecution(db.Model):
+    """Track automation workflow executions"""
+    __tablename__ = 'workflow_executions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    workflow_name = db.Column(db.String(50), nullable=False)
+    workflow_type = db.Column(db.String(30), nullable=False)  # 'leave_accrual', 'notifications', 'payroll'
+    
+    # Execution details
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(20), default='running')  # 'running', 'completed', 'failed'
+    
+    # Results
+    records_processed = db.Column(db.Integer, default=0)
+    records_successful = db.Column(db.Integer, default=0)
+    records_failed = db.Column(db.Integer, default=0)
+    
+    # Execution context
+    triggered_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    execution_mode = db.Column(db.String(20), default='manual')  # 'manual', 'scheduled', 'automatic'
+    
+    # Results and logs
+    execution_log = db.Column(db.Text, nullable=True)  # JSON string of execution details
+    error_message = db.Column(db.Text, nullable=True)
+    
+    # Relationships
+    triggered_by = db.relationship('User', backref='triggered_workflows')
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_workflow_executions_type', 'workflow_type'),
+        db.Index('idx_workflow_executions_status', 'status'),
+        db.Index('idx_workflow_executions_started', 'started_at'),
+    )
+    
+    def get_execution_log(self):
+        """Parse and return execution log as dictionary"""
+        try:
+            return json.loads(self.execution_log) if self.execution_log else {}
+        except json.JSONDecodeError:
+            return {}
+    
+    def set_execution_log(self, log_dict):
+        """Set execution log from dictionary"""
+        self.execution_log = json.dumps(log_dict)
+    
+    def duration_seconds(self):
+        """Calculate execution duration in seconds"""
+        if self.completed_at and self.started_at:
+            return (self.completed_at - self.started_at).total_seconds()
+        return None
+    
+    @classmethod
+    def get_last_execution(cls, workflow_type):
+        """Get the most recent execution for a workflow type"""
+        return cls.query.filter_by(workflow_type=workflow_type)\
+                      .order_by(cls.started_at.desc())\
+                      .first()
+    
+    def __repr__(self):
+        return f'<WorkflowExecution {self.workflow_type} {self.status}>'

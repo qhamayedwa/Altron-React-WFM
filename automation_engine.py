@@ -445,6 +445,32 @@ def workflow_dashboard():
             'active_workflows': 3  # Leave Accrual, Notifications, Payroll
         }
         
+        # Get last execution times for each workflow
+        from models import WorkflowExecution
+        
+        leave_accrual_exec = WorkflowExecution.get_last_execution('leave_accrual')
+        notifications_exec = WorkflowExecution.get_last_execution('notifications')
+        payroll_exec = WorkflowExecution.get_last_execution('payroll')
+        
+        def format_last_run(execution):
+            if not execution:
+                return 'Not run yet'
+            
+            from datetime import datetime, timedelta
+            now = datetime.utcnow()
+            time_diff = now - execution.started_at
+            
+            if time_diff.days > 0:
+                return f"{time_diff.days} days ago"
+            elif time_diff.seconds > 3600:
+                hours = time_diff.seconds // 3600
+                return f"{hours} hours ago"
+            elif time_diff.seconds > 60:
+                minutes = time_diff.seconds // 60
+                return f"{minutes} minutes ago"
+            else:
+                return "Just now"
+        
         # Define available workflows
         workflows = [
             {
@@ -452,7 +478,7 @@ def workflow_dashboard():
                 'name': 'Monthly Leave Accrual',
                 'description': 'Automatically calculate and update employee leave balances',
                 'schedule': 'Monthly (1st day)',
-                'last_run': 'Not run yet',
+                'last_run': format_last_run(leave_accrual_exec),
                 'status': 'Ready',
                 'enabled': True
             },
@@ -461,7 +487,7 @@ def workflow_dashboard():
                 'name': 'Automated Notifications',
                 'description': 'Send leave expiration alerts and approval reminders',
                 'schedule': 'Daily (9:00 AM)',
-                'last_run': 'Not run yet',
+                'last_run': format_last_run(notifications_exec),
                 'status': 'Ready',
                 'enabled': True
             },
@@ -470,7 +496,7 @@ def workflow_dashboard():
                 'name': 'Payroll Processing',
                 'description': 'Calculate payroll with overtime and exception detection',
                 'schedule': 'Weekly (Fridays)',
-                'last_run': 'Not run yet',
+                'last_run': format_last_run(payroll_exec),
                 'status': 'Ready',
                 'enabled': True
             }
@@ -492,15 +518,48 @@ def manual_accrual():
     @login_required
     @super_user_required
     def _run_accrual():
-        engine = AutomationEngine()
-        results = engine.run_monthly_leave_accrual()
-        
         from flask import jsonify
-        return jsonify({
-            'success': True,
-            'data': results,
-            'message': f"Accrual completed for {results['processed_employees']} employees"
-        })
+        from flask_login import current_user
+        from models import WorkflowExecution
+        from datetime import datetime
+        
+        # Create execution record
+        execution = WorkflowExecution(
+            workflow_name='Monthly Leave Accrual',
+            workflow_type='leave_accrual',
+            triggered_by_user_id=current_user.id,
+            execution_mode='manual'
+        )
+        db.session.add(execution)
+        db.session.commit()
+        
+        try:
+            engine = AutomationEngine()
+            results = engine.run_monthly_leave_accrual()
+            
+            # Update execution record with results
+            execution.completed_at = datetime.utcnow()
+            execution.status = 'completed'
+            execution.records_processed = results.get('processed_employees', 0)
+            execution.records_successful = results.get('processed_employees', 0)
+            execution.set_execution_log(results)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'data': results,
+                'message': f"Accrual completed for {results['processed_employees']} employees"
+            })
+        except Exception as e:
+            execution.completed_at = datetime.utcnow()
+            execution.status = 'failed'
+            execution.error_message = str(e)
+            db.session.commit()
+            
+            return jsonify({
+                'success': False,
+                'message': f"Accrual failed: {str(e)}"
+            })
     
     return _run_accrual()
 
@@ -513,15 +572,48 @@ def manual_notifications():
     @login_required
     @super_user_required
     def _run_notifications():
-        engine = AutomationEngine()
-        results = engine.run_automated_notifications()
-        
         from flask import jsonify
-        return jsonify({
-            'success': True,
-            'data': results,
-            'message': "Automated notifications completed"
-        })
+        from flask_login import current_user
+        from models import WorkflowExecution
+        from datetime import datetime
+        
+        # Create execution record
+        execution = WorkflowExecution(
+            workflow_name='Automated Notifications',
+            workflow_type='notifications',
+            triggered_by_user_id=current_user.id,
+            execution_mode='manual'
+        )
+        db.session.add(execution)
+        db.session.commit()
+        
+        try:
+            engine = AutomationEngine()
+            results = engine.run_automated_notifications()
+            
+            # Update execution record with results
+            execution.completed_at = datetime.utcnow()
+            execution.status = 'completed'
+            execution.records_processed = results.get('total_notifications', 0)
+            execution.records_successful = results.get('total_notifications', 0)
+            execution.set_execution_log(results)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'data': results,
+                'message': "Automated notifications completed"
+            })
+        except Exception as e:
+            execution.completed_at = datetime.utcnow()
+            execution.status = 'failed'
+            execution.error_message = str(e)
+            db.session.commit()
+            
+            return jsonify({
+                'success': False,
+                'message': f"Notifications failed: {str(e)}"
+            })
     
     return _run_notifications()
 
