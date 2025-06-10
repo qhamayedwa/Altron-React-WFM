@@ -380,6 +380,9 @@ def generate_rollup():
         service = TimecardRollupService()
         rollup_data = service.generate_rollup_data(config)
         
+        # Log successful rollup generation
+        logging.info(f"Rollup generated successfully: {rollup_type} from {start_date_str} to {end_date_str}")
+        
         return jsonify({
             "success": True,
             "data": rollup_data,
@@ -451,3 +454,74 @@ def send_to_sage():
         return jsonify({"success": True, "message": "Data sent to SAGE successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+@timecard_rollup_bp.route('/recent-activity')
+@login_required
+@role_required('Super User', 'Manager')
+def recent_activity():
+    """Get recent rollup activity"""
+    try:
+        # Get time entries from the last 30 days
+        cutoff_date = datetime.now() - timedelta(days=30)
+        recent_entries = db.session.query(TimeEntry).filter(
+            TimeEntry.clock_out_time.isnot(None),
+            TimeEntry.clock_in_time >= cutoff_date
+        ).order_by(TimeEntry.clock_in_time.desc()).all()
+        
+        if not recent_entries:
+            return jsonify({"success": True, "activities": []})
+        
+        # Create activity summaries by week
+        activities = []
+        week_data = {}
+        
+        for entry in recent_entries:
+            # Get the Monday of the week for this entry
+            work_date = entry.work_date
+            days_since_monday = work_date.weekday()
+            week_start = work_date - timedelta(days=days_since_monday)
+            week_end = week_start + timedelta(days=6)
+            week_key = week_start.strftime("%Y-%m-%d")
+            
+            if week_key not in week_data:
+                week_data[week_key] = {
+                    "entries": [],
+                    "week_start": week_start,
+                    "week_end": week_end
+                }
+            week_data[week_key]["entries"].append(entry)
+        
+        # Convert to activity format (limit to 5 most recent weeks)
+        sorted_weeks = sorted(week_data.items(), reverse=True)[:5]
+        
+        for week_key, week_info in sorted_weeks:
+            entries = week_info["entries"]
+            total_hours = sum(e.total_hours for e in entries)
+            total_employees = len(set(e.user_id for e in entries))
+            
+            # Get the most recent entry time for display
+            latest_entry = max(entries, key=lambda x: x.created_at)
+            
+            activities.append({
+                "type": "Weekly",
+                "status": "success",
+                "period_start": week_info["week_start"].strftime("%Y-%m-%d"),
+                "period_end": week_info["week_end"].strftime("%Y-%m-%d"),
+                "total_hours": round(total_hours, 2),
+                "total_employees": total_employees,
+                "created_at": latest_entry.created_at.strftime("%m/%d %H:%M"),
+                "sage_sent": False
+            })
+        
+        return jsonify({"success": True, "activities": activities})
+        
+    except Exception as e:
+        logging.error(f"Error getting recent activity: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+@timecard_rollup_bp.route('/history')
+@login_required
+@role_required('Super User', 'Manager')
+def rollup_history():
+    """View rollup history page"""
+    return render_template('timecard_rollup/history.html')
