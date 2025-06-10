@@ -85,6 +85,16 @@ class EditUserForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     first_name = StringField('First Name', validators=[Length(max=64)])
     last_name = StringField('Last Name', validators=[Length(max=64)])
+    date_of_birth = DateField('Date of Birth', validators=[Optional()])
+    id_number = StringField('ID Number', validators=[Length(max=20)])
+    gender = SelectField('Gender', choices=[
+        ('', 'Select Gender'),
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+        ('prefer_not_to_say', 'Prefer not to say')
+    ])
+    nationality = StringField('Nationality', validators=[Length(max=50)])
     
     # Contact Information
     phone = StringField('Phone Number', validators=[Length(max=20)])

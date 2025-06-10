@@ -207,29 +207,105 @@ def edit_user(user_id):
     form = EditUserForm(user.username, user.email)
     
     if form.validate_on_submit():
-        user.username = form.username.data
-        user.email = form.email.data
-        user.first_name = form.first_name.data
-        user.last_name = form.last_name.data
-        user.is_active = form.is_active.data
-        
-        # Update roles
-        user.roles.clear()
-        if form.roles.data:
-            for role_id in form.roles.data:
-                role = Role.query.get(role_id)
-                if role:
-                    user.add_role(role)
-        
-        db.session.commit()
-        flash(f'User {user.username} has been updated!', 'success')
-        return redirect(url_for('auth.user_management'))
+        try:
+            # Basic Information
+            user.username = form.username.data
+            user.email = form.email.data
+            user.first_name = form.first_name.data
+            user.last_name = form.last_name.data
+            user.date_of_birth = form.date_of_birth.data
+            user.id_number = form.id_number.data
+            user.gender = form.gender.data
+            user.nationality = form.nationality.data
+            
+            # Contact Information
+            user.phone = form.phone.data
+            user.mobile = form.mobile.data
+            
+            # Address Information
+            user.address_line1 = form.address_line1.data
+            user.address_line2 = form.address_line2.data
+            user.city = form.city.data
+            user.postal_code = form.postal_code.data
+            
+            # Emergency Contact
+            user.emergency_contact_name = form.emergency_contact_name.data
+            user.emergency_contact_phone = form.emergency_contact_phone.data
+            user.emergency_contact_relationship = form.emergency_contact_relationship.data
+            
+            # Employment Information
+            user.employee_id = form.employee_id.data
+            user.department_id = form.department.data if form.department.data else None
+            user.position = form.position.data
+            user.employment_type = form.employment_type.data
+            user.hire_date = form.hire_date.data
+            user.manager_id = form.manager_id.data if form.manager_id.data else None
+            user.hourly_rate = form.hourly_rate.data
+            
+            # Professional Information
+            user.education_level = form.education_level.data
+            user.skills = form.skills.data
+            user.notes = form.notes.data
+            
+            # System Information
+            user.is_active = form.is_active.data
+            
+            # Update roles
+            user.roles.clear()
+            if form.roles.data:
+                for role_id in form.roles.data:
+                    role = Role.query.get(role_id)
+                    if role:
+                        user.add_role(role)
+            
+            db.session.commit()
+            flash(f'User {user.username} has been updated successfully!', 'success')
+            return redirect(url_for('auth.user_management'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating user: {str(e)}', 'danger')
     
     elif request.method == 'GET':
+        # Basic Information
         form.username.data = user.username
         form.email.data = user.email
         form.first_name.data = user.first_name
         form.last_name.data = user.last_name
+        form.date_of_birth.data = user.date_of_birth
+        form.id_number.data = user.id_number
+        form.gender.data = user.gender
+        form.nationality.data = user.nationality
+        
+        # Contact Information
+        form.phone.data = user.phone
+        form.mobile.data = user.mobile
+        
+        # Address Information
+        form.address_line1.data = user.address_line1
+        form.address_line2.data = user.address_line2
+        form.city.data = user.city
+        form.postal_code.data = user.postal_code
+        
+        # Emergency Contact
+        form.emergency_contact_name.data = user.emergency_contact_name
+        form.emergency_contact_phone.data = user.emergency_contact_phone
+        form.emergency_contact_relationship.data = user.emergency_contact_relationship
+        
+        # Employment Information
+        form.employee_id.data = user.employee_id
+        form.department.data = user.department_id
+        form.position.data = user.position
+        form.employment_type.data = user.employment_type
+        form.hire_date.data = user.hire_date
+        form.manager_id.data = user.manager_id
+        form.hourly_rate.data = user.hourly_rate
+        
+        # Professional Information
+        form.education_level.data = user.education_level
+        form.skills.data = user.skills
+        form.notes.data = user.notes
+        
+        # System Information
         form.is_active.data = user.is_active
         form.roles.data = [role.id for role in user.roles]
     
