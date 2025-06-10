@@ -626,15 +626,48 @@ def manual_payroll():
     @login_required
     @super_user_required
     def _run_payroll():
-        engine = AutomationEngine()
-        results = engine.run_automated_payroll_calculations()
-        
         from flask import jsonify
-        return jsonify({
-            'success': True,
-            'data': results,
-            'message': f"Payroll calculated for {results['processed_employees']} employees"
-        })
+        from flask_login import current_user
+        from models import WorkflowExecution
+        from datetime import datetime
+        
+        # Create execution record
+        execution = WorkflowExecution(
+            workflow_name='Payroll Processing',
+            workflow_type='payroll',
+            triggered_by_user_id=current_user.id,
+            execution_mode='manual'
+        )
+        db.session.add(execution)
+        db.session.commit()
+        
+        try:
+            engine = AutomationEngine()
+            results = engine.run_automated_payroll_calculations()
+            
+            # Update execution record with results
+            execution.completed_at = datetime.utcnow()
+            execution.status = 'completed'
+            execution.records_processed = results.get('processed_employees', 0)
+            execution.records_successful = results.get('processed_employees', 0)
+            execution.set_execution_log(results)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'data': results,
+                'message': f"Payroll calculated for {results['processed_employees']} employees"
+            })
+        except Exception as e:
+            execution.completed_at = datetime.utcnow()
+            execution.status = 'failed'
+            execution.error_message = str(e)
+            db.session.commit()
+            
+            return jsonify({
+                'success': False,
+                'message': f"Payroll failed: {str(e)}"
+            })
     
     return _run_payroll()
 
