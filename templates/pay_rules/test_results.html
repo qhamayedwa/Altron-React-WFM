@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Pay Rules Test Results{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>Pay Rules Test Results</h2>
+                    <p class="text-muted mb-0">
+                        Test Period: {{ start_date.strftime('%B %d, %Y') }} - {{ end_date.strftime('%B %d, %Y') }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('pay_rules.test_rules') }}" class="btn btn-outline-secondary me-2">
+                        <i data-feather="arrow-left" class="me-2"></i>Back to Test
+                    </a>
+                    <a href="{{ url_for('pay_rules.manage_pay_rules') }}" class="btn btn-primary">
+                        <i data-feather="settings" class="me-2"></i>Manage Rules
+                    </a>
+                </div>
+            </div>
+
+            <!-- Test Summary -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Total Hours</h6>
+                                    <h4>{{ "%.2f"|format(test_results.calculation_results.total_hours) }}</h4>
+                                </div>
+                                <i data-feather="clock" width="32" height="32"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Regular Hours</h6>
+                                    <h4>{{ "%.2f"|format(test_results.calculation_results.summary.regular_hours) }}</h4>
+                                </div>
+                                <i data-feather="check-circle" width="32" height="32"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Overtime Hours</h6>
+                                    <h4>{{ "%.2f"|format(test_results.calculation_results.summary.overtime_hours) }}</h4>
+                                </div>
+                                <i data-feather="trending-up" width="32" height="32"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Employees</h6>
+                                    <h4>{{ test_results.calculation_results.employee_count }}</h4>
+                                </div>
+                                <i data-feather="users" width="32" height="32"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation Issues -->
+            {% if test_results.validation_issues %}
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i data-feather="alert-triangle" class="me-2"></i>
+                        Validation Issues ({{ test_results.validation_issues|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for issue in test_results.validation_issues %}
+                    <div class="alert alert-warning d-flex align-items-center" role="alert">
+                        <i data-feather="alert-circle" class="me-2"></i>
+                        {{ issue }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i data-feather="check-circle" class="me-2"></i>
+                        Validation Passed
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0 text-success">All pay rules validated successfully with no issues detected.</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Pay Components Breakdown -->
+            {% if test_results.calculation_results.pay_components %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Pay Components Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Component</th>
+                                    <th>Type</th>
+                                    <th>Total Hours</th>
+                                    <th>Total Amount</th>
+                                    <th>Employees</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for component_name, component_data in test_results.calculation_results.pay_components.items() %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ component_name|title }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'primary' if component_data.type == 'hours' else 'info' }}">
+                                            {{ component_data.type|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ "%.2f"|format(component_data.total_hours) }}</td>
+                                    <td>R {{ "%.2f"|format(component_data.total_amount) }}</td>
+                                    <td>{{ component_data.employee_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Employee Results -->
+            {% if test_results.calculation_results.employee_results %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Employee-by-Employee Results</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for user_id, employee_result in test_results.calculation_results.employee_results.items() %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">{{ employee_result.username }}</h6>
+                                    <small class="text-muted">{{ "%.2f"|format(employee_result.total_hours) }} hours total</small>
+                                </div>
+                                <div class="card-body">
+                                    {% if employee_result.pay_components %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Component</th>
+                                                    <th>Hours</th>
+                                                    <th>Multiplier</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for comp_name, comp_data in employee_result.pay_components.items() %}
+                                                <tr>
+                                                    <td>{{ comp_name|title }}</td>
+                                                    <td>{{ "%.2f"|format(comp_data.hours) }}</td>
+                                                    <td>{{ "%.1f"|format(comp_data.multiplier) }}x</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted mb-0">No pay components calculated</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Test Metadata -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Test Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Pay Rules Tested</h6>
+                            <ul class="list-unstyled">
+                                {% for rule in pay_rules %}
+                                <li class="mb-1">
+                                    <i data-feather="check" class="me-2 text-success" width="16" height="16"></i>
+                                    {{ rule.name }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Sample Data</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Time Entries:</strong> {{ test_entries|length }}</li>
+                                <li><strong>Date Range:</strong> {{ start_date.strftime('%Y-%m-%d') }} to {{ end_date.strftime('%Y-%m-%d') }}</li>
+                                <li><strong>Test Run:</strong> {{ moment().format('YYYY-MM-DD HH:mm:ss') if moment else 'Just now' }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Log (if available) -->
+            {% if test_results.calculation_results.debug_log %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <button class="btn btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#debugLog">
+                            <i data-feather="code" class="me-2"></i>
+                            Debug Log ({{ test_results.calculation_results.debug_log|length }} entries)
+                        </button>
+                    </h5>
+                </div>
+                <div class="collapse" id="debugLog">
+                    <div class="card-body">
+                        <pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">{% for log_entry in test_results.calculation_results.debug_log %}{{ log_entry }}
+{% endfor %}</pre>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    feather.replace();
+</script>
+{% endblock %}

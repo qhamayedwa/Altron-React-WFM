@@ -99,7 +99,10 @@ class PayRuleEngine:
         
         # Process each time entry
         for entry in time_entries:
-            entry_hours = entry.total_hours
+            # Safely get total hours, handling potential None values
+            entry_hours = getattr(entry, 'total_hours', 0.0)
+            if entry_hours is None:
+                entry_hours = 0.0
             total_hours += entry_hours
             
             self.log_debug(f"Processing entry {entry.id}: {entry_hours} hours on {entry.work_date}")
@@ -175,7 +178,7 @@ class PayRuleEngine:
     
     def _calculate_regular_hours(self, time_entries: List[TimeEntry], pay_components: Dict[str, Any]) -> float:
         """Calculate regular hours not covered by other rules"""
-        total_hours = sum(entry.total_hours for entry in time_entries)
+        total_hours = sum(getattr(entry, 'total_hours', 0.0) or 0.0 for entry in time_entries)
         
         # Subtract hours already accounted for by other rules
         accounted_hours = 0.0
