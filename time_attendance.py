@@ -940,9 +940,13 @@ def employee_timecards():
             start_date = (today - timedelta(days=30)).strftime('%Y-%m-%d')
             end_date = today.strftime('%Y-%m-%d')
         
-        # Convert string dates to date objects for queries
-        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
-        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
+        # Convert string dates to datetime objects for proper filtering
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d') if start_date else None
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d') if end_date else None
+        
+        # Set end date to end of day for inclusive filtering
+        if end_date_obj:
+            end_date_obj = end_date_obj.replace(hour=23, minute=59, second=59)
         
         # Apply role-based filtering
         is_super_user = current_user.has_role('Super User')
@@ -971,14 +975,15 @@ def employee_timecards():
         
         for user in users:
             if start_date_obj and end_date_obj:
-                # Get time entries for user in date range with simplified query
+                # Get time entries for user in date range with proper datetime filtering
                 try:
                     user_entries = db.session.query(TimeEntry).filter(
                         TimeEntry.user_id == user.id,
                         TimeEntry.clock_in_time >= start_date_obj,
-                        TimeEntry.clock_in_time <= end_date_obj + timedelta(days=1)
-                    ).order_by(TimeEntry.clock_in_time.desc()).limit(50).all()
-                except:
+                        TimeEntry.clock_in_time <= end_date_obj
+                    ).order_by(TimeEntry.clock_in_time.desc()).all()
+                except Exception as e:
+                    print(f"Error fetching time entries for user {user.id}: {e}")
                     user_entries = []
                 
                 # Process entries by date
@@ -991,8 +996,9 @@ def employee_timecards():
                         entries_by_date[entry_date].append(entry)
                 
                 # Generate date range for the period (newest first)
-                current_date = end_date_obj
-                while current_date >= start_date_obj:
+                current_date = end_date_obj.date()
+                start_date_date = start_date_obj.date()
+                while current_date >= start_date_date:
                     # Get time entries for this date
                     time_entries = entries_by_date.get(current_date, [])
                     
@@ -1004,7 +1010,9 @@ def employee_timecards():
                     if time_entries:
                         for entry in time_entries:
                             if entry.clock_in_time and entry.clock_out_time:
-                                hours = entry.total_hours or 0
+                                # Calculate hours worked for this entry
+                                time_diff = entry.clock_out_time - entry.clock_in_time
+                                hours = time_diff.total_seconds() / 3600.0
                                 total_hours += hours
                                 
                                 # Get first clock in and last clock out
