@@ -107,10 +107,10 @@ class WFMIntelligence:
         except Exception as e:
             logging.error(f"AI scheduling analysis error: {e}")
             error_msg = str(e)
-            if 'quota' in error_msg.lower() or 'insufficient_quota' in error_msg.lower():
-                error_msg = 'OpenAI API quota exceeded. Please check your billing details.'
-            elif '429' in error_msg:
-                error_msg = 'API rate limit reached. Please try again in a few moments.'
+            if 'quota' in error_msg.lower() or 'insufficient_quota' in error_msg.lower() or '429' in error_msg:
+                # Fall back to statistical analysis when OpenAI is unavailable
+                logging.info("OpenAI quota exceeded, using fallback statistical analysis")
+                return fallback_service.analyze_scheduling_patterns(department_id, days)
             return {
                 'success': False,
                 'error': error_msg,
@@ -299,9 +299,15 @@ class WFMIntelligence:
             
         except Exception as e:
             logging.error(f"AI attendance analysis error: {e}")
+            error_msg = str(e)
+            if 'quota' in error_msg.lower() or 'insufficient_quota' in error_msg.lower() or '429' in error_msg:
+                # Fall back to statistical analysis when OpenAI is unavailable
+                logging.info("OpenAI quota exceeded, using fallback statistical analysis")
+                return fallback_service.analyze_attendance_patterns(employee_id, days)
             return {
                 'success': False,
-                'error': str(e)
+                'error': error_msg,
+                'fallback_available': True
             }
     
     def suggest_optimal_schedule(self, target_date: date, department_id: Optional[int] = None) -> Dict[str, Any]:
