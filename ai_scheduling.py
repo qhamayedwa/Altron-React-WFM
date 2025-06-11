@@ -358,7 +358,21 @@ scheduling_ai = SchedulingAI()
 @role_required('Manager', 'Admin', 'Super User')
 def ai_dashboard():
     """AI Scheduling dashboard"""
-    return render_template('ai_scheduling/dashboard.html')
+    try:
+        # Import AI services for dashboard insights
+        from ai_services import ai_service
+        from ai_fallback import fallback_service
+        
+        # Get scheduling insights using fallback statistical analysis
+        scheduling_insights = fallback_service.analyze_scheduling_patterns(days=14)
+        attendance_insights = fallback_service.analyze_attendance_patterns(days=14)
+        
+        return render_template('ai_scheduling/dashboard.html',
+                             scheduling_insights=scheduling_insights,
+                             attendance_insights=attendance_insights)
+    except Exception as e:
+        logging.error(f"AI dashboard error: {e}")
+        return render_template('ai_scheduling/dashboard.html')
 
 @ai_scheduling_bp.route('/generate', methods=['GET', 'POST'])
 @login_required

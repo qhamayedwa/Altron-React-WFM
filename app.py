@@ -100,7 +100,6 @@ def create_app(config_class=Config):
     from sage_vip_api import sage_vip_api_bp
     from sage_vip_config_api import sage_vip_config_api_bp
     from timecard_rollup import timecard_rollup_bp
-    from ai_routes import ai_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(time_attendance_bp)
@@ -112,7 +111,6 @@ def create_app(config_class=Config):
     app.register_blueprint(api_bp)
     app.register_blueprint(automation_bp)
     app.register_blueprint(ai_scheduling_bp)
-    app.register_blueprint(ai_bp)
     app.register_blueprint(org_bp)
     app.register_blueprint(import_bp)
     app.register_blueprint(debug_bp)

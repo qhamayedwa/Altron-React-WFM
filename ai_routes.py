@@ -12,7 +12,7 @@ import json
 import logging
 
 # Create AI blueprint
-ai_bp = Blueprint('ai_insights', __name__, url_prefix='/ai')
+ai_bp = Blueprint('ai_insights_dashboard', __name__, url_prefix='/ai')
 
 @ai_bp.route('/dashboard')
 @login_required
