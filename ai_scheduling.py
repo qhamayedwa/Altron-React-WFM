@@ -359,13 +359,12 @@ scheduling_ai = SchedulingAI()
 def ai_dashboard():
     """AI Scheduling dashboard"""
     try:
-        # Import AI services for dashboard insights
-        from ai_services import ai_service
-        from ai_fallback import fallback_service
+        # Import enhanced insights service for real workforce analytics
+        from enhanced_ai_insights import enhanced_insights
         
-        # Get scheduling insights using fallback statistical analysis
-        scheduling_insights = fallback_service.analyze_scheduling_patterns(days=14)
-        attendance_insights = fallback_service.analyze_attendance_patterns(days=14)
+        # Get real workforce insights from time tracking data
+        scheduling_insights = enhanced_insights.analyze_scheduling_patterns(days=14)
+        attendance_insights = enhanced_insights.analyze_attendance_patterns(days=14)
         
         return render_template('ai_scheduling/dashboard.html',
                              scheduling_insights=scheduling_insights,
