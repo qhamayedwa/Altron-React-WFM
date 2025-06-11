@@ -815,15 +815,21 @@ def import_clock_data():
 def entry_details(entry_id):
     """Get detailed information for a specific time entry"""
     try:
-        # Get the time entry with user information
-        entry = db.session.query(TimeEntry).join(User, TimeEntry.user_id == User.id).filter(
-            TimeEntry.id == entry_id
-        ).first()
+        # Get the time entry and user information separately
+        entry = TimeEntry.query.filter_by(id=entry_id).first()
         
         if not entry:
             return jsonify({
                 'success': False,
                 'message': 'Time entry not found'
+            }), 404
+        
+        # Get the user information
+        user = User.query.get(entry.user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'User not found'
             }), 404
         
         # Apply role-based access control
@@ -832,7 +838,7 @@ def entry_details(entry_id):
         
         if is_manager and not is_super_user:
             managed_dept_ids = get_managed_departments(current_user.id)
-            if entry.user.department_id not in managed_dept_ids:
+            if user.department_id not in managed_dept_ids:
                 return jsonify({
                     'success': False,
                     'message': 'Access denied'
@@ -849,9 +855,9 @@ def entry_details(entry_id):
         <div class="row">
             <div class="col-md-6">
                 <h6>Employee Information</h6>
-                <p><strong>Name:</strong> {entry.user.first_name} {entry.user.last_name}</p>
-                <p><strong>Username:</strong> {entry.user.username}</p>
-                <p><strong>Employee ID:</strong> {entry.user.employee_id or 'N/A'}</p>
+                <p><strong>Name:</strong> {user.first_name} {user.last_name}</p>
+                <p><strong>Username:</strong> {user.username}</p>
+                <p><strong>Employee ID:</strong> {user.employee_id or 'N/A'}</p>
             </div>
             <div class="col-md-6">
                 <h6>Time Details</h6>
