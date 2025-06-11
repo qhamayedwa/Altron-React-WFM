@@ -966,49 +966,37 @@ def employee_timecards():
         if user_id:
             users = [user for user in users if user.id == user_id]
         
-        # Build comprehensive time card data
+        # Build simplified timecard data with basic information
         timecard_data = []
         
         for user in users:
             if start_date_obj and end_date_obj:
+                # Get time entries for user in date range with simplified query
+                try:
+                    user_entries = db.session.query(TimeEntry).filter(
+                        TimeEntry.user_id == user.id,
+                        TimeEntry.clock_in_time >= start_date_obj,
+                        TimeEntry.clock_in_time <= end_date_obj + timedelta(days=1)
+                    ).order_by(TimeEntry.clock_in_time.desc()).limit(50).all()
+                except:
+                    user_entries = []
+                
+                # Process entries by date
+                entries_by_date = {}
+                for entry in user_entries:
+                    if entry.clock_in_time:
+                        entry_date = entry.clock_in_time.date()
+                        if entry_date not in entries_by_date:
+                            entries_by_date[entry_date] = []
+                        entries_by_date[entry_date].append(entry)
+                
                 # Generate date range for the period (newest first)
                 current_date = end_date_obj
                 while current_date >= start_date_obj:
-                    # Get schedule for this date with error handling
-                    schedule = None
-                    try:
-                        schedule = Schedule.query.filter(
-                            Schedule.user_id == user.id,
-                            func.date(Schedule.start_time) == current_date
-                        ).first()
-                    except Exception:
-                        pass
+                    # Get time entries for this date
+                    time_entries = entries_by_date.get(current_date, [])
                     
-                    # Get time entries for this date with error handling
-                    time_entries = []
-                    try:
-                        time_entries = TimeEntry.query.filter(
-                            TimeEntry.user_id == user.id,
-                            TimeEntry.clock_in_time.isnot(None),
-                            func.date(TimeEntry.clock_in_time) == current_date
-                        ).all()
-                    except Exception as e:
-                        logging.error(f"Error fetching time entries for user {user.id} on {current_date}: {e}")
-                        time_entries = []
-                    
-                    # Get leave applications for this date with error handling
-                    leave_app = None
-                    try:
-                        leave_app = LeaveApplication.query.filter(
-                            LeaveApplication.user_id == user.id,
-                            LeaveApplication.start_date <= current_date,
-                            LeaveApplication.end_date >= current_date,
-                            LeaveApplication.status == 'Approved'
-                        ).first()
-                    except Exception:
-                        pass
-                    
-                    # Calculate total hours worked
+                    # Calculate basic timecard information
                     total_hours = 0
                     clock_in_time = None
                     clock_out_time = None
