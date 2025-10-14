@@ -32,46 +32,63 @@
 }
 
 :root {
-    /* === Primary Brand Colors (Light Variants) === */
-    --color-primary-blue-light-start: #3b82f6;
-    --color-primary-blue-light-end: #60a5fa;
-    --color-primary-dark-light-start: #60a5fa;
-    --color-primary-dark-light-end: #93c5fd;
-    --gradient-primary-light: linear-gradient(to right, var(--color-primary-blue-light-start), var(--color-primary-blue-light-end));
+    /* === Altron Primary Brand Colors === */
+    --altron-dark-teal: #1F4650;        /* Pantone 7477 C */
+    --altron-royal-blue: #28468D;       /* Pantone 7687 C */
+    --altron-light-blue: #54B8DF;       /* Pantone 2190 C */
+    
+    /* === Altron Secondary Colors === */
+    --altron-turquoise: #54DADF;        /* Pantone 305 C */
+    --altron-yellow-green: #EBF982;     /* Pantone 2295 C */
+    --altron-coral: #EFB65B;            /* Pantone 2023 C */
+    --altron-mint: #C0F2D7;             /* Pantone 2253 C */
+    
+    /* === Altron Gradients === */
+    --gradient-altron-primary: linear-gradient(135deg, var(--altron-royal-blue) 0%, var(--altron-light-blue) 100%);
+    --gradient-altron-teal: linear-gradient(135deg, var(--altron-dark-teal) 0%, var(--altron-turquoise) 100%);
+    --gradient-altron-accent: linear-gradient(135deg, var(--altron-turquoise) 0%, var(--altron-mint) 100%);
+    --gradient-altron-warm: linear-gradient(135deg, var(--altron-coral) 0%, var(--altron-yellow-green) 100%);
+    
+    /* === Primary Brand Colors (Altron) === */
+    --color-primary-blue-light-start: var(--altron-royal-blue);
+    --color-primary-blue-light-end: var(--altron-light-blue);
+    --color-primary-dark-light-start: var(--altron-light-blue);
+    --color-primary-dark-light-end: var(--altron-turquoise);
+    --gradient-primary-light: var(--gradient-altron-primary);
     
     /* Legacy variables for compatibility */
-    --primary-gradient: var(--gradient-primary-light);
-    --primary-dark: var(--color-primary-dark-light-start);
-    --primary-light: var(--color-primary-blue-light-start);
+    --primary-gradient: var(--gradient-altron-primary);
+    --primary-dark: var(--altron-royal-blue);
+    --primary-light: var(--altron-light-blue);
     
-    /* === Accent Colors (Light Variants) === */
-    --color-success-light-start: #34d399;
-    --color-success-light-end: #6ee7b7;
-    --gradient-success-light: linear-gradient(to right, var(--color-success-light-start), var(--color-success-light-end));
+    /* === Accent Colors (Altron-based) === */
+    --color-success-light-start: var(--altron-mint);
+    --color-success-light-end: #A8E6CF;
+    --gradient-success-light: linear-gradient(135deg, #34d399 0%, var(--altron-mint) 100%);
     
-    --color-warning-light-start: #fbbf24;
-    --color-warning-light-end: #fcd34d;
-    --gradient-warning-light: linear-gradient(to right, var(--color-warning-light-start), var(--color-warning-light-end));
+    --color-warning-light-start: var(--altron-yellow-green);
+    --color-warning-light-end: #F4F7A1;
+    --gradient-warning-light: linear-gradient(135deg, var(--altron-coral) 0%, var(--altron-yellow-green) 100%);
     
     --color-danger-light-start: #f87171;
     --color-danger-light-end: #fca5a5;
     --gradient-danger-light: linear-gradient(to right, var(--color-danger-light-start), var(--color-danger-light-end));
     
-    --color-info-light-start: #22d3ee;
-    --color-info-light-end: #67e8f9;
-    --gradient-info-light: linear-gradient(to right, var(--color-info-light-start), var(--color-info-light-end));
+    --color-info-light-start: var(--altron-turquoise);
+    --color-info-light-end: var(--altron-mint);
+    --gradient-info-light: var(--gradient-altron-accent);
     
-    /* === Secondary Color (Light Variant) === */
-    --color-secondary-indigo-light-start: #a5b4fc;
-    --color-secondary-indigo-light-end: #c7d2fe;
-    --gradient-secondary-light: linear-gradient(to right, var(--color-secondary-indigo-light-start), var(--color-secondary-indigo-light-end));
+    /* === Secondary Color (Altron) === */
+    --color-secondary-indigo-light-start: var(--altron-dark-teal);
+    --color-secondary-indigo-light-end: var(--altron-turquoise);
+    --gradient-secondary-light: var(--gradient-altron-teal);
     
     /* Legacy accent variables for compatibility */
     --accent-success: var(--gradient-success-light);
     --accent-warning: var(--gradient-warning-light);
     --accent-danger: var(--gradient-danger-light);
     --accent-info: var(--gradient-info-light);
-    --accent-secondary: var(--color-secondary-indigo-light-start);
+    --accent-secondary: var(--altron-dark-teal);
     
     /* === Neutral Palette (Light Variants) === */
     --color-gray-lightest: #f9fafb;
@@ -123,17 +140,17 @@
     --spacing-2xl: 3rem;
     
     /* Modern Bootstrap variables for compatibility */
-    --app-primary: var(--color-primary-blue-light-start);
-    --app-secondary: var(--color-secondary-indigo-light-start);
-    --app-success: var(--color-success-light-start);
-    --app-info: var(--color-info-light-start);
-    --app-warning: var(--color-warning-light-start);
+    --app-primary: var(--altron-royal-blue);
+    --app-secondary: var(--altron-dark-teal);
+    --app-success: var(--altron-mint);
+    --app-info: var(--altron-turquoise);
+    --app-warning: var(--altron-coral);
     --app-danger: var(--color-danger-light-start);
-    --bs-primary: var(--color-primary-blue-light-start);
-    --bs-secondary: var(--color-secondary-indigo-light-start);
-    --bs-success: var(--color-success-light-start);
-    --bs-info: var(--color-info-light-start);
-    --bs-warning: var(--color-warning-light-start);
+    --bs-primary: var(--altron-royal-blue);
+    --bs-secondary: var(--altron-dark-teal);
+    --bs-success: var(--altron-mint);
+    --bs-info: var(--altron-turquoise);
+    --bs-warning: var(--altron-coral);
     --bs-danger: var(--color-danger-light-start);
     --bs-dark: var(--neutral-800);
     --bs-light: var(--neutral-100);
@@ -146,14 +163,14 @@
 .btn-primary:active,
 .btn-primary.active,
 .btn-primary:not(:disabled):not(.disabled):active {
-    background: var(--gradient-primary-light) !important;
-    border-color: var(--color-primary-blue-light-start) !important;
+    background: var(--gradient-altron-primary) !important;
+    border-color: var(--altron-royal-blue) !important;
     color: white !important;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(to right, var(--color-primary-dark-light-start), var(--color-primary-dark-light-end)) !important;
-    border-color: var(--color-primary-dark-light-start) !important;
+    background: linear-gradient(135deg, var(--altron-light-blue) 0%, var(--altron-turquoise) 100%) !important;
+    border-color: var(--altron-light-blue) !important;
     color: white !important;
 }
 
@@ -165,11 +182,11 @@
 }
 
 .text-primary {
-    color: var(--color-primary-blue-light-start) !important;
+    color: var(--altron-royal-blue) !important;
 }
 
 .border-primary {
-    border-color: var(--color-primary-blue-light-start) !important;
+    border-color: var(--altron-royal-blue) !important;
 }
 
 .card-header {
@@ -184,8 +201,8 @@
 
 .pagination .page-item.active .page-link,
 .pagination .page-link:hover {
-    background: var(--gradient-primary-light) !important;
-    border-color: var(--color-primary-blue-light-start) !important;
+    background: var(--gradient-altron-primary) !important;
+    border-color: var(--altron-royal-blue) !important;
     color: white !important;
 }
 
@@ -311,7 +328,7 @@
 
 /* Enhanced Modern Styling */
 .card {
-    border: 1px solid rgba(99, 102, 241, 0.08) !important;
+    border: 1px solid rgba(40, 70, 141, 0.08) !important;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
     border-radius: 12px !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -321,7 +338,7 @@
 .card:hover {
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
     transform: translateY(-2px) !important;
-    border-color: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(40, 70, 141, 0.15) !important;
 }
 
 .card-header {
@@ -349,15 +366,15 @@
 }
 
 .btn-outline-primary {
-    color: #3A9CA8 !important;
-    border: 2px solid #3A9CA8 !important;
+    color: var(--altron-royal-blue) !important;
+    border: 2px solid var(--altron-royal-blue) !important;
     background: transparent !important;
 }
 
 .btn-outline-primary:hover {
-    background: #3A9CA8 !important;
+    background: var(--gradient-altron-primary) !important;
     color: white !important;
-    border-color: #3A9CA8 !important;
+    border-color: var(--altron-royal-blue) !important;
 }
 
 .display-6 {
@@ -407,8 +424,8 @@
 
 .form-control:focus,
 .form-select:focus {
-    border-color: #3A9CA8 !important;
-    box-shadow: 0 0 0 0.2rem rgba(58, 156, 168, 0.25) !important;
+    border-color: var(--altron-light-blue) !important;
+    box-shadow: 0 0 0 0.2rem rgba(84, 184, 223, 0.25) !important;
 }
 
 .alert {
@@ -712,7 +729,7 @@ body {
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #1FA3C7 0%, #1B8AA3 100%);
+    background: linear-gradient(135deg, var(--altron-light-blue) 0%, var(--altron-turquoise) 100%);
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
     color: white;
@@ -771,14 +788,14 @@ body {
 }
 
 .btn-outline-primary {
-    border: 2px solid var(--primary-light);
-    color: var(--primary-dark);
+    border: 2px solid var(--altron-royal-blue);
+    color: var(--altron-royal-blue);
     background: transparent;
 }
 
 .btn-outline-primary:hover {
-    background: var(--primary-gradient);
-    border-color: var(--primary-dark);
+    background: var(--gradient-altron-primary);
+    border-color: var(--altron-royal-blue);
     color: white;
     transform: translateY(-2px);
 }

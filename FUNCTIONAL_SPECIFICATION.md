@@ -895,11 +895,38 @@ app/
 ### 8.1 Design Principles
 - Mobile-first responsive design
 - Bootstrap 5 component library
-- Consistent color scheme and branding
+- Altron official color palette and branding
 - Accessibility compliance (WCAG 2.1 AA)
 - Progressive Web App (PWA) capabilities
 
-### 8.2 Navigation Structure
+### 8.2 Altron Color Palette
+
+**Primary Colors:**
+- **Dark Teal** (#1F4650 / Pantone 7477 C) - Used for secondary elements and headers
+- **Royal Blue** (#28468D / Pantone 7687 C) - Primary brand color for buttons and key UI elements
+- **Light Blue** (#54B8DF / Pantone 2190 C) - Accent color for highlights and hover states
+
+**Secondary Colors:**
+- **Turquoise** (#54DADF / Pantone 305 C) - Information and notifications
+- **Yellow-Green** (#EBF982 / Pantone 2295 C) - Warnings and alerts
+- **Coral** (#EFB65B / Pantone 2023 C) - Emphasis and call-to-action accents
+- **Mint** (#C0F2D7 / Pantone 2253 C) - Success states and confirmations
+
+**Gradients:**
+- **Primary Gradient:** Royal Blue → Light Blue (135° angle)
+- **Teal Gradient:** Dark Teal → Turquoise (135° angle)
+- **Accent Gradient:** Turquoise → Mint (135° angle)
+- **Warm Gradient:** Coral → Yellow-Green (135° angle)
+
+**Application:**
+- Navbar: Primary gradient background with white text
+- Buttons: Primary gradient with hover state transitions
+- Cards: Subtle border using Royal Blue with opacity
+- Tables: Primary gradient headers
+- Forms: Light Blue focus states
+- Alerts: Color-coded using secondary palette
+
+### 8.3 Navigation Structure
 
 **Main Menu:**
 - Dashboard (home icon)
@@ -918,9 +945,9 @@ app/
 - HR: + Admin functions
 - Super User: All modules
 
-### 8.3 Key Screens
+### 8.4 Key Screens
 
-#### 8.3.1 Dashboard
+#### 8.4.1 Dashboard
 **Purpose:** Real-time operational overview
 
 **Widgets:**
@@ -932,7 +959,7 @@ app/
 - Upcoming shifts
 - Recent notifications
 
-#### 8.3.2 Time Entry Screen
+#### 8.4.2 Time Entry Screen
 **Purpose:** Clock in/out and view history
 
 **Employee View:**
@@ -949,7 +976,7 @@ app/
 - Hours summary per employee
 - Export button
 
-#### 8.3.3 Leave Request Screen
+#### 8.4.3 Leave Request Screen
 **Purpose:** Submit and manage leave requests
 
 **Request Form:**
@@ -967,7 +994,7 @@ app/
 - Manager approval actions
 - Request details modal
 
-#### 8.3.4 Schedule View
+#### 8.4.4 Schedule View
 **Purpose:** Visual shift calendar
 
 **Calendar Display:**
@@ -978,7 +1005,7 @@ app/
 - Conflict indicators
 - Export to calendar
 
-#### 8.3.5 Payroll Dashboard
+#### 8.4.5 Payroll Dashboard
 **Purpose:** Payroll overview and processing
 
 **Displays:**
@@ -989,7 +1016,7 @@ app/
 - Process payroll button
 - Export to SAGE VIP
 
-### 8.4 Mobile Experience
+### 8.5 Mobile Experience
 
 **Responsive Breakpoints:**
 - Mobile: < 768px
