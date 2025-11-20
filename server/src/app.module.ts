@@ -10,6 +10,7 @@ import { SchedulingModule } from './scheduling/scheduling.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { AiModule } from './ai/ai.module';
 import { OrganizationModule } from './organization/organization.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { OrganizationModule } from './organization/organization.module';
     PayrollModule,
     AiModule,
     OrganizationModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
