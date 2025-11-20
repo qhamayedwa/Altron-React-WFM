@@ -30,6 +30,7 @@ import AIPayrollInsightsPage from './pages/AIPayrollInsightsPage';
 import AIAttendanceAnalyzerPage from './pages/AIAttendanceAnalyzerPage';
 import OrganizationDashboardPage from './pages/OrganizationDashboardPage';
 import OrgHierarchyPage from './pages/OrgHierarchyPage';
+import NotificationsPage from './pages/NotificationsPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -204,6 +205,8 @@ function App() {
                   </RoleProtectedRoute>
                 }
               />
+              
+              <Route path="/notifications" element={<NotificationsPage />} />
               
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
