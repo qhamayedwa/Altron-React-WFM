@@ -123,7 +123,13 @@ const TeamSchedulePage: React.FC = () => {
   };
 
   const formatDateTimeLocal = (isoString: string): string => {
+    // Normalize to UTC first to handle any timezone offset (Z, +XX:XX, -XX:XX)
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      console.error('Invalid ISO string:', isoString);
+      return '';
+    }
+    // Extract local components from the UTC-normalized date
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -190,17 +196,28 @@ const TeamSchedulePage: React.FC = () => {
         const results = await Promise.all(conflictChecks);
         let totalConflicts = 0;
         const conflictUsers: number[] = [];
+        const allConflicts: any[] = [];
         
         results.forEach((response, index) => {
           if (response.data.data.has_conflicts) {
-            totalConflicts += response.data.data.conflicts.length;
-            conflictUsers.push(formData.user_ids[index]);
+            const userId = formData.user_ids[index];
+            const userConflicts = response.data.data.conflicts;
+            totalConflicts += userConflicts.length;
+            conflictUsers.push(userId);
+            // Add user context to each conflict
+            userConflicts.forEach((conflict: any) => {
+              allConflicts.push({ ...conflict, conflict_user_id: userId });
+            });
           }
         });
         
         if (totalConflicts > 0) {
           setError(`Conflicts detected for ${conflictUsers.length} of ${formData.user_ids.length} employees. ${totalConflicts} total conflicts found.`);
-          setConflictCheckResult({ has_conflicts: true, conflicts: [], conflict_count: totalConflicts });
+          setConflictCheckResult({ 
+            has_conflicts: true, 
+            conflicts: allConflicts, 
+            conflict_count: totalConflicts 
+          });
         } else {
           setSuccess(`No conflicts found for all ${formData.user_ids.length} selected employees. Safe to schedule.`);
           setConflictCheckResult({ has_conflicts: false, conflicts: [], conflict_count: 0 });
