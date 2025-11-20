@@ -27,6 +27,9 @@ export const Layout: React.FC = () => {
   const userRoles = user?.user_roles?.map((ur) => ur.roles.name) || [];
   const isManager = userRoles.includes('Manager') || userRoles.includes('system_super_admin');
   const isAdmin = userRoles.includes('Admin') || userRoles.includes('Super User') || userRoles.includes('system_super_admin');
+  const isSuperUser = userRoles.includes('Super User') || userRoles.includes('system_super_admin');
+  const isPayrollRole = userRoles.includes('Payroll');
+  const hasPayrollAccess = isSuperUser || isPayrollRole || userRoles.includes('Admin');
 
   return (
     <div className="d-flex flex-column min-vh-100">
@@ -153,6 +156,50 @@ export const Layout: React.FC = () => {
                     </>
                   )}
                 </NavDropdown>
+                
+                {hasPayrollAccess && (
+                  <NavDropdown title="Payroll" id="payroll-dropdown">
+                    {(isSuperUser || isPayrollRole) && (
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/payroll/reports"
+                        onClick={() => setShow(false)}
+                      >
+                        Payroll Reports
+                      </NavDropdown.Item>
+                    )}
+                    {isSuperUser && (
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/payroll/calculate"
+                        onClick={() => setShow(false)}
+                      >
+                        Calculate Payroll
+                      </NavDropdown.Item>
+                    )}
+                    {(isSuperUser || isPayrollRole || userRoles.includes('Admin')) && (
+                      <>
+                        {isSuperUser && <NavDropdown.Divider />}
+                        <NavDropdown.Item
+                          as={Link}
+                          to="/payroll/pay-codes"
+                          onClick={() => setShow(false)}
+                        >
+                          Pay Codes
+                        </NavDropdown.Item>
+                      </>
+                    )}
+                    {isSuperUser && (
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/payroll/pay-rules"
+                        onClick={() => setShow(false)}
+                      >
+                        Pay Rules
+                      </NavDropdown.Item>
+                    )}
+                  </NavDropdown>
+                )}
 
                 {(isManager || isAdmin) && (
                   <NavDropdown title="Management" id="management-dropdown">
@@ -173,13 +220,6 @@ export const Layout: React.FC = () => {
                     {isAdmin && (
                       <>
                         <NavDropdown.Divider />
-                        <NavDropdown.Item
-                          as={Link}
-                          to="/payroll"
-                          onClick={() => setShow(false)}
-                        >
-                          Payroll
-                        </NavDropdown.Item>
                         <NavDropdown.Item
                           as={Link}
                           to="/organization"

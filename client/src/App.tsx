@@ -19,6 +19,10 @@ import LeaveTypesPage from './pages/LeaveTypesPage';
 import ShiftTypesPage from './pages/ShiftTypesPage';
 import TeamSchedulePage from './pages/TeamSchedulePage';
 import MySchedulePage from './pages/MySchedulePage';
+import PayCodesPage from './pages/PayCodesPage';
+import PayRulesPage from './pages/PayRulesPage';
+import PayrollCalculatePage from './pages/PayrollCalculatePage';
+import PayrollReportsPage from './pages/PayrollReportsPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -91,6 +95,39 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Admin', 'Super User', 'system_super_admin']}>
                     <ShiftTypesPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/payroll/pay-codes"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Admin', 'Payroll', 'Super User', 'system_super_admin']}>
+                    <PayCodesPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/payroll/pay-rules"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Super User', 'system_super_admin']}>
+                    <PayRulesPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/payroll/calculate"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Super User', 'system_super_admin']}>
+                    <PayrollCalculatePage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/payroll/reports"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Payroll', 'Super User', 'system_super_admin']}>
+                    <PayrollReportsPage />
                   </RoleProtectedRoute>
                 }
               />
