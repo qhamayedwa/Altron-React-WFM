@@ -9,6 +9,7 @@ import { LeaveModule } from './leave/leave.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { AiModule } from './ai/ai.module';
+import { OrganizationModule } from './organization/organization.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AiModule } from './ai/ai.module';
     SchedulingModule,
     PayrollModule,
     AiModule,
+    OrganizationModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
