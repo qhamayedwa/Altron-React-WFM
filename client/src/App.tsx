@@ -32,6 +32,7 @@ import OrganizationDashboardPage from './pages/OrganizationDashboardPage';
 import OrgHierarchyPage from './pages/OrgHierarchyPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SageVipPage from './pages/SageVipPage';
+import ReportsPage from './pages/ReportsPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -214,6 +215,15 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Super User', 'Admin', 'Payroll', 'system_super_admin']}>
                     <SageVipPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/reports"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'HR', 'Payroll', 'Super User', 'system_super_admin']}>
+                    <ReportsPage />
                   </RoleProtectedRoute>
                 }
               />

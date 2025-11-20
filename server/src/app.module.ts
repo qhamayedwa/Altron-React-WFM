@@ -12,6 +12,7 @@ import { AiModule } from './ai/ai.module';
 import { OrganizationModule } from './organization/organization.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SageVipModule } from './sage-vip/sage-vip.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SageVipModule } from './sage-vip/sage-vip.module';
     OrganizationModule,
     NotificationsModule,
     SageVipModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
