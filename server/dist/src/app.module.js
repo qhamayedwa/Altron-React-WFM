@@ -16,6 +16,7 @@ const time_module_1 = require("./time/time.module");
 const prisma_service_1 = require("./prisma/prisma.service");
 const leave_module_1 = require("./leave/leave.module");
 const scheduling_module_1 = require("./scheduling/scheduling.module");
+const payroll_module_1 = require("./payroll/payroll.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -30,6 +31,7 @@ exports.AppModule = AppModule = __decorate([
             time_module_1.TimeModule,
             leave_module_1.LeaveModule,
             scheduling_module_1.SchedulingModule,
+            payroll_module_1.PayrollModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, prisma_service_1.PrismaService],
