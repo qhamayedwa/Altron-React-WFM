@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { TimeModule } from './time/time.module';
 import { PrismaService } from './prisma/prisma.service';
 import { LeaveModule } from './leave/leave.module';
+import { SchedulingModule } from './scheduling/scheduling.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LeaveModule } from './leave/leave.module';
     AuthModule,
     TimeModule,
     LeaveModule,
+    SchedulingModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

@@ -15,6 +15,7 @@ const auth_module_1 = require("./auth/auth.module");
 const time_module_1 = require("./time/time.module");
 const prisma_service_1 = require("./prisma/prisma.service");
 const leave_module_1 = require("./leave/leave.module");
+const scheduling_module_1 = require("./scheduling/scheduling.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -28,6 +29,7 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             time_module_1.TimeModule,
             leave_module_1.LeaveModule,
+            scheduling_module_1.SchedulingModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, prisma_service_1.PrismaService],
