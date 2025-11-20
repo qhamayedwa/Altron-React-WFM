@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
+import { TimeTrackingPage } from './pages/TimeTrackingPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -36,6 +37,7 @@ function App() {
             >
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/time" element={<TimeTrackingPage />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
