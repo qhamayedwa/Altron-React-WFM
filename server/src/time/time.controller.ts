@@ -101,9 +101,9 @@ export class TimeController {
     const result = await this.timeService.approveTimeEntry(
       dto.entry_id,
       req.user.id,
-      dto.notes,
       isSuperUser,
-      managedDepartmentIds
+      managedDepartmentIds,
+      dto.notes
     );
     
     return {
@@ -126,9 +126,9 @@ export class TimeController {
     const result = await this.timeService.rejectTimeEntry(
       dto.entry_id,
       req.user.id,
-      dto.notes,
       isSuperUser,
-      managedDepartmentIds
+      managedDepartmentIds,
+      dto.notes
     );
     
     return {

@@ -64,6 +64,10 @@ export class LeaveService {
   async createLeaveApplication(userId: number, dto: CreateLeaveApplicationDto, applierId: number, isPrivileged: boolean, managedDepartmentIds: number[]) {
     const targetUserId = dto.user_id || userId;
 
+    if (dto.auto_approve && targetUserId === applierId) {
+      throw new ForbiddenException('You cannot auto-approve your own leave application');
+    }
+
     if (targetUserId !== userId && !isPrivileged) {
       const userDept = await this.prisma.users.findUnique({
         where: { id: targetUserId },
@@ -72,6 +76,21 @@ export class LeaveService {
       
       if (!userDept || !managedDepartmentIds.includes(userDept.department_id!)) {
         throw new ForbiddenException('You do not have permission to apply leave for this user');
+      }
+    }
+
+    if (dto.auto_approve && !isPrivileged) {
+      if (managedDepartmentIds.length === 0) {
+        throw new ForbiddenException('Only managers and admins can auto-approve leave applications');
+      }
+      
+      const userDept = await this.prisma.users.findUnique({
+        where: { id: targetUserId },
+        select: { department_id: true },
+      });
+      
+      if (!userDept || !managedDepartmentIds.includes(userDept.department_id!)) {
+        throw new ForbiddenException('You can only auto-approve leave for employees in your managed departments');
       }
     }
 
@@ -128,11 +147,24 @@ export class LeaveService {
     }
 
     let hoursNeeded: number;
+    let daysRequested: number;
+    
     if (dto.is_hourly && dto.hours_requested) {
       hoursNeeded = dto.hours_requested;
+      daysRequested = Math.ceil(hoursNeeded / 8);
     } else {
-      const daysRequested = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      daysRequested = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       hoursNeeded = daysRequested * 8;
+    }
+
+    if (leaveType.max_consecutive_days && daysRequested > leaveType.max_consecutive_days) {
+      throw new BadRequestException(
+        `This leave type allows a maximum of ${leaveType.max_consecutive_days} consecutive days. You requested ${daysRequested} days.`
+      );
+    }
+
+    if (leaveType.requires_approval && dto.auto_approve && !isPrivileged) {
+      throw new BadRequestException('This leave type requires approval and cannot be auto-approved');
     }
 
     const currentYear = new Date().getFullYear();
@@ -182,7 +214,7 @@ export class LeaveService {
         where: { id: leaveBalance.id },
         data: {
           balance: leaveBalance.balance - hoursNeeded,
-          used_this_year: leaveBalance.used_this_year + hoursNeeded,
+          used_this_year: (leaveBalance.used_this_year || 0) + hoursNeeded,
         },
       });
     }
@@ -288,12 +320,7 @@ export class LeaveService {
               username: true,
               first_name: true,
               last_name: true,
-              departments: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
+              department_id: true,
             },
           },
           users_leave_applications_manager_approved_idTousers: {
@@ -320,6 +347,413 @@ export class LeaveService {
         total,
         total_pages: Math.ceil(total / per_page),
       },
+    };
+  }
+
+  async approveApplication(applicationId: number, approverId: number, dto: UpdateLeaveApplicationDto, isPrivileged: boolean, managedDepartmentIds: number[]) {
+    const application = await this.prisma.leave_applications.findUnique({
+      where: { id: applicationId },
+      include: {
+        users_leave_applications_user_idTousers: {
+          select: { department_id: true },
+        },
+      },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Leave application not found');
+    }
+
+    if (application.status !== 'Pending') {
+      throw new BadRequestException('Application is not pending approval');
+    }
+
+    if (!isPrivileged) {
+      const userDeptId = application.users_leave_applications_user_idTousers.department_id;
+      if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
+        throw new ForbiddenException('You do not have permission to approve this application');
+      }
+    }
+
+    const currentYear = new Date().getFullYear();
+    const leaveBalance = await this.prisma.leave_balances.findFirst({
+      where: {
+        user_id: application.user_id,
+        leave_type_id: application.leave_type_id,
+        year: currentYear,
+      },
+    });
+
+    let hoursToDeduct: number;
+    if (application.is_hourly && application.hours_requested) {
+      hoursToDeduct = application.hours_requested;
+    } else {
+      const daysRequested = Math.floor((application.end_date.getTime() - application.start_date.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      hoursToDeduct = daysRequested * 8;
+    }
+
+    if (leaveBalance) {
+      if (leaveBalance.balance < hoursToDeduct) {
+        throw new BadRequestException('Insufficient leave balance');
+      }
+
+      await this.prisma.leave_balances.update({
+        where: { id: leaveBalance.id },
+        data: {
+          balance: leaveBalance.balance - hoursToDeduct,
+          used_this_year: (leaveBalance.used_this_year || 0) + hoursToDeduct,
+        },
+      });
+    }
+
+    const now = new Date();
+    return this.prisma.leave_applications.update({
+      where: { id: applicationId },
+      data: {
+        status: 'Approved',
+        manager_approved_id: approverId,
+        manager_comments: dto.manager_comments || null,
+        approved_at: now,
+      },
+      include: {
+        leave_types: true,
+        users_leave_applications_user_idTousers: {
+          select: {
+            id: true,
+            username: true,
+            first_name: true,
+            last_name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async rejectApplication(applicationId: number, approverId: number, dto: UpdateLeaveApplicationDto, isPrivileged: boolean, managedDepartmentIds: number[]) {
+    const application = await this.prisma.leave_applications.findUnique({
+      where: { id: applicationId },
+      include: {
+        users_leave_applications_user_idTousers: {
+          select: { department_id: true },
+        },
+      },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Leave application not found');
+    }
+
+    if (application.status !== 'Pending') {
+      throw new BadRequestException('Application is not pending approval');
+    }
+
+    if (!isPrivileged) {
+      const userDeptId = application.users_leave_applications_user_idTousers.department_id;
+      if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
+        throw new ForbiddenException('You do not have permission to reject this application');
+      }
+    }
+
+    return this.prisma.leave_applications.update({
+      where: { id: applicationId },
+      data: {
+        status: 'Rejected',
+        manager_approved_id: approverId,
+        manager_comments: dto.manager_comments || null,
+      },
+      include: {
+        leave_types: true,
+        users_leave_applications_user_idTousers: {
+          select: {
+            id: true,
+            username: true,
+            first_name: true,
+            last_name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async cancelApplication(applicationId: number, userId: number) {
+    const application = await this.prisma.leave_applications.findFirst({
+      where: {
+        id: applicationId,
+        user_id: userId,
+      },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Leave application not found');
+    }
+
+    if (application.status !== 'Pending' && application.status !== 'Approved') {
+      throw new BadRequestException('Only pending or approved applications can be cancelled');
+    }
+
+    if (application.status === 'Approved' && application.start_date <= new Date()) {
+      throw new BadRequestException('Cannot cancel approved leave that has already started');
+    }
+
+    if (application.status === 'Approved') {
+      const currentYear = new Date().getFullYear();
+      const leaveBalance = await this.prisma.leave_balances.findFirst({
+        where: {
+          user_id: application.user_id,
+          leave_type_id: application.leave_type_id,
+          year: currentYear,
+        },
+      });
+
+      if (leaveBalance) {
+        let hoursToRestore: number;
+        if (application.is_hourly && application.hours_requested) {
+          hoursToRestore = application.hours_requested;
+        } else {
+          const daysRequested = Math.floor((application.end_date.getTime() - application.start_date.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          hoursToRestore = daysRequested * 8;
+        }
+
+        await this.prisma.leave_balances.update({
+          where: { id: leaveBalance.id },
+          data: {
+            balance: leaveBalance.balance + hoursToRestore,
+            used_this_year: Math.max(0, (leaveBalance.used_this_year || 0) - hoursToRestore),
+          },
+        });
+      }
+    }
+
+    return this.prisma.leave_applications.update({
+      where: { id: applicationId },
+      data: { status: 'Cancelled' },
+      include: { leave_types: true },
+    });
+  }
+
+  async getLeaveTypes() {
+    return this.prisma.leave_types.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async getLeaveType(id: number) {
+    const leaveType = await this.prisma.leave_types.findUnique({
+      where: { id },
+    });
+
+    if (!leaveType) {
+      throw new NotFoundException('Leave type not found');
+    }
+
+    const [totalApplications, pendingApplications, approvedApplications] = await Promise.all([
+      this.prisma.leave_applications.count({ where: { leave_type_id: id } }),
+      this.prisma.leave_applications.count({ where: { leave_type_id: id, status: 'Pending' } }),
+      this.prisma.leave_applications.count({ where: { leave_type_id: id, status: 'Approved' } }),
+    ]);
+
+    return {
+      leave_type: leaveType,
+      statistics: {
+        total_applications: totalApplications,
+        pending_applications: pendingApplications,
+        approved_applications: approvedApplications,
+      },
+    };
+  }
+
+  async createLeaveType(dto: CreateLeaveTypeDto) {
+    const existing = await this.prisma.leave_types.findFirst({
+      where: { name: dto.name },
+    });
+
+    if (existing) {
+      throw new BadRequestException('A leave type with this name already exists');
+    }
+
+    return this.prisma.leave_types.create({
+      data: {
+        name: dto.name,
+        description: dto.description || null,
+        default_accrual_rate: dto.default_accrual_rate || null,
+        requires_approval: dto.requires_approval ?? true,
+        max_consecutive_days: dto.max_consecutive_days || null,
+      },
+    });
+  }
+
+  async updateLeaveType(id: number, dto: UpdateLeaveTypeDto) {
+    const leaveType = await this.prisma.leave_types.findUnique({
+      where: { id },
+    });
+
+    if (!leaveType) {
+      throw new NotFoundException('Leave type not found');
+    }
+
+    if (dto.name) {
+      const existing = await this.prisma.leave_types.findFirst({
+        where: {
+          name: dto.name,
+          NOT: { id },
+        },
+      });
+
+      if (existing) {
+        throw new BadRequestException('A leave type with this name already exists');
+      }
+    }
+
+    if (dto.is_active === false) {
+      const pendingCount = await this.prisma.leave_applications.count({
+        where: {
+          leave_type_id: id,
+          status: 'Pending',
+        },
+      });
+
+      if (pendingCount > 0) {
+        throw new BadRequestException(
+          `Cannot deactivate leave type with ${pendingCount} pending applications`
+        );
+      }
+    }
+
+    return this.prisma.leave_types.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        description: dto.description,
+        default_accrual_rate: dto.default_accrual_rate,
+        requires_approval: dto.requires_approval,
+        max_consecutive_days: dto.max_consecutive_days,
+        is_active: dto.is_active,
+      },
+    });
+  }
+
+  async getLeaveBalances(year?: number, userId?: number, leaveTypeId?: number) {
+    const currentYear = year || new Date().getFullYear();
+
+    const where: any = { year: currentYear };
+    if (userId) {
+      where.user_id = userId;
+    }
+    if (leaveTypeId) {
+      where.leave_type_id = leaveTypeId;
+    }
+
+    return this.prisma.leave_balances.findMany({
+      where,
+      include: {
+        users: {
+          select: {
+            id: true,
+            username: true,
+            first_name: true,
+            last_name: true,
+          },
+        },
+        leave_types: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        users: {
+          username: 'asc',
+        },
+      },
+    });
+  }
+
+  async adjustLeaveBalance(balanceId: number, dto: AdjustLeaveBalanceDto) {
+    const balance = await this.prisma.leave_balances.findUnique({
+      where: { id: balanceId },
+    });
+
+    if (!balance) {
+      throw new NotFoundException('Leave balance not found');
+    }
+
+    const adjustment = dto.new_balance - balance.balance;
+
+    return this.prisma.leave_balances.update({
+      where: { id: balanceId },
+      data: {
+        balance: dto.new_balance,
+        accrued_this_year: (balance.accrued_this_year || 0) + Math.max(0, adjustment),
+      },
+    });
+  }
+
+  async runAccrual() {
+    const accrualDate = new Date();
+    const currentYear = accrualDate.getFullYear();
+    const currentMonth = accrualDate.getMonth();
+    let usersProcessed = 0;
+
+    const users = await this.prisma.users.findMany({
+      where: { is_active: true },
+    });
+
+    const leaveTypes = await this.prisma.leave_types.findMany({
+      where: {
+        is_active: true,
+        default_accrual_rate: { not: null },
+      },
+    });
+
+    for (const user of users) {
+      for (const leaveType of leaveTypes) {
+        let balance = await this.prisma.leave_balances.findFirst({
+          where: {
+            user_id: user.id,
+            leave_type_id: leaveType.id,
+            year: currentYear,
+          },
+        });
+
+        if (!balance) {
+          balance = await this.prisma.leave_balances.create({
+            data: {
+              user_id: user.id,
+              leave_type_id: leaveType.id,
+              year: currentYear,
+              balance: 0,
+              accrued_this_year: 0,
+              used_this_year: 0,
+            },
+          });
+        }
+
+        const lastAccrualDate = balance.last_accrual_date ? new Date(balance.last_accrual_date) : null;
+        const needsAccrual = !lastAccrualDate || 
+          lastAccrualDate.getFullYear() !== currentYear ||
+          lastAccrualDate.getMonth() !== currentMonth;
+
+        if (needsAccrual && leaveType.default_accrual_rate) {
+          const monthlyAccrual = leaveType.default_accrual_rate / 12;
+
+          await this.prisma.leave_balances.update({
+            where: { id: balance.id },
+            data: {
+              balance: balance.balance + monthlyAccrual,
+              accrued_this_year: (balance.accrued_this_year || 0) + monthlyAccrual,
+              last_accrual_date: accrualDate,
+            },
+          });
+
+          usersProcessed++;
+        }
+      }
+    }
+
+    return {
+      users_processed: usersProcessed,
+      accrual_date: accrualDate,
     };
   }
 }

@@ -294,7 +294,7 @@ export class TimeService {
     });
   }
 
-  async approveTimeEntry(entryId: number, approverId: number, notes?: string, isSuperUser: boolean, managedDepartmentIds: number[]) {
+  async approveTimeEntry(entryId: number, approverId: number, isSuperUser: boolean, managedDepartmentIds: number[], notes?: string) {
     const entry = await this.prisma.time_entries.findUnique({
       where: { id: entryId },
       include: {
@@ -339,7 +339,7 @@ export class TimeService {
     };
   }
 
-  async rejectTimeEntry(entryId: number, approverId: number, notes?: string, isSuperUser: boolean, managedDepartmentIds: number[]) {
+  async rejectTimeEntry(entryId: number, approverId: number, isSuperUser: boolean, managedDepartmentIds: number[], notes?: string) {
     const entry = await this.prisma.time_entries.findUnique({
       where: { id: entryId },
       include: {
