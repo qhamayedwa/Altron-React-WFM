@@ -85,13 +85,43 @@ export const Layout: React.FC = () => {
                   </NavDropdown.Item>
                 </NavDropdown>
                 
-                <Nav.Link
-                  as={Link}
-                  to="/leave"
-                  onClick={() => setShow(false)}
-                >
-                  Leave Management
-                </Nav.Link>
+                <NavDropdown title="Leave Management" id="leave-dropdown">
+                  <NavDropdown.Item
+                    as={Link}
+                    to="/leave/balances"
+                    onClick={() => setShow(false)}
+                  >
+                    Leave Balances
+                  </NavDropdown.Item>
+                  <NavDropdown.Item
+                    as={Link}
+                    to="/leave/applications"
+                    onClick={() => setShow(false)}
+                  >
+                    My Leave
+                  </NavDropdown.Item>
+                  {(isManager || isAdmin) && (
+                    <NavDropdown.Item
+                      as={Link}
+                      to="/leave/approvals"
+                      onClick={() => setShow(false)}
+                    >
+                      Leave Approvals
+                    </NavDropdown.Item>
+                  )}
+                  {isAdmin && (
+                    <>
+                      <NavDropdown.Divider />
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/leave/types"
+                        onClick={() => setShow(false)}
+                      >
+                        Leave Types
+                      </NavDropdown.Item>
+                    </>
+                  )}
+                </NavDropdown>
                 
                 <Nav.Link
                   as={Link}

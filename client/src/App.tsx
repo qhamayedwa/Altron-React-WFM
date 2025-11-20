@@ -12,6 +12,10 @@ import { UnauthorizedPage } from './pages/UnauthorizedPage';
 import { TimeTrackingPage } from './pages/TimeTrackingPage';
 import { TimeEntriesPage } from './pages/TimeEntriesPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
+import LeaveBalancesPage from './pages/LeaveBalancesPage';
+import LeaveApplicationsPage from './pages/LeaveApplicationsPage';
+import LeaveApprovalsPage from './pages/LeaveApprovalsPage';
+import LeaveTypesPage from './pages/LeaveTypesPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -50,6 +54,26 @@ function App() {
                   </RoleProtectedRoute>
                 }
               />
+              
+              <Route path="/leave/balances" element={<LeaveBalancesPage />} />
+              <Route path="/leave/applications" element={<LeaveApplicationsPage />} />
+              <Route
+                path="/leave/approvals"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Super User', 'system_super_admin', 'Admin']}>
+                    <LeaveApprovalsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/leave/types"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Admin', 'Super User', 'system_super_admin']}>
+                    <LeaveTypesPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
