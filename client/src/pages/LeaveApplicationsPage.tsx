@@ -92,6 +92,11 @@ export default function LeaveApplicationsPage() {
       return;
     }
 
+    if (new Date(formData.end_date) < new Date(formData.start_date)) {
+      setError('End date must be on or after start date');
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError(null);

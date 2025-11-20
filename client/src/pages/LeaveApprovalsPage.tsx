@@ -103,12 +103,12 @@ export default function LeaveApprovalsPage() {
         throw new Error(data.message || `Failed to ${actionType} leave application`);
       }
 
-      setSuccess(`Leave application ${actionType === 'approve' ? 'approved' : 'rejected'} successfully!`);
       setShowNotesModal(false);
       setSelectedApplicationId(null);
       setActionType(null);
       setNotes('');
-      fetchTeamApplications();
+      await fetchTeamApplications();
+      setSuccess(`Leave application ${actionType === 'approve' ? 'approved' : 'rejected'} successfully!`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

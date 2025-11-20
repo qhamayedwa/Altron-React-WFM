@@ -127,9 +127,9 @@ export default function LeaveTypesPage() {
         throw new Error(data.message || `Failed to ${editingType ? 'update' : 'create'} leave type`);
       }
 
-      setSuccess(`Leave type ${editingType ? 'updated' : 'created'} successfully!`);
       setShowModal(false);
-      fetchLeaveTypes();
+      await fetchLeaveTypes();
+      setSuccess(`Leave type ${editingType ? 'updated' : 'created'} successfully!`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -159,8 +159,8 @@ export default function LeaveTypesPage() {
         throw new Error(data.message || 'Failed to update leave type');
       }
 
+      await fetchLeaveTypes();
       setSuccess(`Leave type ${!leaveType.is_active ? 'activated' : 'deactivated'} successfully!`);
-      fetchLeaveTypes();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     }
