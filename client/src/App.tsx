@@ -31,6 +31,7 @@ import AIAttendanceAnalyzerPage from './pages/AIAttendanceAnalyzerPage';
 import OrganizationDashboardPage from './pages/OrganizationDashboardPage';
 import OrgHierarchyPage from './pages/OrgHierarchyPage';
 import NotificationsPage from './pages/NotificationsPage';
+import SageVipPage from './pages/SageVipPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -207,6 +208,15 @@ function App() {
               />
               
               <Route path="/notifications" element={<NotificationsPage />} />
+              
+              <Route
+                path="/sage-vip"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Super User', 'Admin', 'Payroll', 'system_super_admin']}>
+                    <SageVipPage />
+                  </RoleProtectedRoute>
+                }
+              />
               
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

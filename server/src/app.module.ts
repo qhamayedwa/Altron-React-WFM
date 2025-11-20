@@ -11,6 +11,7 @@ import { PayrollModule } from './payroll/payroll.module';
 import { AiModule } from './ai/ai.module';
 import { OrganizationModule } from './organization/organization.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { SageVipModule } from './sage-vip/sage-vip.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     AiModule,
     OrganizationModule,
     NotificationsModule,
+    SageVipModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
