@@ -200,6 +200,55 @@ export const Layout: React.FC = () => {
                     )}
                   </NavDropdown>
                 )}
+                
+                {(isManager || isHR || isSuperUser || hasPayrollAccess) && (
+                  <NavDropdown title="AI Insights" id="ai-dropdown">
+                    {(isManager || isHR || isSuperUser) && (
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/ai/dashboard"
+                        onClick={() => setShow(false)}
+                      >
+                        AI Dashboard
+                      </NavDropdown.Item>
+                    )}
+                    <NavDropdown.Item
+                      as={Link}
+                      to="/ai/natural-query"
+                      onClick={() => setShow(false)}
+                    >
+                      Ask AI Assistant
+                    </NavDropdown.Item>
+                    <NavDropdown.Divider />
+                    {(isManager || isSuperUser) && (
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/ai/scheduling-optimizer"
+                        onClick={() => setShow(false)}
+                      >
+                        Schedule Optimizer
+                      </NavDropdown.Item>
+                    )}
+                    {(isManager || hasPayrollAccess) && (
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/ai/payroll-insights"
+                        onClick={() => setShow(false)}
+                      >
+                        Payroll Insights
+                      </NavDropdown.Item>
+                    )}
+                    {(isManager || isHR || isSuperUser || hasPayrollAccess) && (
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/ai/attendance-analyzer"
+                        onClick={() => setShow(false)}
+                      >
+                        Attendance Analyzer
+                      </NavDropdown.Item>
+                    )}
+                  </NavDropdown>
+                )}
 
                 {(isManager || isAdmin) && (
                   <NavDropdown title="Management" id="management-dropdown">

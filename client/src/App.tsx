@@ -23,6 +23,11 @@ import PayCodesPage from './pages/PayCodesPage';
 import PayRulesPage from './pages/PayRulesPage';
 import PayrollCalculatePage from './pages/PayrollCalculatePage';
 import PayrollReportsPage from './pages/PayrollReportsPage';
+import AIDashboardPage from './pages/AIDashboardPage';
+import AINaturalQueryPage from './pages/AINaturalQueryPage';
+import AISchedulingOptimizerPage from './pages/AISchedulingOptimizerPage';
+import AIPayrollInsightsPage from './pages/AIPayrollInsightsPage';
+import AIAttendanceAnalyzerPage from './pages/AIAttendanceAnalyzerPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -128,6 +133,47 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Payroll', 'Super User', 'system_super_admin']}>
                     <PayrollReportsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/ai/dashboard"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'HR', 'Super User', 'system_super_admin']}>
+                    <AIDashboardPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/ai/natural-query"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'HR', 'Payroll', 'Admin', 'Super User', 'system_super_admin']}>
+                    <AINaturalQueryPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/ai/scheduling-optimizer"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Super User', 'system_super_admin']}>
+                    <AISchedulingOptimizerPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/ai/payroll-insights"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Payroll', 'Admin', 'Super User', 'system_super_admin']}>
+                    <AIPayrollInsightsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/ai/attendance-analyzer"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'HR', 'Payroll', 'Admin', 'Super User', 'system_super_admin']}>
+                    <AIAttendanceAnalyzerPage />
                   </RoleProtectedRoute>
                 }
               />
