@@ -1,0 +1,2488 @@
+openapi: 3.0.3
+info:
+  title: WFM24/7 Workforce Management API
+  version: 1.0.0
+  description: |
+    Comprehensive REST API for WFM24/7 - A multi-tenant workforce management platform designed for 24/7 operations.
+    
+    ## Features
+    - GPS-enabled time tracking with clock in/out
+    - AI-powered scheduling optimization
+    - Hierarchical organization management
+    - Automated leave accrual and payroll
+    - SAGE VIP Payroll integration
+    - Role-based access control
+    
+    ## Authentication
+    This API uses session-based authentication with Flask-Login. Login via `/auth/login` to establish a session.
+    
+    ## Currency & Timezone
+    - Currency: South African Rand (ZAR) - formatted as "R 1,234.56"
+    - Timezone: SAST (UTC+2)
+    - Date Format: YYYY-MM-DD (ISO 8601)
+  contact:
+    name: Altron WFM Support
+    email: support@altron-wfm.com
+  license:
+    name: Proprietary
+    
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://{tenant}.wfm24-7.com
+    description: Production server
+    variables:
+      tenant:
+        default: demo
+        description: Tenant subdomain
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: User Management
+    description: User profile and employee management
+  - name: Time & Attendance
+    description: Time tracking, clock in/out, and approval workflows
+  - name: Leave Management
+    description: Leave requests, balances, and accrual
+  - name: Scheduling
+    description: Shift management and employee scheduling
+  - name: Payroll
+    description: Payroll calculation and SAGE VIP integration
+  - name: Organization
+    description: Company hierarchy management (Company → Region → Site → Department)
+  - name: Notifications
+    description: Real-time notifications and alerts
+  - name: Reports
+    description: Reporting and analytics
+  - name: AI Services
+    description: AI-powered insights and scheduling optimization
+
+paths:
+  # ========================================
+  # AUTHENTICATION ENDPOINTS
+  # ========================================
+  
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and create session
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: password123
+                remember_me:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: End current session
+      operationId: logout
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  /auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user profile
+      description: Retrieve authenticated user's profile information
+      operationId: getProfile
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+    
+    put:
+      tags:
+        - Authentication
+      summary: Update user profile
+      description: Update authenticated user's profile information
+      operationId: updateProfile
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Create new user account (Admin only)
+      operationId: register
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  # ========================================
+  # TIME & ATTENDANCE ENDPOINTS
+  # ========================================
+  
+  /api/time/entries:
+    get:
+      tags:
+        - Time & Attendance
+      summary: Get time entries
+      description: |
+        Retrieve time entries with optional filters.
+        - Employees see only their own entries
+        - Managers see their department entries
+        - Admins see all entries
+      operationId: getTimeEntries
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          description: Filter by user ID
+          schema:
+            type: integer
+        - name: department_id
+          in: query
+          description: Filter by department ID
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [clocked_in, clocked_out, approved, rejected]
+        - name: start_date
+          in: query
+          description: Filter entries from this date
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: Filter entries until this date
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Time entries retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TimeEntry'
+                      pagination:
+                        $ref: '#/components/schemas/PaginationInfo'
+  
+  /api/time/clock-in:
+    post:
+      tags:
+        - Time & Attendance
+      summary: Clock in
+      description: Record employee clock in with GPS location
+      operationId: clockIn
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - latitude
+                - longitude
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                  example: -26.2041
+                longitude:
+                  type: number
+                  format: double
+                  example: 28.0473
+                notes:
+                  type: string
+                  example: Started shift at main office
+      responses:
+        '201':
+          description: Clock in successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TimeEntry'
+        '400':
+          description: Already clocked in or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/time/clock-out:
+    post:
+      tags:
+        - Time & Attendance
+      summary: Clock out
+      description: Record employee clock out with GPS location
+      operationId: clockOut
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - latitude
+                - longitude
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                  example: -26.2041
+                longitude:
+                  type: number
+                  format: double
+                  example: 28.0473
+                notes:
+                  type: string
+                  example: Completed shift
+      responses:
+        '200':
+          description: Clock out successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TimeEntry'
+        '400':
+          description: Not clocked in or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/time/entries/{id}:
+    get:
+      tags:
+        - Time & Attendance
+      summary: Get time entry details
+      description: Retrieve detailed information for a specific time entry
+      operationId: getTimeEntry
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Time entry ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Time entry retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TimeEntry'
+        '404':
+          description: Time entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags:
+        - Time & Attendance
+      summary: Update time entry
+      description: Update time entry details (Manager/Admin only)
+      operationId: updateTimeEntry
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Time entry ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeEntryUpdate'
+      responses:
+        '200':
+          description: Time entry updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    
+    delete:
+      tags:
+        - Time & Attendance
+      summary: Delete time entry
+      description: Delete a time entry (Admin only)
+      operationId: deleteTimeEntry
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Time entry ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Time entry deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  /api/time/approve-bulk:
+    post:
+      tags:
+        - Time & Attendance
+      summary: Bulk approve time entries
+      description: Approve multiple time entries at once (Manager/Admin only)
+      operationId: bulkApproveTimeEntries
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - entry_ids
+              properties:
+                entry_ids:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2, 3, 4, 5]
+                notes:
+                  type: string
+                  example: Approved batch for payroll period
+      responses:
+        '200':
+          description: Time entries approved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          approved_count:
+                            type: integer
+                            example: 5
+  
+  # ========================================
+  # LEAVE MANAGEMENT ENDPOINTS
+  # ========================================
+  
+  /api/leave/requests:
+    get:
+      tags:
+        - Leave Management
+      summary: Get leave requests
+      description: Retrieve leave requests with optional filters
+      operationId: getLeaveRequests
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          description: Filter by user ID
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [pending, approved, rejected, cancelled]
+        - name: leave_type_id
+          in: query
+          description: Filter by leave type
+          schema:
+            type: integer
+        - name: start_date
+          in: query
+          description: Filter from this date
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: Filter until this date
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Leave requests retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/LeaveRequest'
+    
+    post:
+      tags:
+        - Leave Management
+      summary: Create leave request
+      description: Submit a new leave request
+      operationId: createLeaveRequest
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaveRequestCreate'
+      responses:
+        '201':
+          description: Leave request created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LeaveRequest'
+        '400':
+          description: Insufficient balance or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/leave/requests/{id}:
+    get:
+      tags:
+        - Leave Management
+      summary: Get leave request details
+      operationId: getLeaveRequest
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Leave request retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LeaveRequest'
+    
+    put:
+      tags:
+        - Leave Management
+      summary: Update leave request
+      description: Update leave request details (before approval)
+      operationId: updateLeaveRequest
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaveRequestUpdate'
+      responses:
+        '200':
+          description: Leave request updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    
+    delete:
+      tags:
+        - Leave Management
+      summary: Cancel leave request
+      description: Cancel a pending leave request
+      operationId: cancelLeaveRequest
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Leave request cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  /api/leave/approve/{id}:
+    post:
+      tags:
+        - Leave Management
+      summary: Approve leave request
+      description: Approve a pending leave request (Manager/Admin only)
+      operationId: approveLeaveRequest
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                  example: Approved for annual leave
+      responses:
+        '200':
+          description: Leave request approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  /api/leave/reject/{id}:
+    post:
+      tags:
+        - Leave Management
+      summary: Reject leave request
+      description: Reject a pending leave request (Manager/Admin only)
+      operationId: rejectLeaveRequest
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  example: Insufficient coverage during requested period
+      responses:
+        '200':
+          description: Leave request rejected successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  /api/leave/balances:
+    get:
+      tags:
+        - Leave Management
+      summary: Get leave balances
+      description: Retrieve leave balances for current user or specified user
+      operationId: getLeaveBalances
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          description: User ID (defaults to current user)
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Leave balances retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/LeaveBalance'
+  
+  /api/leave/types:
+    get:
+      tags:
+        - Leave Management
+      summary: Get leave types
+      description: Retrieve all available leave types
+      operationId: getLeaveTypes
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Leave types retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/LeaveType'
+  
+  # ========================================
+  # SCHEDULING ENDPOINTS
+  # ========================================
+  
+  /api/schedule/shifts:
+    get:
+      tags:
+        - Scheduling
+      summary: Get shift definitions
+      description: Retrieve all shift type definitions
+      operationId: getShifts
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Shifts retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Shift'
+    
+    post:
+      tags:
+        - Scheduling
+      summary: Create shift type
+      description: Create new shift type definition (Admin only)
+      operationId: createShift
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftCreate'
+      responses:
+        '201':
+          description: Shift created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shift'
+  
+  /api/schedule/calendar:
+    get:
+      tags:
+        - Scheduling
+      summary: Get schedule calendar
+      description: Retrieve schedules for a date range
+      operationId: getScheduleCalendar
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          description: Start date for calendar view
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          description: End date for calendar view
+          schema:
+            type: string
+            format: date
+        - name: user_id
+          in: query
+          description: Filter by user ID
+          schema:
+            type: integer
+        - name: department_id
+          in: query
+          description: Filter by department ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Schedule calendar retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Schedule'
+  
+  /api/schedule/assign:
+    post:
+      tags:
+        - Scheduling
+      summary: Assign shift to employee
+      description: Create schedule assignment (Manager/Admin only)
+      operationId: assignSchedule
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleCreate'
+      responses:
+        '201':
+          description: Schedule assigned successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Schedule'
+        '409':
+          description: Schedule conflict (leave or existing shift)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  # ========================================
+  # PAYROLL ENDPOINTS
+  # ========================================
+  
+  /api/payroll/calculate:
+    post:
+      tags:
+        - Payroll
+      summary: Calculate payroll
+      description: Process payroll calculations for specified period (Payroll/Admin only)
+      operationId: calculatePayroll
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - start_date
+                - end_date
+              properties:
+                start_date:
+                  type: string
+                  format: date
+                  example: '2025-10-01'
+                end_date:
+                  type: string
+                  format: date
+                  example: '2025-10-31'
+                department_id:
+                  type: integer
+                  description: Optional - limit to specific department
+      responses:
+        '200':
+          description: Payroll calculated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PayrollSummary'
+  
+  /api/payroll/summary:
+    get:
+      tags:
+        - Payroll
+      summary: Get payroll summary
+      description: Retrieve payroll summary for period
+      operationId: getPayrollSummary
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: true
+          description: Payroll period (YYYY-MM format)
+          schema:
+            type: string
+            example: '2025-10'
+        - name: department_id
+          in: query
+          description: Filter by department
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Payroll summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PayrollSummary'
+  
+  /api/payroll/payslip/{id}:
+    get:
+      tags:
+        - Payroll
+      summary: Get employee payslip
+      description: Retrieve payslip for specific employee and period
+      operationId: getPayslip
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Payslip ID or calculation ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Payslip retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Payslip'
+  
+  /api/payroll/pay-codes:
+    get:
+      tags:
+        - Payroll
+      summary: Get pay codes
+      description: Retrieve all pay code definitions
+      operationId: getPayCodes
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Pay codes retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PayCode'
+  
+  /api/payroll/pay-rules:
+    get:
+      tags:
+        - Payroll
+      summary: Get pay rules
+      description: Retrieve all pay rule definitions
+      operationId: getPayRules
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Pay rules retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PayRule'
+  
+  /api/payroll/sage-sync:
+    post:
+      tags:
+        - Payroll
+      summary: Sync with SAGE VIP
+      description: Export payroll data to SAGE VIP Payroll system
+      operationId: syncSageVIP
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - period
+                - sync_type
+              properties:
+                period:
+                  type: string
+                  example: '2025-10'
+                sync_type:
+                  type: string
+                  enum: [employees, timesheets, leave, payroll]
+                  example: timesheets
+      responses:
+        '200':
+          description: SAGE VIP sync completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          records_synced:
+                            type: integer
+                            example: 45
+                          sync_timestamp:
+                            type: string
+                            format: date-time
+  
+  # ========================================
+  # ORGANIZATION ENDPOINTS
+  # ========================================
+  
+  /api/org/companies:
+    get:
+      tags:
+        - Organization
+      summary: Get companies
+      description: Retrieve all companies (Super Admin only)
+      operationId: getCompanies
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Companies retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Company'
+  
+  /api/org/regions:
+    get:
+      tags:
+        - Organization
+      summary: Get regions
+      description: Retrieve regions for company
+      operationId: getRegions
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: company_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Regions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Region'
+  
+  /api/org/sites:
+    get:
+      tags:
+        - Organization
+      summary: Get sites
+      description: Retrieve sites for region
+      operationId: getSites
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: region_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sites retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Site'
+  
+  /api/org/departments:
+    get:
+      tags:
+        - Organization
+      summary: Get departments
+      description: Retrieve departments for site
+      operationId: getDepartments
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: site_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Departments retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Department'
+  
+  # ========================================
+  # NOTIFICATION ENDPOINTS
+  # ========================================
+  
+  /api/notifications:
+    get:
+      tags:
+        - Notifications
+      summary: Get notifications
+      description: Retrieve notifications for current user
+      operationId: getNotifications
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: is_read
+          in: query
+          description: Filter by read status
+          schema:
+            type: boolean
+        - name: priority
+          in: query
+          description: Filter by priority
+          schema:
+            type: string
+            enum: [low, medium, high, urgent]
+        - name: type
+          in: query
+          description: Filter by notification type
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Notification'
+  
+  /api/notifications/{id}/read:
+    post:
+      tags:
+        - Notifications
+      summary: Mark notification as read
+      description: Mark a specific notification as read
+      operationId: markNotificationRead
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  # ========================================
+  # REPORTING ENDPOINTS
+  # ========================================
+  
+  /api/reports/attendance:
+    get:
+      tags:
+        - Reports
+      summary: Get attendance report
+      description: Generate attendance summary report
+      operationId: getAttendanceReport
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: department_id
+          in: query
+          schema:
+            type: integer
+        - name: format
+          in: query
+          description: Export format
+          schema:
+            type: string
+            enum: [json, csv, pdf]
+            default: json
+      responses:
+        '200':
+          description: Attendance report generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AttendanceReport'
+  
+  /api/reports/leave:
+    get:
+      tags:
+        - Reports
+      summary: Get leave report
+      description: Generate leave balance and utilization report
+      operationId: getLeaveReport
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: department_id
+          in: query
+          schema:
+            type: integer
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv, pdf]
+            default: json
+      responses:
+        '200':
+          description: Leave report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  # ========================================
+  # AI SERVICES ENDPOINTS
+  # ========================================
+  
+  /api/ai/schedule-optimize:
+    post:
+      tags:
+        - AI Services
+      summary: Optimize schedule with AI
+      description: Generate AI-powered schedule recommendations
+      operationId: optimizeSchedule
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - start_date
+                - end_date
+                - department_id
+              properties:
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type: string
+                  format: date
+                department_id:
+                  type: integer
+                constraints:
+                  type: object
+                  properties:
+                    max_hours_per_week:
+                      type: number
+                    min_rest_hours:
+                      type: number
+      responses:
+        '200':
+          description: Schedule optimization completed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          recommendations:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Schedule'
+                          insights:
+                            type: string
+
+# ========================================
+# COMPONENTS / SCHEMAS
+# ========================================
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Session-based authentication with Flask-Login
+  
+  schemas:
+    # ========================================
+    # COMMON SCHEMAS
+    # ========================================
+    
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+          description: Response data (varies by endpoint)
+    
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Invalid request parameters
+        code:
+          type: string
+          example: VALIDATION_ERROR
+    
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 50
+        total_items:
+          type: integer
+          example: 245
+        total_pages:
+          type: integer
+          example: 5
+        has_next:
+          type: boolean
+          example: true
+        has_prev:
+          type: boolean
+          example: false
+    
+    # ========================================
+    # USER SCHEMAS
+    # ========================================
+    
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        employee_id:
+          type: string
+          example: EMP25001
+        username:
+          type: string
+          example: john.doe
+        email:
+          type: string
+          format: email
+          example: john.doe@company.com
+        first_name:
+          type: string
+          example: John
+        last_name:
+          type: string
+          example: Doe
+        phone:
+          type: string
+          example: +27 12 345 6789
+        job_title:
+          type: string
+          example: Production Supervisor
+        department_id:
+          type: integer
+          example: 5
+        department:
+          type: string
+          example: Manufacturing
+        manager_id:
+          type: integer
+          nullable: true
+          example: 3
+        is_active:
+          type: boolean
+          example: true
+        hire_date:
+          type: string
+          format: date
+          example: '2023-01-15'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    UserCreate:
+      type: object
+      required:
+        - username
+        - email
+        - first_name
+        - last_name
+        - password
+        - department_id
+      properties:
+        username:
+          type: string
+          example: john.doe
+        email:
+          type: string
+          format: email
+          example: john.doe@company.com
+        first_name:
+          type: string
+          example: John
+        last_name:
+          type: string
+          example: Doe
+        password:
+          type: string
+          format: password
+          example: SecurePass123!
+        phone:
+          type: string
+          example: +27 12 345 6789
+        job_title:
+          type: string
+          example: Production Supervisor
+        department_id:
+          type: integer
+          example: 5
+        manager_id:
+          type: integer
+          nullable: true
+          example: 3
+        hire_date:
+          type: string
+          format: date
+          example: '2023-01-15'
+    
+    UserUpdate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+    
+    # ========================================
+    # TIME ENTRY SCHEMAS
+    # ========================================
+    
+    TimeEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 123
+        user_id:
+          type: integer
+          example: 1
+        user_name:
+          type: string
+          example: John Doe
+        department_id:
+          type: integer
+          example: 5
+        department_name:
+          type: string
+          example: Manufacturing
+        clock_in_time:
+          type: string
+          format: date-time
+          example: '2025-10-14T08:00:00+02:00'
+        clock_out_time:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2025-10-14T17:00:00+02:00'
+        clock_in_latitude:
+          type: number
+          format: double
+          example: -26.2041
+        clock_in_longitude:
+          type: number
+          format: double
+          example: 28.0473
+        clock_out_latitude:
+          type: number
+          format: double
+          nullable: true
+          example: -26.2041
+        clock_out_longitude:
+          type: number
+          format: double
+          nullable: true
+          example: 28.0473
+        total_hours:
+          type: number
+          format: double
+          nullable: true
+          example: 9.0
+        regular_hours:
+          type: number
+          format: double
+          nullable: true
+          example: 8.0
+        overtime_hours:
+          type: number
+          format: double
+          nullable: true
+          example: 1.0
+        double_time_hours:
+          type: number
+          format: double
+          nullable: true
+          example: 0.0
+        status:
+          type: string
+          enum: [clocked_in, clocked_out, approved, rejected]
+          example: approved
+        pay_code_id:
+          type: integer
+          nullable: true
+          example: 1
+        pay_code_name:
+          type: string
+          nullable: true
+          example: Basic Pay
+        approved_by:
+          type: integer
+          nullable: true
+          example: 3
+        approver_name:
+          type: string
+          nullable: true
+          example: Manager Smith
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+          example: Regular shift
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    TimeEntryUpdate:
+      type: object
+      properties:
+        clock_in_time:
+          type: string
+          format: date-time
+        clock_out_time:
+          type: string
+          format: date-time
+        pay_code_id:
+          type: integer
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [approved, rejected]
+    
+    # ========================================
+    # LEAVE SCHEMAS
+    # ========================================
+    
+    LeaveType:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Annual Leave
+        code:
+          type: string
+          example: ANNUAL
+        company_id:
+          type: integer
+          example: 1
+        accrual_rate:
+          type: number
+          format: double
+          example: 1.25
+          description: Days accrued per month
+        max_balance:
+          type: number
+          format: double
+          example: 21.0
+          description: Maximum balance allowed
+        is_paid:
+          type: boolean
+          example: true
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    LeaveBalance:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        leave_type_id:
+          type: integer
+          example: 1
+        leave_type_name:
+          type: string
+          example: Annual Leave
+        current_balance:
+          type: number
+          format: double
+          example: 15.5
+        accrued_total:
+          type: number
+          format: double
+          example: 25.0
+        used_total:
+          type: number
+          format: double
+          example: 9.5
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+    
+    LeaveRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        user_name:
+          type: string
+          example: John Doe
+        leave_type_id:
+          type: integer
+          example: 1
+        leave_type_name:
+          type: string
+          example: Annual Leave
+        start_date:
+          type: string
+          format: date
+          example: '2025-11-01'
+        end_date:
+          type: string
+          format: date
+          example: '2025-11-05'
+        total_days:
+          type: number
+          format: double
+          example: 5.0
+        reason:
+          type: string
+          example: Family vacation
+        status:
+          type: string
+          enum: [pending, approved, rejected, cancelled]
+          example: approved
+        approved_by:
+          type: integer
+          nullable: true
+          example: 3
+        approver_name:
+          type: string
+          nullable: true
+          example: Manager Smith
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        rejection_reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    LeaveRequestCreate:
+      type: object
+      required:
+        - leave_type_id
+        - start_date
+        - end_date
+      properties:
+        leave_type_id:
+          type: integer
+          example: 1
+        start_date:
+          type: string
+          format: date
+          example: '2025-11-01'
+        end_date:
+          type: string
+          format: date
+          example: '2025-11-05'
+        reason:
+          type: string
+          example: Family vacation
+    
+    LeaveRequestUpdate:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        reason:
+          type: string
+    
+    # ========================================
+    # SCHEDULE SCHEMAS
+    # ========================================
+    
+    Shift:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Morning Shift
+        shift_type:
+          type: string
+          example: MORNING
+        start_time:
+          type: string
+          format: time
+          example: '06:00:00'
+        end_time:
+          type: string
+          format: time
+          example: '14:00:00'
+        break_duration:
+          type: integer
+          example: 30
+          description: Break duration in minutes
+        pay_code_id:
+          type: integer
+          example: 1
+        pay_code_name:
+          type: string
+          example: Basic Pay
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    ShiftCreate:
+      type: object
+      required:
+        - name
+        - shift_type
+        - start_time
+        - end_time
+        - pay_code_id
+      properties:
+        name:
+          type: string
+          example: Morning Shift
+        shift_type:
+          type: string
+          example: MORNING
+        start_time:
+          type: string
+          format: time
+          example: '06:00:00'
+        end_time:
+          type: string
+          format: time
+          example: '14:00:00'
+        break_duration:
+          type: integer
+          example: 30
+        pay_code_id:
+          type: integer
+          example: 1
+    
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        user_name:
+          type: string
+          example: John Doe
+        shift_id:
+          type: integer
+          example: 1
+        shift_name:
+          type: string
+          example: Morning Shift
+        shift_details:
+          $ref: '#/components/schemas/Shift'
+        schedule_date:
+          type: string
+          format: date
+          example: '2025-10-15'
+        department_id:
+          type: integer
+          example: 5
+        department_name:
+          type: string
+          example: Manufacturing
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    ScheduleCreate:
+      type: object
+      required:
+        - user_id
+        - shift_id
+        - schedule_date
+      properties:
+        user_id:
+          type: integer
+          example: 1
+        shift_id:
+          type: integer
+          example: 1
+        schedule_date:
+          type: string
+          format: date
+          example: '2025-10-15'
+        notes:
+          type: string
+    
+    # ========================================
+    # PAYROLL SCHEMAS
+    # ========================================
+    
+    PayCode:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: BASIC
+        name:
+          type: string
+          example: Basic Pay
+        rate_type:
+          type: string
+          enum: [hourly, fixed, percentage]
+          example: hourly
+        rate_amount:
+          type: number
+          format: double
+          example: 125.50
+          description: Rate in ZAR
+        department_id:
+          type: integer
+          nullable: true
+          example: 5
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    PayRule:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Standard Overtime Rule
+        description:
+          type: string
+          example: Apply 1.5x multiplier for hours > 8
+        priority:
+          type: integer
+          example: 10
+        condition_type:
+          type: string
+          example: hours_threshold
+        condition_value:
+          type: string
+          example: '8.0'
+        action_type:
+          type: string
+          example: apply_multiplier
+        action_value:
+          type: string
+          example: overtime_pay
+        multiplier:
+          type: number
+          format: double
+          example: 1.5
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    PayrollSummary:
+      type: object
+      properties:
+        period:
+          type: string
+          example: '2025-10'
+        total_employees:
+          type: integer
+          example: 45
+        total_regular_hours:
+          type: number
+          format: double
+          example: 7200.0
+        total_overtime_hours:
+          type: number
+          format: double
+          example: 450.5
+        total_gross_pay:
+          type: number
+          format: double
+          example: 1250000.00
+          description: Total gross pay in ZAR
+        total_deductions:
+          type: number
+          format: double
+          example: 187500.00
+        total_net_pay:
+          type: number
+          format: double
+          example: 1062500.00
+        department_breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              department_id:
+                type: integer
+              department_name:
+                type: string
+              employee_count:
+                type: integer
+              total_gross:
+                type: number
+                format: double
+    
+    Payslip:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        employee_id:
+          type: string
+          example: EMP25001
+        employee_name:
+          type: string
+          example: John Doe
+        period:
+          type: string
+          example: '2025-10'
+        regular_hours:
+          type: number
+          format: double
+          example: 160.0
+        overtime_hours:
+          type: number
+          format: double
+          example: 12.5
+        basic_pay:
+          type: number
+          format: double
+          example: 20000.00
+        overtime_pay:
+          type: number
+          format: double
+          example: 2343.75
+        allowances:
+          type: number
+          format: double
+          example: 1500.00
+        gross_pay:
+          type: number
+          format: double
+          example: 23843.75
+        tax:
+          type: number
+          format: double
+          example: 3576.56
+        uif:
+          type: number
+          format: double
+          example: 238.44
+        other_deductions:
+          type: number
+          format: double
+          example: 500.00
+        total_deductions:
+          type: number
+          format: double
+          example: 4315.00
+        net_pay:
+          type: number
+          format: double
+          example: 19528.75
+        pay_date:
+          type: string
+          format: date
+          example: '2025-10-25'
+    
+    # ========================================
+    # ORGANIZATION SCHEMAS
+    # ========================================
+    
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: SteelTech Manufacturing
+        code:
+          type: string
+          example: STM001
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    Region:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Gauteng Region
+        code:
+          type: string
+          example: GP
+        company_id:
+          type: integer
+          example: 1
+        company_name:
+          type: string
+          example: SteelTech Manufacturing
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    Site:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Johannesburg Plant
+        code:
+          type: string
+          example: JHB01
+        region_id:
+          type: integer
+          example: 1
+        region_name:
+          type: string
+          example: Gauteng Region
+        address:
+          type: string
+          example: 123 Industrial Road, Johannesburg, 2001
+        latitude:
+          type: number
+          format: double
+          nullable: true
+          example: -26.2041
+        longitude:
+          type: number
+          format: double
+          nullable: true
+          example: 28.0473
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    Department:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Manufacturing
+        code:
+          type: string
+          example: MFG
+        site_id:
+          type: integer
+          example: 1
+        site_name:
+          type: string
+          example: Johannesburg Plant
+        manager_id:
+          type: integer
+          nullable: true
+          example: 3
+        manager_name:
+          type: string
+          nullable: true
+          example: Jane Smith
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    # ========================================
+    # NOTIFICATION SCHEMAS
+    # ========================================
+    
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        notification_type:
+          type: string
+          example: leave_request
+        title:
+          type: string
+          example: Leave Request Approved
+        message:
+          type: string
+          example: Your annual leave request for Nov 1-5 has been approved
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          example: medium
+        action_url:
+          type: string
+          nullable: true
+          example: /leave/requests/123
+        is_read:
+          type: boolean
+          example: false
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    
+    # ========================================
+    # REPORT SCHEMAS
+    # ========================================
+    
+    AttendanceReport:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+        summary:
+          type: object
+          properties:
+            total_employees:
+              type: integer
+            total_hours:
+              type: number
+              format: double
+            average_hours_per_employee:
+              type: number
+              format: double
+            attendance_rate:
+              type: number
+              format: double
+              description: Percentage
+        department_stats:
+          type: array
+          items:
+            type: object
+            properties:
+              department_id:
+                type: integer
+              department_name:
+                type: string
+              employee_count:
+                type: integer
+              total_hours:
+                type: number
+                format: double
+              overtime_hours:
+                type: number
+                format: double
+        employee_details:
+          type: array
+          items:
+            type: object
+            properties:
+              employee_id:
+                type: string
+              employee_name:
+                type: string
+              regular_hours:
+                type: number
+                format: double
+              overtime_hours:
+                type: number
+                format: double
+              days_worked:
+                type: integer
+
+security:
+  - sessionAuth: []
