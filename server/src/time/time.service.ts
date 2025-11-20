@@ -8,6 +8,20 @@ import { GetTimeEntriesDto } from './dto/get-time-entries.dto';
 export class TimeService {
   constructor(private prisma: PrismaService) {}
 
+  async getManagedDepartmentIds(userId: number): Promise<number[]> {
+    const departments = await this.prisma.departments.findMany({
+      where: {
+        OR: [
+          { manager_id: userId },
+          { deputy_manager_id: userId },
+        ],
+      },
+      select: { id: true },
+    });
+    
+    return departments.map((dept) => dept.id);
+  }
+
   async clockIn(userId: number, dto: ClockInDto) {
     const activeEntry = await this.prisma.time_entries.findFirst({
       where: {
@@ -127,15 +141,27 @@ export class TimeService {
 
     const where: any = {};
 
-    if (!isSuperUser && !managedDepartmentIds.length) {
+    if (!isSuperUser && managedDepartmentIds.length === 0) {
       where.user_id = userId;
     } else if (!isSuperUser && managedDepartmentIds.length > 0) {
-      where.users_time_entries_user_idTousers = {
-        department_id: { in: managedDepartmentIds },
-      };
+      const usersInManagedDepts = await this.prisma.users.findMany({
+        where: { department_id: { in: managedDepartmentIds } },
+        select: { id: true },
+      });
+      const userIds = usersInManagedDepts.map((u) => u.id);
+      where.user_id = { in: userIds };
     }
 
     if (user_id && (isSuperUser || managedDepartmentIds.length > 0)) {
+      if (!isSuperUser && managedDepartmentIds.length > 0) {
+        const userDept = await this.prisma.users.findUnique({
+          where: { id: user_id },
+          select: { department_id: true },
+        });
+        if (!userDept || !managedDepartmentIds.includes(userDept.department_id!)) {
+          throw new ForbiddenException('You do not have permission to view this user');
+        }
+      }
       where.user_id = user_id;
     }
 
@@ -223,10 +249,13 @@ export class TimeService {
       status: 'Closed',
     };
 
-    if (!isSuperUser) {
-      where.users_time_entries_user_idTousers = {
-        department_id: { in: managedDepartmentIds },
-      };
+    if (!isSuperUser && managedDepartmentIds.length > 0) {
+      const usersInManagedDepts = await this.prisma.users.findMany({
+        where: { department_id: { in: managedDepartmentIds } },
+        select: { id: true },
+      });
+      const userIds = usersInManagedDepts.map((u) => u.id);
+      where.user_id = { in: userIds };
     }
 
     const pendingEntries = await this.prisma.time_entries.findMany({
@@ -265,9 +294,16 @@ export class TimeService {
     });
   }
 
-  async approveTimeEntry(entryId: number, approverId: number, notes?: string) {
+  async approveTimeEntry(entryId: number, approverId: number, notes?: string, isSuperUser: boolean, managedDepartmentIds: number[]) {
     const entry = await this.prisma.time_entries.findUnique({
       where: { id: entryId },
+      include: {
+        users_time_entries_user_idTousers: {
+          select: {
+            department_id: true,
+          },
+        },
+      },
     });
 
     if (!entry) {
@@ -276,6 +312,13 @@ export class TimeService {
 
     if (entry.status !== 'Closed') {
       throw new BadRequestException('Only closed time entries can be approved');
+    }
+
+    if (!isSuperUser) {
+      const userDeptId = entry.users_time_entries_user_idTousers.department_id;
+      if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
+        throw new ForbiddenException('You do not have permission to approve this time entry');
+      }
     }
 
     const now = new Date();
@@ -296,9 +339,16 @@ export class TimeService {
     };
   }
 
-  async rejectTimeEntry(entryId: number, approverId: number, notes?: string) {
+  async rejectTimeEntry(entryId: number, approverId: number, notes?: string, isSuperUser: boolean, managedDepartmentIds: number[]) {
     const entry = await this.prisma.time_entries.findUnique({
       where: { id: entryId },
+      include: {
+        users_time_entries_user_idTousers: {
+          select: {
+            department_id: true,
+          },
+        },
+      },
     });
 
     if (!entry) {
@@ -307,6 +357,13 @@ export class TimeService {
 
     if (entry.status !== 'Closed') {
       throw new BadRequestException('Only closed time entries can be rejected');
+    }
+
+    if (!isSuperUser) {
+      const userDeptId = entry.users_time_entries_user_idTousers.department_id;
+      if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
+        throw new ForbiddenException('You do not have permission to reject this time entry');
+      }
     }
 
     const now = new Date();

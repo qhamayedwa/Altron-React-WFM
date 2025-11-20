@@ -1,13 +1,15 @@
 import { Controller, Post, Get, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { TimeService } from './time.service';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { ClockInDto } from './dto/clock-in.dto';
 import { ClockOutDto } from './dto/clock-out.dto';
 import { GetTimeEntriesDto } from './dto/get-time-entries.dto';
 import { ApproveTimeEntryDto } from './dto/approve-time-entry.dto';
 
 @Controller('time')
-@UseGuards(AuthenticatedGuard)
+@UseGuards(AuthenticatedGuard, RolesGuard)
 export class TimeController {
   constructor(private readonly timeService: TimeService) {}
 
@@ -46,10 +48,10 @@ export class TimeController {
   @Get('entries')
   async getTimeEntries(@Req() req: any, @Query() dto: GetTimeEntriesDto) {
     const isSuperUser = req.user.user_roles?.some(
-      (ur: any) => ur.roles?.name === 'Super User' || ur.roles?.name === 'system_super_admin'
+      (ur: any) => ur.roles?.name === 'Super User' || ur.roles?.name === 'system_super_admin' || ur.roles?.name === 'Admin'
     );
     
-    const managedDepartmentIds = await this.getManagedDepartments(req.user.id);
+    const managedDepartmentIds = await this.timeService.getManagedDepartmentIds(req.user.id);
     
     const result = await this.timeService.getTimeEntries(
       req.user.id,
@@ -66,12 +68,13 @@ export class TimeController {
   }
 
   @Get('pending-approvals')
+  @Roles('Manager', 'Super User', 'system_super_admin', 'Admin')
   async getPendingApprovals(@Req() req: any) {
     const isSuperUser = req.user.user_roles?.some(
-      (ur: any) => ur.roles?.name === 'Super User' || ur.roles?.name === 'system_super_admin'
+      (ur: any) => ur.roles?.name === 'Super User' || ur.roles?.name === 'system_super_admin' || ur.roles?.name === 'Admin'
     );
     
-    const managedDepartmentIds = await this.getManagedDepartments(req.user.id);
+    const managedDepartmentIds = await this.timeService.getManagedDepartmentIds(req.user.id);
     
     const result = await this.timeService.getPendingApprovals(
       req.user.id,
@@ -87,11 +90,20 @@ export class TimeController {
   }
 
   @Post('approve')
+  @Roles('Manager', 'Super User', 'system_super_admin', 'Admin')
   async approveTimeEntry(@Req() req: any, @Body() dto: ApproveTimeEntryDto) {
+    const isSuperUser = req.user.user_roles?.some(
+      (ur: any) => ur.roles?.name === 'Super User' || ur.roles?.name === 'system_super_admin' || ur.roles?.name === 'Admin'
+    );
+    
+    const managedDepartmentIds = await this.timeService.getManagedDepartmentIds(req.user.id);
+    
     const result = await this.timeService.approveTimeEntry(
       dto.entry_id,
       req.user.id,
-      dto.notes
+      dto.notes,
+      isSuperUser,
+      managedDepartmentIds
     );
     
     return {
@@ -103,11 +115,20 @@ export class TimeController {
   }
 
   @Post('reject')
+  @Roles('Manager', 'Super User', 'system_super_admin', 'Admin')
   async rejectTimeEntry(@Req() req: any, @Body() dto: ApproveTimeEntryDto) {
+    const isSuperUser = req.user.user_roles?.some(
+      (ur: any) => ur.roles?.name === 'Super User' || ur.roles?.name === 'system_super_admin' || ur.roles?.name === 'Admin'
+    );
+    
+    const managedDepartmentIds = await this.timeService.getManagedDepartmentIds(req.user.id);
+    
     const result = await this.timeService.rejectTimeEntry(
       dto.entry_id,
       req.user.id,
-      dto.notes
+      dto.notes,
+      isSuperUser,
+      managedDepartmentIds
     );
     
     return {
@@ -116,20 +137,5 @@ export class TimeController {
       message: 'Time entry rejected',
       timestamp: new Date().toISOString(),
     };
-  }
-
-  private async getManagedDepartments(userId: number): Promise<number[]> {
-    const prisma = this.timeService['prisma'];
-    const departments = await prisma.departments.findMany({
-      where: {
-        OR: [
-          { manager_id: userId },
-          { deputy_manager_id: userId },
-        ],
-      },
-      select: { id: true },
-    });
-    
-    return departments.map((dept) => dept.id);
   }
 }

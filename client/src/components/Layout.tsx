@@ -68,13 +68,22 @@ export const Layout: React.FC = () => {
                   Dashboard
                 </Nav.Link>
                 
-                <Nav.Link
-                  as={Link}
-                  to="/time"
-                  onClick={() => setShow(false)}
-                >
-                  Time & Attendance
-                </Nav.Link>
+                <NavDropdown title="Time & Attendance" id="time-dropdown">
+                  <NavDropdown.Item
+                    as={Link}
+                    to="/time"
+                    onClick={() => setShow(false)}
+                  >
+                    Clock In/Out
+                  </NavDropdown.Item>
+                  <NavDropdown.Item
+                    as={Link}
+                    to="/time/entries"
+                    onClick={() => setShow(false)}
+                  >
+                    Time Entries
+                  </NavDropdown.Item>
+                </NavDropdown>
                 
                 <Nav.Link
                   as={Link}
@@ -94,24 +103,20 @@ export const Layout: React.FC = () => {
 
                 {(isManager || isAdmin) && (
                   <NavDropdown title="Management" id="management-dropdown">
-                    {isManager && (
-                      <>
-                        <NavDropdown.Item
-                          as={Link}
-                          to="/approvals"
-                          onClick={() => setShow(false)}
-                        >
-                          Approvals
-                        </NavDropdown.Item>
-                        <NavDropdown.Item
-                          as={Link}
-                          to="/reports"
-                          onClick={() => setShow(false)}
-                        >
-                          Reports
-                        </NavDropdown.Item>
-                      </>
-                    )}
+                    <NavDropdown.Item
+                      as={Link}
+                      to="/approvals"
+                      onClick={() => setShow(false)}
+                    >
+                      Approvals
+                    </NavDropdown.Item>
+                    <NavDropdown.Item
+                      as={Link}
+                      to="/reports"
+                      onClick={() => setShow(false)}
+                    >
+                      Reports
+                    </NavDropdown.Item>
                     {isAdmin && (
                       <>
                         <NavDropdown.Divider />
