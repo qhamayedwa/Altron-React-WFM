@@ -16,6 +16,9 @@ import LeaveBalancesPage from './pages/LeaveBalancesPage';
 import LeaveApplicationsPage from './pages/LeaveApplicationsPage';
 import LeaveApprovalsPage from './pages/LeaveApprovalsPage';
 import LeaveTypesPage from './pages/LeaveTypesPage';
+import ShiftTypesPage from './pages/ShiftTypesPage';
+import TeamSchedulePage from './pages/TeamSchedulePage';
+import MySchedulePage from './pages/MySchedulePage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -70,6 +73,24 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Admin', 'Super User', 'system_super_admin']}>
                     <LeaveTypesPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              
+              <Route path="/scheduling/my-schedule" element={<MySchedulePage />} />
+              <Route
+                path="/scheduling/team"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'Super User', 'system_super_admin']}>
+                    <TeamSchedulePage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/scheduling/shift-types"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Admin', 'Super User', 'system_super_admin']}>
+                    <ShiftTypesPage />
                   </RoleProtectedRoute>
                 }
               />

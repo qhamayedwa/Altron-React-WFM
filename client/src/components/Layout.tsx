@@ -123,13 +123,36 @@ export const Layout: React.FC = () => {
                   )}
                 </NavDropdown>
                 
-                <Nav.Link
-                  as={Link}
-                  to="/schedule"
-                  onClick={() => setShow(false)}
-                >
-                  Scheduling
-                </Nav.Link>
+                <NavDropdown title="Scheduling" id="scheduling-dropdown">
+                  <NavDropdown.Item
+                    as={Link}
+                    to="/scheduling/my-schedule"
+                    onClick={() => setShow(false)}
+                  >
+                    My Schedule
+                  </NavDropdown.Item>
+                  {(isManager || isAdmin) && (
+                    <NavDropdown.Item
+                      as={Link}
+                      to="/scheduling/team"
+                      onClick={() => setShow(false)}
+                    >
+                      Team Schedule
+                    </NavDropdown.Item>
+                  )}
+                  {isAdmin && (
+                    <>
+                      <NavDropdown.Divider />
+                      <NavDropdown.Item
+                        as={Link}
+                        to="/scheduling/shift-types"
+                        onClick={() => setShow(false)}
+                      >
+                        Shift Types
+                      </NavDropdown.Item>
+                    </>
+                  )}
+                </NavDropdown>
 
                 {(isManager || isAdmin) && (
                   <NavDropdown title="Management" id="management-dropdown">
