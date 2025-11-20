@@ -20,11 +20,12 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Application Framework
-- **Web Framework:** Flask with Blueprint-based modular architecture
-- **ORM:** SQLAlchemy with declarative base models
-- **Authentication:** Flask-Login with session-based auth and role decorators
-- **Database Migrations:** Flask-Migrate for schema versioning
-- **Frontend:** Bootstrap 5 with responsive mobile-first design
+- **Backend:** NestJS with TypeScript (migrated from Flask)
+- **ORM:** Prisma (migrated from SQLAlchemy)
+- **Authentication:** Passport.js with express-session (migrated from Flask-Login)
+- **Frontend:** React + Vite + TypeScript with React Router v6 (migrated from Jinja2 templates)
+- **UI Library:** Bootstrap 5 with responsive mobile-first design
+- **State Management:** Zustand + React Query
 
 ### Data Architecture
 
@@ -63,12 +64,14 @@ User (Employees with roles)
 - Manager approval queue with bulk operations
 - Real-time dashboard with role-filtered data
 
-**AI Services (`ai_services.py`, `ai_scheduling.py`):**
-- OpenAI GPT-4o integration for workforce insights
-- Statistical fallback when OpenAI unavailable (`ai_fallback.py`)
+**AI Services (`server/src/ai/`):**
+- OpenAI GPT-4o integration for workforce insights (`ai.service.ts`)
+- Statistical fallback when OpenAI unavailable (`ai-fallback.service.ts`)
 - Schedule optimization based on historical patterns
-- Attendance trend analysis
-- Payroll anomaly detection
+- Attendance trend analysis with punctuality scoring
+- Payroll anomaly detection and cost analysis
+- Natural language query interface
+- API endpoints: `/ai/analyze-scheduling`, `/ai/generate-payroll-insights`, `/ai/analyze-attendance`, `/ai/suggest-schedule`, `/ai/natural-query`, `/ai/test-connection`
 
 **Leave Management (`leave_management.py`):**
 - Leave type configuration with accrual rules
