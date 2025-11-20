@@ -28,6 +28,8 @@ import AINaturalQueryPage from './pages/AINaturalQueryPage';
 import AISchedulingOptimizerPage from './pages/AISchedulingOptimizerPage';
 import AIPayrollInsightsPage from './pages/AIPayrollInsightsPage';
 import AIAttendanceAnalyzerPage from './pages/AIAttendanceAnalyzerPage';
+import OrganizationDashboardPage from './pages/OrganizationDashboardPage';
+import OrgHierarchyPage from './pages/OrgHierarchyPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const queryClient = new QueryClient({
@@ -174,6 +176,31 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Manager', 'HR', 'Payroll', 'Admin', 'Super User', 'system_super_admin']}>
                     <AIAttendanceAnalyzerPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/organization"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'HR', 'Admin', 'Super User', 'system_super_admin']}>
+                    <OrganizationDashboardPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization/hierarchy"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'HR', 'Admin', 'Super User', 'system_super_admin']}>
+                    <OrgHierarchyPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization/hierarchy/:companyId"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'HR', 'Admin', 'Super User', 'system_super_admin']}>
+                    <OrgHierarchyPage />
                   </RoleProtectedRoute>
                 }
               />

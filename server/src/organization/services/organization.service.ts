@@ -215,6 +215,38 @@ export class OrganizationService {
     return { success: true, company };
   }
 
+  async deleteCompany(id: number) {
+    const company = await this.prisma.companies.findUnique({
+      where: { id },
+    });
+
+    if (!company) {
+      throw new NotFoundException(`Company with ID ${id} not found`);
+    }
+
+    const [regionsCount, sitesCount, departmentsCount, employeesCount] = await Promise.all([
+      this.prisma.regions.count({ where: { company_id: id, is_active: true } }),
+      this.prisma.sites.count({ where: { regions: { company_id: id }, is_active: true } }),
+      this.prisma.departments.count({ where: { sites: { regions: { company_id: id } }, is_active: true } }),
+      this.prisma.users.count({ where: { departments_users_department_idTodepartments: { sites: { regions: { company_id: id } } }, is_active: true } }),
+    ]);
+
+    if (regionsCount > 0 || sitesCount > 0 || departmentsCount > 0 || employeesCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete company: ${regionsCount} active regions, ${sitesCount} active sites, ${departmentsCount} active departments, ${employeesCount} active employees exist in hierarchy. Please deactivate all descendants first.`
+      );
+    }
+
+    const deleted = await this.prisma.companies.update({
+      where: { id },
+      data: {
+        is_active: false,
+      },
+    });
+
+    return { success: true, message: 'Company deleted successfully', company: deleted };
+  }
+
   async createRegion(companyId: number, dto: CreateRegionDto) {
     const company = await this.prisma.companies.findUnique({
       where: { id: companyId },
@@ -399,6 +431,52 @@ export class OrganizationService {
     };
   }
 
+  async updateSite(id: number, dto: UpdateSiteDto) {
+    const site = await this.prisma.sites.findUnique({ where: { id } });
+
+    if (!site) {
+      throw new NotFoundException(`Site with ID ${id} not found`);
+    }
+
+    const updated = await this.prisma.sites.update({
+      where: { id },
+      data: {
+        ...dto,
+        updated_at: new Date(),
+      },
+    });
+
+    return { success: true, site: updated };
+  }
+
+  async deleteSite(id: number) {
+    const site = await this.prisma.sites.findUnique({ where: { id } });
+
+    if (!site) {
+      throw new NotFoundException(`Site with ID ${id} not found`);
+    }
+
+    const [departmentsCount, employeesCount] = await Promise.all([
+      this.prisma.departments.count({ where: { site_id: id, is_active: true } }),
+      this.prisma.users.count({ where: { departments_users_department_idTodepartments: { site_id: id }, is_active: true } }),
+    ]);
+
+    if (departmentsCount > 0 || employeesCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete site: ${departmentsCount} active departments and ${employeesCount} active employees exist. Please deactivate or reassign all descendants first.`
+      );
+    }
+
+    const deleted = await this.prisma.sites.update({
+      where: { id },
+      data: {
+        is_active: false,
+      },
+    });
+
+    return { success: true, message: 'Site deleted successfully', site: deleted };
+  }
+
   async createDepartment(siteId: number, dto: CreateDepartmentDto) {
     const site = await this.prisma.sites.findUnique({
       where: { id: siteId },
@@ -472,6 +550,65 @@ export class OrganizationService {
       employees: activeEmployees,
       stats,
     };
+  }
+
+  async updateDepartment(id: number, dto: UpdateDepartmentDto) {
+    const department = await this.prisma.departments.findUnique({ where: { id } });
+
+    if (!department) {
+      throw new NotFoundException(`Department with ID ${id} not found`);
+    }
+
+    if (dto.manager_id) {
+      const manager = await this.prisma.users.findUnique({ where: { id: dto.manager_id } });
+      if (!manager) {
+        throw new BadRequestException(`Manager with ID ${dto.manager_id} not found`);
+      }
+    }
+
+    if (dto.deputy_manager_id) {
+      const deputyManager = await this.prisma.users.findUnique({ where: { id: dto.deputy_manager_id } });
+      if (!deputyManager) {
+        throw new BadRequestException(`Deputy manager with ID ${dto.deputy_manager_id} not found`);
+      }
+    }
+
+    const updated = await this.prisma.departments.update({
+      where: { id },
+      data: {
+        ...dto,
+        updated_at: new Date(),
+      },
+    });
+
+    return { success: true, department: updated };
+  }
+
+  async deleteDepartment(id: number) {
+    const department = await this.prisma.departments.findUnique({ where: { id } });
+
+    if (!department) {
+      throw new NotFoundException(`Department with ID ${id} not found`);
+    }
+
+    const employeeCount = await this.prisma.users.count({
+      where: { department_id: id },
+    });
+
+    if (employeeCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete department: ${employeeCount} employees (active and inactive) still assigned. Please reassign all employees first.`
+      );
+    }
+
+    const deleted = await this.prisma.departments.update({
+      where: { id },
+      data: {
+        is_active: false,
+      },
+    });
+
+    return { success: true, message: 'Department deleted successfully', department: deleted };
   }
 
   async assignEmployee(dto: AssignEmployeeDto) {

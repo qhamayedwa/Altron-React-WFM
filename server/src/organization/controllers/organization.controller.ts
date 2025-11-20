@@ -64,6 +64,12 @@ export class OrganizationController {
     return this.organizationService.updateCompany(id, dto);
   }
 
+  @Delete('companies/:id')
+  @Roles('Super User', 'Admin')
+  async deleteCompany(@Param('id', ParseIntPipe) id: number) {
+    return this.organizationService.deleteCompany(id);
+  }
+
   @Post('companies/:companyId/regions')
   @Roles('Super User', 'Admin', 'HR')
   async createRegion(
@@ -80,7 +86,7 @@ export class OrganizationController {
   }
 
   @Put('regions/:id')
-  @Roles('Super User', 'Admin')
+  @Roles('Super User', 'Admin', 'HR')
   async updateRegion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRegionDto
@@ -89,7 +95,7 @@ export class OrganizationController {
   }
 
   @Delete('regions/:id')
-  @Roles('Super User', 'Admin')
+  @Roles('Super User', 'Admin', 'HR')
   async deleteRegion(@Param('id', ParseIntPipe) id: number) {
     return this.organizationService.deleteRegion(id);
   }
@@ -107,6 +113,21 @@ export class OrganizationController {
   @Roles('Super User', 'Admin', 'HR', 'Manager')
   async findSite(@Param('id', ParseIntPipe) id: number) {
     return this.organizationService.findSite(id);
+  }
+
+  @Put('sites/:id')
+  @Roles('Super User', 'Admin', 'HR')
+  async updateSite(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSiteDto
+  ) {
+    return this.organizationService.updateSite(id, dto);
+  }
+
+  @Delete('sites/:id')
+  @Roles('Super User', 'Admin', 'HR')
+  async deleteSite(@Param('id', ParseIntPipe) id: number) {
+    return this.organizationService.deleteSite(id);
   }
 
   @Post('sites/:siteId/departments')
@@ -128,6 +149,21 @@ export class OrganizationController {
   @Roles('Super User', 'Admin', 'HR', 'Manager')
   async findDepartment(@Param('id', ParseIntPipe) id: number) {
     return this.organizationService.findDepartment(id);
+  }
+
+  @Put('departments/:id')
+  @Roles('Super User', 'Admin', 'HR')
+  async updateDepartment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateDepartmentDto
+  ) {
+    return this.organizationService.updateDepartment(id, dto);
+  }
+
+  @Delete('departments/:id')
+  @Roles('Super User', 'Admin', 'HR')
+  async deleteDepartment(@Param('id', ParseIntPipe) id: number) {
+    return this.organizationService.deleteDepartment(id);
   }
 
   @Post('departments/assign-employee')
