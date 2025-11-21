@@ -2,16 +2,7 @@
 
 ## Overview
 
-WFM24/7 is a comprehensive workforce management platform built with **React + NestJS + PostgreSQL**, designed for 24/7 operations with multi-tenant support. The system handles time tracking, employee scheduling, leave management, payroll processing, and organizational hierarchy management with South African business standards (ZAR currency, SAST timezone).
-
-**Migration Status:** ✅ **COMPLETED** (November 2025)
-- Migrated from Flask/Jinja2 to React + NestJS
-- Converted 27/27 planned tasks
-- 11 NestJS feature modules with 111 REST endpoints
-- 20+ React pages with role-based routing
-- Full Prisma ORM integration with 29 database tables
-- Zero breaking changes to database schema
-- 12 TypeScript controllers (Auth, Time, Leave, Scheduling, Payroll, AI, Organization, Notifications, SAGE VIP, Reports, Dashboard, App)
+WFM24/7 is a comprehensive workforce management platform built with Flask and PostgreSQL, designed for 24/7 operations with multi-tenant support. The system handles time tracking, employee scheduling, leave management, payroll processing, and organizational hierarchy management with South African business standards (ZAR currency, SAST timezone).
 
 **Core Capabilities:**
 - GPS-enabled time tracking with clock in/out functionality
@@ -20,7 +11,7 @@ WFM24/7 is a comprehensive workforce management platform built with **React + Ne
 - Automated leave accrual and payroll calculations
 - SAGE VIP Payroll integration for bidirectional data sync
 - Role-based access control with granular permissions
-- Mobile-responsive React interface with real-time updates
+- Mobile-responsive PWA interface
 
 ## User Preferences
 
@@ -29,12 +20,11 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Application Framework
-- **Backend:** NestJS with TypeScript (migrated from Flask)
-- **ORM:** Prisma (migrated from SQLAlchemy)
-- **Authentication:** Passport.js with express-session (migrated from Flask-Login)
-- **Frontend:** React + Vite + TypeScript with React Router v6 (migrated from Jinja2 templates)
-- **UI Library:** Bootstrap 5 with responsive mobile-first design
-- **State Management:** Zustand + React Query
+- **Web Framework:** Flask with Blueprint-based modular architecture
+- **ORM:** SQLAlchemy with declarative base models
+- **Authentication:** Flask-Login with session-based auth and role decorators
+- **Database Migrations:** Flask-Migrate for schema versioning
+- **Frontend:** Bootstrap 5 with responsive mobile-first design
 
 ### Data Architecture
 
@@ -64,83 +54,21 @@ User (Employees with roles)
 - Descending indexes for chronological ordering (clock_in_time DESC)
 - Location-based indexes for GPS tracking queries
 
-### Core Modules (NestJS)
+### Core Modules
 
-**Time & Attendance (`server/src/time/`):**
+**Time & Attendance (`routes.py`, `api.py`):**
 - GPS location capture on clock in/out
 - Automated break time tracking
 - Status-based workflow (clocked_in → clocked_out → approved)
 - Manager approval queue with bulk operations
 - Real-time dashboard with role-filtered data
-- REST endpoints: `/time/*` (clock-in/out, entries, approvals)
 
-**Leave Management (`server/src/leave/`):**
-- Leave application submission and approval workflows
-- Automated leave balance accrual
-- Leave type configuration with accrual rules
-- Multi-level approval chains
-- REST endpoints: `/leave/*` (applications, balances, types, approvals)
-
-**Scheduling (`server/src/scheduling/`):**
-- Shift type management with start/end times
-- Schedule assignment to employees
-- Conflict detection and availability matching
-- Team calendar views
-- REST endpoints: `/scheduling/*` (shifts, schedules, assignments)
-
-**Payroll (`server/src/payroll/`):**
-- Configurable pay rules with priority execution
-- Pay code management (regular, overtime, allowances, deductions)
-- Automated payroll calculations from time entries
-- Payslip generation and viewing
-- REST endpoints: `/payroll/*` (calculations, rules, codes, payslips)
-
-**AI Services (`server/src/ai/`):**
-- OpenAI GPT-4o integration for workforce insights (`ai.service.ts`)
-- Statistical fallback when OpenAI unavailable (`ai-fallback.service.ts`)
+**AI Services (`ai_services.py`, `ai_scheduling.py`):**
+- OpenAI GPT-4o integration for workforce insights
+- Statistical fallback when OpenAI unavailable (`ai_fallback.py`)
 - Schedule optimization based on historical patterns
-- Attendance trend analysis with punctuality scoring
-- Payroll anomaly detection and cost analysis
-- Natural language query interface
-- API endpoints: `/ai/analyze-scheduling`, `/ai/generate-payroll-insights`, `/ai/analyze-attendance`, `/ai/suggest-schedule`, `/ai/natural-query`, `/ai/test-connection`
-
-**Organization Management (`server/src/organization/`):**
-- Hierarchical CRUD for Companies, Regions, Sites, Departments
-- Cascade safety checks for deletions (full hierarchy validation)
-- Manager assignment to departments
-- HR role permissions for org structure changes
-- REST endpoints: 22 endpoints for full organizational management
-
-**Notifications (`server/src/notifications/`):**
-- Real-time notification delivery with priority levels
-- Manager-aware filtering (see team notifications)
-- Notification preferences per user
-- Action buttons with deep links
-- REST endpoints: 11 endpoints for notifications, preferences, cleanup
-
-**SAGE VIP Integration (`server/src/sage-vip/`):**
-- Employee data synchronization
-- Timesheet push to SAGE VIP
-- Leave transfer for payroll processing
-- Integration status monitoring
-- REST endpoints: 6 endpoints for SAGE VIP operations
-
-**Reporting (`server/src/reports/`):**
-- Time entry reports with date range filtering
-- Leave application reports
-- Attendance summaries by user/department
-- Payroll summary reports
-- CSV export functionality
-- REST endpoints: 8 endpoints (4 reports + 4 CSV exports)
-
-**Dashboard (`server/src/dashboard/`):**
-- Aggregated statistics (time entries, leave balances, pending approvals)
-- Recent activities feed
-- Pending approvals queue (manager view)
-- Role-based KPI widgets
-- REST endpoints: 3 endpoints for dashboard data
-
-**Legacy Modules (Deprecated):**
+- Attendance trend analysis
+- Payroll anomaly detection
 
 **Leave Management (`leave_management.py`):**
 - Leave type configuration with accrual rules
