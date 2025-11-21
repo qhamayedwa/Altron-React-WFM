@@ -2,7 +2,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Navbar, Nav, NavDropdown } from 'react-bootstrap';
 import { 
   Home, Clock, Calendar, Users, Building2, User, 
-  LogOut, Bell, Menu
+  LogOut, Bell, Menu, DollarSign, FileText
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useState } from 'react';
@@ -43,6 +43,18 @@ export default function Layout() {
               <Calendar size={20} />
               <span>Scheduling</span>
             </Link>
+            {(isSuperUser() || hasRole('Payroll')) && (
+              <Link to="/payroll" className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1">
+                <DollarSign size={20} />
+                <span>Payroll</span>
+              </Link>
+            )}
+            {(isSuperUser() || hasRole('HR') || hasRole('Manager')) && (
+              <Link to="/reports" className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1">
+                <FileText size={20} />
+                <span>Reports</span>
+              </Link>
+            )}
             {(isSuperUser() || hasRole('HR')) && (
               <>
                 <Link to="/users" className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1">

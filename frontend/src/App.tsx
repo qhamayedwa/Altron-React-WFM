@@ -8,6 +8,8 @@ import Scheduling from './pages/Scheduling';
 import UserManagement from './pages/UserManagement';
 import OrganizationManagement from './pages/OrganizationManagement';
 import Profile from './pages/Profile';
+import Reports from './pages/Reports';
+import Payroll from './pages/Payroll';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -34,6 +36,8 @@ function App() {
           <Route path="scheduling" element={<Scheduling />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="organization" element={<OrganizationManagement />} />
+          <Route path="payroll" element={<Payroll />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="profile" element={<Profile />} />
         </Route>
       </Routes>

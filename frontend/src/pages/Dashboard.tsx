@@ -27,7 +27,8 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // In a real implementation, this would be a dedicated dashboard endpoint
+      const response = await api.get('/dashboard/stats');
+      setStats(response.data);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);

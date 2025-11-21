@@ -40,6 +40,9 @@ import schedulingRoutes from './routes/scheduling.routes';
 import usersRoutes from './routes/users.routes';
 import organizationRoutes from './routes/organization.routes';
 import notificationsRoutes from './routes/notifications.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+import reportsRoutes from './routes/reports.routes';
+import payrollRoutes from './routes/payroll.routes';
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -49,6 +52,9 @@ app.use('/api/scheduling', schedulingRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/organization', organizationRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/payroll', payrollRoutes);
 
 app.get('/api', (req: Request, res: Response) => {
   res.json({
@@ -62,7 +68,9 @@ app.get('/api', (req: Request, res: Response) => {
       scheduling: '/api/scheduling',
       payroll: '/api/payroll',
       organization: '/api/organization',
-      notifications: '/api/notifications'
+      notifications: '/api/notifications',
+      dashboard: '/api/dashboard',
+      reports: '/api/reports'
     }
   });
 });

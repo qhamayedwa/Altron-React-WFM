@@ -9,6 +9,7 @@
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
+    "@types/pg": "^8.15.6",
     "accepts": "^2.0.0",
     "acorn": "^8.15.0",
     "acorn-import-phases": "^1.0.4",
