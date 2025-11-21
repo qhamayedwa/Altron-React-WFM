@@ -1,0 +1,143 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var SageVipService_1;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SageVipService = void 0;
+const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
+const prisma_service_1 = require("../prisma/prisma.service");
+let SageVipService = SageVipService_1 = class SageVipService {
+    configService;
+    prisma;
+    logger = new common_1.Logger(SageVipService_1.name);
+    baseUrl;
+    apiKey;
+    username;
+    password;
+    companyDb;
+    constructor(configService, prisma) {
+        this.configService = configService;
+        this.prisma = prisma;
+        this.baseUrl = this.configService.get('SAGE_VIP_BASE_URL') || '';
+        this.apiKey = this.configService.get('SAGE_VIP_API_KEY') || '';
+        this.username = this.configService.get('SAGE_VIP_USERNAME') || '';
+        this.password = this.configService.get('SAGE_VIP_PASSWORD') || '';
+        this.companyDb = this.configService.get('SAGE_VIP_COMPANY_DB') || '';
+    }
+    isConfigured() {
+        return !!(this.baseUrl && this.apiKey && this.username && this.password && this.companyDb);
+    }
+    async testConnection() {
+        if (!this.isConfigured()) {
+            return {
+                success: false,
+                message: 'SAGE VIP integration not configured. Please set environment variables: SAGE_VIP_BASE_URL, SAGE_VIP_API_KEY, SAGE_VIP_USERNAME, SAGE_VIP_PASSWORD, SAGE_VIP_COMPANY_DB',
+            };
+        }
+        this.logger.log('Testing SAGE VIP connection...');
+        return {
+            success: true,
+            message: 'SAGE VIP configuration found (connection test stub - implement actual API call)',
+            config: {
+                baseUrl: this.baseUrl,
+                companyDb: this.companyDb,
+            },
+        };
+    }
+    async syncEmployees() {
+        if (!this.isConfigured()) {
+            throw new Error('SAGE VIP not configured');
+        }
+        this.logger.log('Syncing employees from SAGE VIP...');
+        return {
+            success: true,
+            message: 'Employee sync stub - implement actual SAGE VIP API integration',
+            synced: 0,
+            errors: [],
+        };
+    }
+    async pushTimesheets(startDate, endDate) {
+        if (!this.isConfigured()) {
+            throw new Error('SAGE VIP not configured');
+        }
+        this.logger.log(`Pushing timesheets from ${startDate} to ${endDate}...`);
+        const timeEntries = await this.prisma.time_entries.findMany({
+            where: {
+                clock_in_time: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+                status: 'approved',
+            },
+            include: {
+                users_time_entries_user_idTousers: true,
+            },
+        });
+        return {
+            success: true,
+            message: 'Timesheet push stub - implement actual SAGE VIP API integration',
+            entries_processed: timeEntries.length,
+            errors: [],
+        };
+    }
+    async transferLeave(startDate, endDate) {
+        if (!this.isConfigured()) {
+            throw new Error('SAGE VIP not configured');
+        }
+        this.logger.log(`Transferring leave from ${startDate} to ${endDate}...`);
+        const leaveApps = await this.prisma.leave_applications.findMany({
+            where: {
+                start_date: {
+                    gte: startDate,
+                },
+                end_date: {
+                    lte: endDate,
+                },
+                status: 'Approved',
+            },
+            include: {
+                users_leave_applications_user_idTousers: true,
+                leave_types: true,
+            },
+        });
+        return {
+            success: true,
+            message: 'Leave transfer stub - implement actual SAGE VIP API integration',
+            leave_transferred: leaveApps.length,
+            errors: [],
+        };
+    }
+    async getSyncHistory(limit = 20) {
+        return {
+            success: true,
+            history: [],
+            message: 'Sync history stub - implement logging to database',
+        };
+    }
+    async getStatus() {
+        const configured = this.isConfigured();
+        return {
+            configured,
+            last_sync: null,
+            status: configured ? 'ready' : 'not_configured',
+            message: configured
+                ? 'SAGE VIP integration configured and ready'
+                : 'SAGE VIP integration requires configuration',
+        };
+    }
+};
+exports.SageVipService = SageVipService;
+exports.SageVipService = SageVipService = SageVipService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [config_1.ConfigService,
+        prisma_service_1.PrismaService])
+], SageVipService);
+//# sourceMappingURL=sage-vip.service.js.map

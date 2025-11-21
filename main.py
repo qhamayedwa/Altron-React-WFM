@@ -1,7 +1,12 @@
-from app import create_app
+#!/usr/bin/env python3
+"""
+WFM24/7 - React + NestJS Migration
+This script launches the NestJS server instead of Flask.
+"""
+import subprocess
+import os
+import sys
 
-# Create the app instance for gunicorn
-app = create_app()
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+# Change to server directory and run NestJS
+os.chdir(os.path.join(os.path.dirname(__file__), 'server'))
+subprocess.run(['node', 'dist/src/main.js'])
