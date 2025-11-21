@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource, Or, In, Like, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import { PayCalculation } from '../entities/pay-calculation.entity';
 import { PayCode } from '../entities/pay-code.entity';
 import { PayRule } from '../entities/pay-rule.entity';
@@ -52,6 +52,7 @@ export class PayrollService {
     private userRepo: Repository<User>,
     @InjectRepository(UserRole)
     private userRoleRepo: Repository<UserRole>,
+    private dataSource: DataSource,
   ) {}
 
   // ==================== PAY CODES ====================
@@ -66,33 +67,24 @@ export class PayrollService {
     
     const where: any = {};
     if (codeType === 'absence') {
-      where.is_absence_code = true;
+      where.isAbsenceCode = true;
     } else if (codeType === 'payroll') {
-      where.is_absence_code = false;
+      where.isAbsenceCode = false;
     }
     
     if (statusFilter === 'active') {
-      where.is_active = true;
+      where.isActive = true;
     } else if (statusFilter === 'inactive') {
-      where.is_active = false;
+      where.isActive = false;
     }
 
     const [payCodes, total] = await Promise.all([
       this.payCodeRepo.find({
         where,
-        order: { code: 'asc' },
+        order: { code: 'ASC' },
         skip,
         take: perPage,
-        relations: {
-          users: {
-            select: {
-              id: true,
-              username: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
-        },
+        relations: ['createdBy'],
       }),
       this.payCodeRepo.count({ where }),
     ]);
@@ -109,16 +101,7 @@ export class PayrollService {
   async getPayCodeById(id: number) {
     const payCode = await this.payCodeRepo.findOne({
       where: { id },
-      relations: {
-        users: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
+      relations: ['createdBy'],
     });
 
     if (!payCode) {
@@ -127,12 +110,10 @@ export class PayrollService {
 
     // Get usage statistics
     const timeEntriesCount = await this.timeEntryRepo.count({
-      where: {
-        OR: [
-          { absence_pay_code_id: id },
-          { pay_code_id: id },
-        ],
-      },
+      where: [
+        { absencePayCodeId: id },
+        { payCodeId: id },
+      ],
     });
 
     return {
@@ -151,27 +132,23 @@ export class PayrollService {
       throw new BadRequestException(`Pay code "${dto.code}" already exists`);
     }
 
-    const payCode = await this.payCodeRepo.save(this.payCodeRepo.create({
-        code: dto.code.toUpperCase(),
-        description: dto.description,
-        is_absence_code: dto.is_absence_code,
-        configuration: dto.configuration ? JSON.stringify(dto.configuration) : null,
-        created_by_id: createdById,
-        is_active: true,
-      },
-      relations: {
-        users: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
+    const payCode = this.payCodeRepo.create({
+      code: dto.code.toUpperCase(),
+      description: dto.description,
+      isAbsenceCode: dto.is_absence_code,
+      configuration: dto.configuration ? JSON.stringify(dto.configuration) : undefined,
+      createdById: createdById,
+      isActive: true,
     });
 
-    return payCode;
+    const saved = await this.payCodeRepo.save(payCode);
+
+    const result = await this.payCodeRepo.findOne({
+      where: { id: saved.id },
+      relations: ['createdBy'],
+    });
+
+    return result!;
   }
 
   async updatePayCode(id: number, dto: UpdatePayCodeDto) {
@@ -181,38 +158,32 @@ export class PayrollService {
       throw new NotFoundException(`Pay code with ID ${id} not found`);
     }
 
-    const updated = await this.payCodeRepo.update({
-      where: { id },
-      data: {
-        description: dto.description,
-        is_active: dto.is_active,
-        configuration: dto.configuration ? JSON.stringify(dto.configuration) : undefined,
-        updated_at: new Date(),
-      },
-      relations: {
-        users: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-    });
+    const updateData: any = {};
+    if (dto.description !== undefined) {
+      updateData.description = dto.description;
+    }
+    if (dto.is_active !== undefined) {
+      updateData.isActive = dto.is_active;
+    }
+    if (dto.configuration !== undefined) {
+      updateData.configuration = JSON.stringify(dto.configuration);
+    }
 
-    return updated;
+    await this.payCodeRepo.update(id, updateData);
+
+    return this.payCodeRepo.findOne({
+      where: { id },
+      relations: ['createdBy'],
+    });
   }
 
   async deletePayCode(id: number) {
     // Check if code is used in any time entries
     const entriesUsingCode = await this.timeEntryRepo.count({
-      where: {
-        OR: [
-          { absence_pay_code_id: id },
-          { pay_code_id: id },
-        ],
-      },
+      where: [
+        { absencePayCodeId: id },
+        { payCodeId: id },
+      ],
     });
 
     if (entriesUsingCode > 0) {
@@ -221,7 +192,7 @@ export class PayrollService {
       );
     }
 
-    await this.payCodeRepo.delete({ where: { id } });
+    await this.payCodeRepo.delete(id);
     return { message: 'Pay code deleted successfully' };
   }
 
@@ -232,27 +203,25 @@ export class PayrollService {
       throw new NotFoundException(`Pay code with ID ${id} not found`);
     }
 
-    const updated = await this.payCodeRepo.update({
-      where: { id },
-      data: {
-        is_active: !payCode.is_active,
-        updated_at: new Date(),
-      },
+    await this.payCodeRepo.update(id, {
+      isActive: !payCode.isActive,
     });
 
+    const updated = await this.payCodeRepo.findOne({ where: { id } });
+
     return {
-      is_active: updated.is_active,
-      message: `Pay code "${updated.code}" ${updated.is_active ? 'activated' : 'deactivated'}`,
+      is_active: updated!.isActive,
+      message: `Pay code "${updated!.code}" ${updated!.isActive ? 'activated' : 'deactivated'}`,
     };
   }
 
   async getAbsenceCodes() {
     const codes = await this.payCodeRepo.find({
       where: {
-        is_absence_code: true,
-        is_active: true,
+        isAbsenceCode: true,
+        isActive: true,
       },
-      order: { code: 'asc' },
+      order: { code: 'ASC' },
     });
 
     return codes.map((code) => {
@@ -280,27 +249,18 @@ export class PayrollService {
     
     const where: any = {};
     if (statusFilter === 'active') {
-      where.is_active = true;
+      where.isActive = true;
     } else if (statusFilter === 'inactive') {
-      where.is_active = false;
+      where.isActive = false;
     }
 
     const [payRules, total] = await Promise.all([
       this.payRuleRepo.find({
         where,
-        order: [{ priority: 'asc' }, { created_at: 'desc' }],
+        order: { priority: 'ASC', createdAt: 'DESC' },
         skip,
         take: perPage,
-        relations: {
-          users: {
-            select: {
-              id: true,
-              username: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
-        },
+        relations: ['createdBy'],
       }),
       this.payRuleRepo.count({ where }),
     ]);
@@ -317,16 +277,7 @@ export class PayrollService {
   async getPayRuleById(id: number) {
     const payRule = await this.payRuleRepo.findOne({
       where: { id },
-      relations: {
-        users: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
+      relations: ['createdBy'],
     });
 
     if (!payRule) {
@@ -355,28 +306,22 @@ export class PayrollService {
       throw new BadRequestException('At least one action must be specified');
     }
 
-    const payRule = await this.payRuleRepo.save(this.payRuleRepo.create({
-        name: dto.name,
-        description: dto.description || '',
-        priority: dto.priority,
-        conditions: JSON.stringify(dto.conditions),
-        actions: JSON.stringify(dto.actions),
-        created_by_id: createdById,
-        is_active: true,
-      },
-      relations: {
-        users: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
+    const payRule = this.payRuleRepo.create({
+      name: dto.name,
+      description: dto.description || '',
+      priority: dto.priority,
+      conditions: JSON.stringify(dto.conditions),
+      actions: JSON.stringify(dto.actions),
+      createdById: createdById,
+      isActive: true,
     });
 
-    return payRule;
+    const saved = await this.payRuleRepo.save(payRule);
+
+    return this.payRuleRepo.findOne({
+      where: { id: saved.id },
+      relations: ['createdBy'],
+    });
   }
 
   async updatePayRule(id: number, dto: UpdatePayRuleDto) {
@@ -395,30 +340,32 @@ export class PayrollService {
       throw new BadRequestException('At least one action must be specified');
     }
 
-    const updated = await this.payRuleRepo.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        priority: dto.priority,
-        is_active: dto.is_active,
-        conditions: dto.conditions ? JSON.stringify(dto.conditions) : undefined,
-        actions: dto.actions ? JSON.stringify(dto.actions) : undefined,
-        updated_at: new Date(),
-      },
-      relations: {
-        users: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-    });
+    const updateData: any = {};
+    if (dto.name !== undefined) {
+      updateData.name = dto.name;
+    }
+    if (dto.description !== undefined) {
+      updateData.description = dto.description;
+    }
+    if (dto.priority !== undefined) {
+      updateData.priority = dto.priority;
+    }
+    if (dto.is_active !== undefined) {
+      updateData.isActive = dto.is_active;
+    }
+    if (dto.conditions !== undefined) {
+      updateData.conditions = JSON.stringify(dto.conditions);
+    }
+    if (dto.actions !== undefined) {
+      updateData.actions = JSON.stringify(dto.actions);
+    }
 
-    return updated;
+    await this.payRuleRepo.update(id, updateData);
+
+    return this.payRuleRepo.findOne({
+      where: { id },
+      relations: ['createdBy'],
+    });
   }
 
   async deletePayRule(id: number) {
@@ -431,9 +378,7 @@ export class PayrollService {
     // Check if rule is used in any calculations (search in pay_components JSON)
     const calculationsCount = await this.payCalculationRepo.count({
       where: {
-        pay_components: {
-          contains: payRule.name,
-        },
+        payComponents: Like(`%${payRule.name}%`),
       },
     });
 
@@ -443,7 +388,7 @@ export class PayrollService {
       );
     }
 
-    await this.payRuleRepo.delete({ where: { id } });
+    await this.payRuleRepo.delete(id);
     return { message: 'Pay rule deleted successfully' };
   }
 
@@ -454,33 +399,39 @@ export class PayrollService {
       throw new NotFoundException(`Pay rule with ID ${id} not found`);
     }
 
-    const updated = await this.payRuleRepo.update({
-      where: { id },
-      data: {
-        is_active: !payRule.is_active,
-        updated_at: new Date(),
-      },
+    await this.payRuleRepo.update(id, {
+      isActive: !payRule.isActive,
     });
 
+    const updated = await this.payRuleRepo.findOne({ where: { id } });
+
     return {
-      is_active: updated.is_active,
-      message: `Rule "${updated.name}" ${updated.is_active ? 'activated' : 'deactivated'}`,
+      is_active: updated!.isActive,
+      message: `Rule "${updated!.name}" ${updated!.isActive ? 'activated' : 'deactivated'}`,
     };
   }
 
   async reorderPayRules(ruleOrders: Array<{ id: number; priority: number }>) {
     // Update priorities in transaction
-    await this.prisma.$transaction(
-      ruleOrders.map((order) =>
-        this.payRuleRepo.update({
-          where: { id: order.id },
-          data: {
-            priority: order.priority,
-            updated_at: new Date(),
-          },
-        })
-      )
-    );
+    const queryRunner = this.dataSource.createQueryRunner();
+    
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const order of ruleOrders) {
+        await queryRunner.manager.update(PayRule, order.id, {
+          priority: order.priority,
+        });
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
 
     return { message: 'Rule priorities updated successfully' };
   }
@@ -494,7 +445,7 @@ export class PayrollService {
   ): boolean {
     // Day of week condition
     if (conditions.day_of_week) {
-      const dayOfWeek = new Date(timeEntry.clock_in_time).getDay();
+      const dayOfWeek = new Date(timeEntry.clockInTime).getDay();
       if (!conditions.day_of_week.includes(dayOfWeek)) {
         return false;
       }
@@ -502,7 +453,7 @@ export class PayrollService {
 
     // Time range condition
     if (conditions.time_range) {
-      const hour = new Date(timeEntry.clock_in_time).getHours();
+      const hour = new Date(timeEntry.clockInTime).getHours();
       const { start, end } = conditions.time_range;
       
       // Handle overnight shifts (e.g., 22:00 to 6:00)
@@ -527,7 +478,7 @@ export class PayrollService {
 
     // Employee IDs
     if (conditions.employee_ids && conditions.employee_ids.length > 0) {
-      if (!conditions.employee_ids.includes(timeEntry.user_id)) {
+      if (!conditions.employee_ids.includes(timeEntry.userId)) {
         return false;
       }
     }
@@ -589,12 +540,12 @@ export class PayrollService {
   }
 
   private calculateEntryHours(timeEntry: any): number {
-    if (!timeEntry.clock_in_time || !timeEntry.clock_out_time) {
+    if (!timeEntry.clockInTime || !timeEntry.clockOutTime) {
       return 0;
     }
 
-    const clockIn = new Date(timeEntry.clock_in_time);
-    const clockOut = new Date(timeEntry.clock_out_time);
+    const clockIn = new Date(timeEntry.clockInTime);
+    const clockOut = new Date(timeEntry.clockOutTime);
     const diffMs = clockOut.getTime() - clockIn.getTime();
     
     return diffMs / (1000 * 60 * 60); // Convert to hours
@@ -660,36 +611,24 @@ export class PayrollService {
 
     // Build query for time entries
     const where: any = {
-      clock_in_time: {
-        gte: startDate,
-        lte: new Date(endDate.getTime() + 24 * 60 * 60 * 1000), // Include end date
-      },
+      clockInTime: Between(startDate, new Date(endDate.getTime() + 24 * 60 * 60 * 1000)),
       status: 'Closed',
     };
 
     if (dto.employee_ids && dto.employee_ids.length > 0) {
-      where.user_id = { in: dto.employee_ids };
+      where.userId = In(dto.employee_ids);
     }
 
     // Get all time entries and active pay rules
     const [timeEntries, payRules] = await Promise.all([
       this.timeEntryRepo.find({
         where,
-        relations: {
-          users_time_entries_user_idTousers: {
-            select: {
-              id: true,
-              username: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
-        },
-        order: { clock_in_time: 'asc' },
+        relations: ['user'],
+        order: { clockInTime: 'ASC' },
       }),
       this.payRuleRepo.find({
-        where: { is_active: true },
-        order: { priority: 'asc' },
+        where: { isActive: true },
+        order: { priority: 'ASC' },
       }),
     ]);
 
@@ -700,7 +639,7 @@ export class PayrollService {
     // Group entries by employee
     const entriesByEmployee = new Map<number, any[]>();
     for (const entry of timeEntries) {
-      const userId = entry.user_id;
+      const userId = entry.userId;
       if (!entriesByEmployee.has(userId)) {
         entriesByEmployee.set(userId, []);
       }
@@ -711,22 +650,16 @@ export class PayrollService {
     const employeeResults: Record<number, PayCalculationResult> = {};
     
     for (const [userId, userEntries] of entriesByEmployee) {
-      const user = userEntries[0].users_time_entries_user_idTousers;
+      const user = userEntries[0].user;
       
       // Get user roles from user_roles table
       const userRoles = await this.userRoleRepo.find({
-        where: { user_id: userId },
-        relations: {
-          roles: {
-            select: {
-              name: true,
-            },
-          },
-        },
+        where: { userId: userId },
+        relations: ['role'],
       });
       
       const context = {
-        user_roles: userRoles.map((ur) => ur.roles.name),
+        user_roles: userRoles.map((ur) => ur.role.name),
         total_entries: userEntries.length,
       };
 
@@ -804,23 +737,23 @@ export class PayrollService {
       for (const [userId, result] of Object.entries(employeeResults)) {
         const userEntries = entriesByEmployee.get(Number(userId))!;
         
-        const calculation = await this.payCalculationRepo.save(this.payCalculationRepo.create({
-            user_id: Number(userId),
-            time_entry_id: userEntries[0].id,
-            pay_period_start: startDate,
-            pay_period_end: endDate,
-            total_hours: result.total_hours,
-            regular_hours: result.summary.regular_hours,
-            overtime_hours: result.summary.overtime_hours,
-            double_time_hours: result.summary.double_time_hours,
-            total_allowances: result.summary.total_allowances,
-            pay_components: JSON.stringify(result.pay_components),
-            calculated_by_id: calculatedById,
-            calculated_at: new Date(),
-          },
+        const calculation = this.payCalculationRepo.create({
+          userId: Number(userId),
+          timeEntryId: userEntries[0].id,
+          payPeriodStart: startDate,
+          payPeriodEnd: endDate,
+          totalHours: result.total_hours,
+          regularHours: result.summary.regular_hours,
+          overtimeHours: result.summary.overtime_hours,
+          doubleTimeHours: result.summary.double_time_hours,
+          totalAllowances: result.summary.total_allowances,
+          payComponents: JSON.stringify(result.pay_components),
+          calculatedById: calculatedById,
+          calculatedAt: new Date(),
         });
 
-        savedCalculations.push(calculation);
+        const saved = await this.payCalculationRepo.save(calculation);
+        savedCalculations.push(saved);
       }
     }
 
@@ -858,31 +791,16 @@ export class PayrollService {
     
     const where: any = {};
     if (employeeId) {
-      where.user_id = employeeId;
+      where.userId = employeeId;
     }
 
     const [calculations, total] = await Promise.all([
       this.payCalculationRepo.find({
         where,
-        order: { calculated_at: 'desc' },
+        order: { calculatedAt: 'DESC' },
         skip,
         take: perPage,
-        relations: {
-          users_pay_calculations_user_idTousers: {
-            select: {
-              id: true,
-              username: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
-          users_pay_calculations_calculated_by_idTousers: {
-            select: {
-              id: true,
-              username: true,
-            },
-          },
-        },
+        relations: ['user', 'calculatedBy'],
       }),
       this.payCalculationRepo.count({ where }),
     ]);

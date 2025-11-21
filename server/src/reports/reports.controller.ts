@@ -40,7 +40,7 @@ export class ReportsController {
     const parsedDeptId = departmentId ? parseInt(departmentId, 10) : undefined;
 
     const report = await this.reportsService.getTimeEntryReport(start, end, parsedUserId, parsedDeptId);
-    const headers = ['user_id', 'username', 'clock_in_time', 'clock_out_time', 'total_hours', 'status'];
+    const headers = ['userId', 'clockInTime', 'clockOutTime', 'status'];
     return this.reportsService.convertToCSV(report.entries, headers);
   }
 
@@ -76,7 +76,7 @@ export class ReportsController {
     const parsedDeptId = departmentId ? parseInt(departmentId, 10) : undefined;
 
     const report = await this.reportsService.getLeaveReport(start, end, parsedUserId, parsedDeptId);
-    const headers = ['user_id', 'username', 'start_date', 'end_date', 'status', 'reason'];
+    const headers = ['userId', 'startDate', 'endDate', 'status', 'reason'];
     return this.reportsService.convertToCSV(report.applications, headers);
   }
 

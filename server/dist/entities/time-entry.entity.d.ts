@@ -1,0 +1,33 @@
+import { User } from './user.entity';
+import { PayCode } from './pay-code.entity';
+import { PayCalculation } from './pay-calculation.entity';
+export declare class TimeEntry {
+    id: number;
+    userId: number;
+    clockInTime: Date;
+    clockOutTime?: Date;
+    status: string;
+    notes?: string;
+    approvedByManagerId?: number;
+    isOvertimeApproved: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    clockInLatitude?: number;
+    clockInLongitude?: number;
+    clockOutLatitude?: number;
+    clockOutLongitude?: number;
+    breakStartTime?: Date;
+    breakEndTime?: Date;
+    totalBreakMinutes?: number;
+    absencePayCodeId?: number;
+    absenceReason?: string;
+    absenceApprovedById?: number;
+    absenceApprovedAt?: Date;
+    payCodeId?: number;
+    user: User;
+    approvedByManager?: User;
+    absenceApprovedBy?: User;
+    payCode?: PayCode;
+    absencePayCode?: PayCode;
+    payCalculations: PayCalculation[];
+}

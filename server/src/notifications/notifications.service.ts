@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In, IsNull, MoreThan, LessThan } from 'typeorm';
 import { Department } from '../entities/department.entity';
 import { LeaveApplication } from '../entities/leave-application.entity';
 import { LeaveType } from '../entities/leave-type.entity';
@@ -35,35 +35,53 @@ export class NotificationsService {
     });
 
     if (!notificationType) {
-      notificationType = await this.notificationTypeRepo.save(this.notificationTypeRepo.create({
+      notificationType = await this.notificationTypeRepo.save(
+        this.notificationTypeRepo.create({
           name: dto.type_name,
-          display_name: dto.type_name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+          displayName: dto.type_name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
           icon: 'bell',
           color: 'primary',
-          is_active: true,
-        },
-      });
+          isActive: true,
+        }),
+      );
     }
 
-    const expiresAt = dto.expires_hours
-      ? new Date(Date.now() + dto.expires_hours * 60 * 60 * 1000)
-      : null;
+    const notificationData: any = {
+      userId: dto.user_id,
+      typeId: notificationType.id,
+      title: dto.title,
+      message: dto.message,
+      priority: dto.priority || NotificationPriority.MEDIUM,
+      isRead: false,
+    };
 
-    const notification = await this.notificationRepo.save(this.notificationRepo.create({
-        user_id: dto.user_id,
-        type_id: notificationType.id,
-        title: dto.title,
-        message: dto.message,
-        action_url: dto.action_url,
-        action_text: dto.action_text,
-        priority: dto.priority || NotificationPriority.MEDIUM,
-        category: dto.category,
-        related_entity_type: dto.related_entity_type,
-        related_entity_id: dto.related_entity_id,
-        expires_at: expiresAt,
-        is_read: false,
-      },
-    });
+    if (dto.action_url) {
+      notificationData.actionUrl = dto.action_url;
+    }
+
+    if (dto.action_text) {
+      notificationData.actionText = dto.action_text;
+    }
+
+    if (dto.category) {
+      notificationData.category = dto.category;
+    }
+
+    if (dto.related_entity_type) {
+      notificationData.relatedEntityType = dto.related_entity_type;
+    }
+
+    if (dto.related_entity_id) {
+      notificationData.relatedEntityId = dto.related_entity_id;
+    }
+
+    if (dto.expires_hours) {
+      notificationData.expiresAt = new Date(Date.now() + dto.expires_hours * 60 * 60 * 1000);
+    }
+
+    const notification = await this.notificationRepo.save(
+      this.notificationRepo.create(notificationData),
+    );
 
     return { success: true, notification };
   }
@@ -72,37 +90,37 @@ export class NotificationsService {
     const leaveApp = await this.leaveApplicationRepo.findOne({
       where: { id: leaveApplicationId },
       relations: {
-        users_leave_applications_user_idTousers: true,
-        leave_types: true,
+        user: true,
+        leaveType: true,
       },
     });
 
-    if (!leaveApp || !leaveApp.users_leave_applications_user_idTousers.department_id) {
+    if (!leaveApp || !leaveApp.user.departmentId) {
       return null;
     }
 
     const department = await this.departmentRepo.findOne({
-      where: { id: leaveApp.users_leave_applications_user_idTousers.department_id },
+      where: { id: leaveApp.user.departmentId },
     });
 
     if (!department) {
       return null;
     }
 
-    const managerIds = [department.manager_id, department.deputy_manager_id].filter((id): id is number => id !== null);
+    const managerIds = [department.managerId, department.deputyManagerId].filter((id): id is number => id !== null);
 
-    const startDate = new Date(leaveApp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endDate = new Date(leaveApp.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startDate = new Date(leaveApp.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDate = new Date(leaveApp.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-    const totalDays = Math.ceil((leaveApp.end_date.getTime() - leaveApp.start_date.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const employeeName = `${leaveApp.users_leave_applications_user_idTousers.first_name || ''} ${leaveApp.users_leave_applications_user_idTousers.last_name || ''}`.trim() || leaveApp.users_leave_applications_user_idTousers.username;
+    const totalDays = Math.ceil((leaveApp.endDate.getTime() - leaveApp.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const employeeName = `${leaveApp.user.firstName || ''} ${leaveApp.user.lastName || ''}`.trim() || leaveApp.user.username;
 
     for (const managerId of managerIds) {
       await this.createNotification({
         user_id: managerId,
         type_name: 'leave_approval_required',
         title: 'Leave Approval Required',
-        message: `${employeeName} has requested ${totalDays} days of ${leaveApp.leave_types?.name || 'leave'} from ${startDate} to ${endDate}`,
+        message: `${employeeName} has requested ${totalDays} days of ${leaveApp.leaveType?.name || 'leave'} from ${startDate} to ${endDate}`,
         action_url: '/leave/approvals',
         action_text: 'Review Request',
         priority: NotificationPriority.HIGH,
@@ -120,8 +138,8 @@ export class NotificationsService {
     const leaveApp = await this.leaveApplicationRepo.findOne({
       where: { id: leaveApplicationId },
       relations: {
-        users_leave_applications_user_idTousers: true,
-        leave_types: true,
+        user: true,
+        leaveType: true,
       },
     });
 
@@ -129,8 +147,8 @@ export class NotificationsService {
       return null;
     }
 
-    const startDate = new Date(leaveApp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endDate = new Date(leaveApp.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startDate = new Date(leaveApp.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDate = new Date(leaveApp.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
     const statusMessages: Record<string, string> = {
       Approved: `Your leave request from ${startDate} to ${endDate} has been approved.`,
@@ -145,7 +163,7 @@ export class NotificationsService {
     };
 
     await this.createNotification({
-      user_id: leaveApp.user_id,
+      user_id: leaveApp.userId,
       type_name: 'leave_status_update',
       title: `Leave Request ${status}`,
       message: statusMessages[status] || `Your leave request status has been updated to ${status}.`,
@@ -164,67 +182,64 @@ export class NotificationsService {
   async getUserNotifications(userId: number, limit = 50, unreadOnly = false, category?: NotificationCategory) {
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      relations: { user_roles: { relations: { roles: true } } },
+      relations: {
+        userRoles: {
+          role: true,
+        },
+      },
     });
 
     if (!user) {
       return [];
     }
 
-    const isManager = user.user_roles.some((ur: any) => ur.roles.name === 'Manager');
+    const isManager = user.userRoles?.some((ur: any) => ur.role?.name === 'Manager');
 
-    const whereConditions: any = {
-      OR: [{ user_id: userId }],
-      expires_at: {
-        OR: [{ equals: null }, { gt: new Date() }],
-      },
-    };
+    const queryBuilder = this.notificationRepo.createQueryBuilder('notification')
+      .leftJoinAndSelect('notification.notificationType', 'notificationType')
+      .leftJoinAndSelect('notification.user', 'user')
+      .where('notification.userId = :userId', { userId });
 
-    if (isManager && user.department_id) {
+    if (isManager && user.departmentId) {
       const departmentEmployees = await this.userRepo.find({
         where: {
-          department_id: user.department_id,
-          is_active: true,
+          departmentId: user.departmentId,
+          isActive: true,
         },
-        select: { id: true },
+        select: ['id'],
       });
 
       const employeeIds = departmentEmployees.map((emp) => emp.id);
 
       if (employeeIds.length > 0) {
-        whereConditions.OR.push({
-          AND: [
-            { user_id: { in: employeeIds } },
-            { category: { in: ['leave', 'timecard', 'attendance', 'urgent_approval'] } },
-          ],
-        });
+        queryBuilder.orWhere(
+          '(notification.userId IN (:...employeeIds) AND notification.category IN (:...categories))',
+          {
+            employeeIds,
+            categories: ['leave', 'timecard', 'attendance', 'urgent_approval'],
+          },
+        );
       }
     }
 
+    queryBuilder.andWhere(
+      '(notification.expiresAt IS NULL OR notification.expiresAt > :now)',
+      { now: new Date() },
+    );
+
     if (unreadOnly) {
-      whereConditions.is_read = false;
+      queryBuilder.andWhere('notification.isRead = :isRead', { isRead: false });
     }
 
     if (category) {
-      whereConditions.category = category;
+      queryBuilder.andWhere('notification.category = :category', { category });
     }
 
-    const notifications = await this.notificationRepo.find({
-      where: whereConditions,
-      relations: {
-        notification_types: true,
-        users: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-      order: { created_at: 'desc' },
-      take: limit,
-    });
+    queryBuilder
+      .orderBy('notification.createdAt', 'DESC')
+      .take(limit);
+
+    const notifications = await queryBuilder.getMany();
 
     return notifications;
   }
@@ -232,47 +247,52 @@ export class NotificationsService {
   async getUnreadCount(userId: number) {
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      relations: { user_roles: { relations: { roles: true } } },
+      relations: {
+        userRoles: {
+          role: true,
+        },
+      },
     });
 
     if (!user) {
       return 0;
     }
 
-    const isManager = user.user_roles.some((ur: any) => ur.roles.name === 'Manager');
+    const isManager = user.userRoles?.some((ur: any) => ur.role?.name === 'Manager');
 
-    const whereConditions: any = {
-      OR: [{ user_id: userId }],
-      is_read: false,
-      expires_at: {
-        OR: [{ equals: null }, { gt: new Date() }],
-      },
-    };
+    const queryBuilder = this.notificationRepo.createQueryBuilder('notification')
+      .where('notification.userId = :userId', { userId })
+      .andWhere('notification.isRead = :isRead', { isRead: false });
 
-    if (isManager && user.department_id) {
+    if (isManager && user.departmentId) {
       const departmentEmployees = await this.userRepo.find({
         where: {
-          department_id: user.department_id,
-          is_active: true,
+          departmentId: user.departmentId,
+          isActive: true,
         },
-        select: { id: true },
+        select: ['id'],
       });
 
       const employeeIds = departmentEmployees.map((emp) => emp.id);
 
       if (employeeIds.length > 0) {
-        whereConditions.OR.push({
-          AND: [
-            { user_id: { in: employeeIds } },
-            { category: { in: ['leave', 'timecard', 'attendance', 'urgent_approval'] } },
-          ],
-        });
+        queryBuilder.orWhere(
+          '(notification.userId IN (:...employeeIds) AND notification.category IN (:...categories) AND notification.isRead = :isRead)',
+          {
+            employeeIds,
+            categories: ['leave', 'timecard', 'attendance', 'urgent_approval'],
+            isRead: false,
+          },
+        );
       }
     }
 
-    const count = await this.notificationRepo.count({
-      where: whereConditions,
-    });
+    queryBuilder.andWhere(
+      '(notification.expiresAt IS NULL OR notification.expiresAt > :now)',
+      { now: new Date() },
+    );
+
+    const count = await queryBuilder.getCount();
 
     return count;
   }
@@ -281,7 +301,7 @@ export class NotificationsService {
     const notification = await this.notificationRepo.findOne({
       where: {
         id: notificationId,
-        user_id: userId,
+        userId: userId,
       },
     });
 
@@ -289,77 +309,82 @@ export class NotificationsService {
       throw new NotFoundException('Notification not found');
     }
 
-    const updated = await this.notificationRepo.update({
-      where: { id: notificationId },
-      data: {
-        is_read: true,
-        read_at: new Date(),
+    await this.notificationRepo.update(
+      { id: notificationId },
+      {
+        isRead: true,
+        readAt: new Date(),
       },
+    );
+
+    const updated = await this.notificationRepo.findOne({
+      where: { id: notificationId },
     });
 
     return { success: true, notification: updated };
   }
 
   async markAllAsRead(userId: number) {
-    const result = await this.prisma.notifications.updateMany({
-      where: {
-        user_id: userId,
-        is_read: false,
+    const result = await this.notificationRepo.update(
+      {
+        userId: userId,
+        isRead: false,
       },
-      data: {
-        is_read: true,
-        read_at: new Date(),
+      {
+        isRead: true,
+        readAt: new Date(),
       },
-    });
+    );
 
-    return { success: true, count: result.count };
+    return { success: true, count: result.affected || 0 };
   }
 
   async cleanupExpired() {
-    const result = await this.prisma.notifications.deleteMany({
-      where: {
-        expires_at: {
-          lt: new Date(),
-        },
-      },
+    const result = await this.notificationRepo.delete({
+      expiresAt: LessThan(new Date()),
     });
 
-    return { success: true, count: result.count };
+    return { success: true, count: result.affected || 0 };
   }
 
   async getNotificationTypes() {
     return this.notificationTypeRepo.find({
-      where: { is_active: true },
+      where: { isActive: true },
     });
   }
 
   async getUserPreferences(userId: number) {
     return this.notificationPreferenceRepo.find({
-      where: { user_id: userId },
-      relations: { notification_types: true },
+      where: { userId: userId },
+      relations: { notificationType: true },
     });
   }
 
   async updatePreference(userId: number, typeId: number, preferences: any) {
     const existing = await this.notificationPreferenceRepo.findOne({
       where: {
-        user_id: userId,
-        type_id: typeId,
+        userId: userId,
+        typeId: typeId,
       },
     });
 
     if (existing) {
-      return this.notificationPreferenceRepo.update({
+      await this.notificationPreferenceRepo.update(
+        { id: existing.id },
+        preferences,
+      );
+
+      return this.notificationPreferenceRepo.findOne({
         where: { id: existing.id },
-        data: preferences,
       });
     } else {
-      return this.notificationPreferenceRepo.save(this.notificationPreferenceRepo.create({
-          user_id: userId,
-          type_id: typeId,
+      return this.notificationPreferenceRepo.save(
+        this.notificationPreferenceRepo.create({
+          userId: userId,
+          typeId: typeId,
           ...preferences,
-        },
-      });
+        }),
+      );
     }
   }
 }

@@ -1,52 +1,57 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { TimeEntry } from '../entities/time-entry.entity';
 import { LeaveApplication } from '../entities/leave-application.entity';
 import { LeaveBalance } from '../entities/leave-balance.entity';
 import { User } from '../entities/user.entity';
+import { DashboardConfig } from '../entities/dashboard-config.entity';
+import { Department } from '../entities/department.entity';
 
 @Injectable()
 export class DashboardService {
   constructor(
+    @InjectRepository(DashboardConfig)
+    private dashboardConfigRepo: Repository<DashboardConfig>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
     @InjectRepository(TimeEntry)
     private timeEntryRepo: Repository<TimeEntry>,
     @InjectRepository(LeaveApplication)
     private leaveApplicationRepo: Repository<LeaveApplication>,
     @InjectRepository(LeaveBalance)
     private leaveBalanceRepo: Repository<LeaveBalance>,
-    @InjectRepository(User)
-    private userRepo: Repository<User>,
+    @InjectRepository(Department)
+    private departmentRepo: Repository<Department>,
   ) {}
 
   async getDashboardStats(userId: number, role: string) {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
     const timeEntriesToday = await this.timeEntryRepo.find({
       where: {
-        user_id: userId,
-        clock_in_time: {
-          gte: new Date(today.setHours(0, 0, 0, 0)),
-        },
+        userId: userId,
+        clockInTime: MoreThanOrEqual(today),
       },
+      order: { clockInTime: 'DESC' },
     });
 
     const leaveApplications = await this.leaveApplicationRepo.find({
       where: {
-        user_id: userId,
+        userId: userId,
       },
-      order: { created_at: 'desc' },
+      relations: ['leaveType'],
+      order: { createdAt: 'DESC' },
       take: 5,
     });
 
     const leaveBalances = await this.leaveBalanceRepo.find({
       where: {
-        user_id: userId,
+        userId: userId,
       },
-      relations: {
-        leave_types: true,
-      },
+      relations: ['leaveType'],
     });
 
     let pendingApprovals = 0;
@@ -69,39 +74,34 @@ export class DashboardService {
     return {
       success: true,
       stats: {
-        time_entries_today: timeEntriesToday.length,
-        pending_approvals: pendingApprovals,
-        leave_balances: leaveBalances.length,
-        recent_leave_applications: leaveApplications.length,
+        timeEntriesToday: timeEntriesToday.length,
+        pendingApprovals: pendingApprovals,
+        leaveBalances: leaveBalances.length,
+        recentLeaveApplications: leaveApplications.length,
       },
-      recent_activities: {
-        time_entries: timeEntriesToday.slice(0, 5),
-        leave_applications: leaveApplications,
+      recentActivities: {
+        timeEntries: timeEntriesToday.slice(0, 5),
+        leaveApplications: leaveApplications,
       },
-      leave_balances: leaveBalances,
+      leaveBalances: leaveBalances,
     };
   }
 
   async getPendingApprovals(role: string) {
     if (!['Manager', 'Admin', 'Super User', 'system_super_admin'].includes(role)) {
-      return { success: true, pending_time_entries: [], pending_leave_applications: [] };
+      return { 
+        success: true, 
+        pendingTimeEntries: [], 
+        pendingLeaveApplications: [] 
+      };
     }
 
     const pendingTimeEntries = await this.timeEntryRepo.find({
       where: {
         status: 'pending',
       },
-      relations: {
-        users_time_entries_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-      order: { clock_in_time: 'desc' },
+      relations: ['user'],
+      order: { clockInTime: 'DESC' },
       take: 10,
     });
 
@@ -109,25 +109,15 @@ export class DashboardService {
       where: {
         status: 'pending',
       },
-      relations: {
-        users_leave_applications_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-        leave_types: true,
-      },
-      order: { created_at: 'desc' },
+      relations: ['user', 'leaveType'],
+      order: { createdAt: 'DESC' },
       take: 10,
     });
 
     return {
       success: true,
-      pending_time_entries: pendingTimeEntries,
-      pending_leave_applications: pendingLeaveApplications,
+      pendingTimeEntries: pendingTimeEntries,
+      pendingLeaveApplications: pendingLeaveApplications,
     };
   }
 
@@ -136,16 +126,16 @@ export class DashboardService {
 
     const recentTimeEntries = await this.timeEntryRepo.find({
       where: {
-        user_id: userId,
+        userId: userId,
       },
-      order: { clock_in_time: 'desc' },
+      order: { clockInTime: 'DESC' },
       take: 5,
     });
 
     for (const entry of recentTimeEntries) {
       activities.push({
         type: 'time_entry',
-        timestamp: entry.clock_in_time,
+        timestamp: entry.clockInTime,
         description: `Clocked ${entry.status}`,
         data: entry,
       });
@@ -153,16 +143,17 @@ export class DashboardService {
 
     const recentLeaveApps = await this.leaveApplicationRepo.find({
       where: {
-        user_id: userId,
+        userId: userId,
       },
-      order: { created_at: 'desc' },
+      relations: ['leaveType'],
+      order: { createdAt: 'DESC' },
       take: 5,
     });
 
     for (const app of recentLeaveApps) {
       activities.push({
         type: 'leave_application',
-        timestamp: app.created_at || new Date(),
+        timestamp: app.createdAt || new Date(),
         description: `Leave application ${app.status}`,
         data: app,
       });
@@ -173,6 +164,148 @@ export class DashboardService {
     return {
       success: true,
       activities: activities.slice(0, 10),
+    };
+  }
+
+  async getDashboardConfig(userId: number) {
+    const config = await this.dashboardConfigRepo.findOne({
+      where: {
+        createdBy: userId,
+        isActive: true,
+      },
+      order: { updatedAt: 'DESC' },
+    });
+
+    return {
+      success: true,
+      config: config,
+    };
+  }
+
+  async saveDashboardConfig(userId: number, configName: string, configData: any) {
+    await this.dashboardConfigRepo.update(
+      { createdBy: userId, isActive: true },
+      { isActive: false }
+    );
+
+    const newConfig = this.dashboardConfigRepo.create({
+      configName,
+      configData: JSON.stringify(configData),
+      createdBy: userId,
+      isActive: true,
+    });
+
+    const savedConfig = await this.dashboardConfigRepo.save(newConfig);
+
+    return {
+      success: true,
+      config: savedConfig,
+    };
+  }
+
+  async getTeamStats(userId: number) {
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      relations: ['department'],
+    });
+
+    if (!user || !user.departmentId) {
+      return {
+        success: false,
+        message: 'User has no department assigned',
+      };
+    }
+
+    const teamMembers = await this.userRepo
+      .createQueryBuilder('user')
+      .where('user.departmentId = :departmentId', { departmentId: user.departmentId })
+      .andWhere('user.isActive = :isActive', { isActive: true })
+      .getCount();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const teamTimeEntriesToday = await this.timeEntryRepo
+      .createQueryBuilder('timeEntry')
+      .innerJoin('timeEntry.user', 'user')
+      .where('user.departmentId = :departmentId', { departmentId: user.departmentId })
+      .andWhere('timeEntry.clockInTime >= :today', { today })
+      .getCount();
+
+    const teamPendingLeave = await this.leaveApplicationRepo
+      .createQueryBuilder('leaveApp')
+      .innerJoin('leaveApp.user', 'user')
+      .where('user.departmentId = :departmentId', { departmentId: user.departmentId })
+      .andWhere('leaveApp.status = :status', { status: 'pending' })
+      .getCount();
+
+    return {
+      success: true,
+      stats: {
+        teamMembers,
+        activeToday: teamTimeEntriesToday,
+        pendingLeaveRequests: teamPendingLeave,
+      },
+    };
+  }
+
+  async getAttendanceSummary(userId: number, startDate: Date, endDate: Date) {
+    const timeEntries = await this.timeEntryRepo
+      .createQueryBuilder('timeEntry')
+      .where('timeEntry.userId = :userId', { userId })
+      .andWhere('timeEntry.clockInTime >= :startDate', { startDate })
+      .andWhere('timeEntry.clockInTime <= :endDate', { endDate })
+      .orderBy('timeEntry.clockInTime', 'DESC')
+      .getMany();
+
+    let totalHours = 0;
+    let totalDays = 0;
+
+    for (const entry of timeEntries) {
+      if (entry.clockOutTime) {
+        const hours = (entry.clockOutTime.getTime() - entry.clockInTime.getTime()) / (1000 * 60 * 60);
+        totalHours += hours;
+        totalDays++;
+      }
+    }
+
+    return {
+      success: true,
+      summary: {
+        totalDays,
+        totalHours: Math.round(totalHours * 100) / 100,
+        averageHoursPerDay: totalDays > 0 ? Math.round((totalHours / totalDays) * 100) / 100 : 0,
+        entries: timeEntries,
+      },
+    };
+  }
+
+  async getLeaveSummary(userId: number, year?: number) {
+    const currentYear = year || new Date().getFullYear();
+
+    const leaveBalances = await this.leaveBalanceRepo.find({
+      where: {
+        userId: userId,
+        year: currentYear,
+      },
+      relations: ['leaveType'],
+    });
+
+    const leaveApplications = await this.leaveApplicationRepo
+      .createQueryBuilder('leaveApp')
+      .where('leaveApp.userId = :userId', { userId })
+      .andWhere('EXTRACT(YEAR FROM leaveApp.startDate) = :year', { year: currentYear })
+      .leftJoinAndSelect('leaveApp.leaveType', 'leaveType')
+      .orderBy('leaveApp.startDate', 'DESC')
+      .getMany();
+
+    return {
+      success: true,
+      summary: {
+        year: currentYear,
+        balances: leaveBalances,
+        applications: leaveApplications,
+      },
     };
   }
 }

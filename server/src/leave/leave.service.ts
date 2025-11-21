@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, MoreThanOrEqual, LessThanOrEqual, Not } from 'typeorm';
+import { Repository, In, MoreThanOrEqual, LessThanOrEqual, Not, IsNull, Or, And } from 'typeorm';
 import { Department } from '../entities/department.entity';
 import { LeaveApplication } from '../entities/leave-application.entity';
 import { LeaveBalance } from '../entities/leave-balance.entity';
@@ -30,13 +30,11 @@ export class LeaveService {
 
   async getManagedDepartmentIds(userId: number): Promise<number[]> {
     const departments = await this.departmentRepo.find({
-      where: {
-        OR: [
-          { manager_id: userId },
-          { deputy_manager_id: userId },
-        ],
-      },
-      select: { id: true },
+      where: [
+        { managerId: userId },
+        { deputyManagerId: userId },
+      ],
+      select: ['id'],
     });
     
     return departments.map((dept) => dept.id);
@@ -47,28 +45,20 @@ export class LeaveService {
     
     const balances = await this.leaveBalanceRepo.find({
       where: {
-        user_id: userId,
+        userId: userId,
         year: currentYear,
       },
-      relations: {
-        leave_types: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-          },
-        },
-      },
+      relations: ['leaveType'],
       order: {
-        leave_types: {
-          name: 'asc',
+        leaveType: {
+          name: 'ASC',
         },
       },
     });
 
     const activeLeaveTypes = await this.leaveTypeRepo.find({
-      where: { is_active: true },
-      order: { name: 'asc' },
+      where: { isActive: true },
+      order: { name: 'ASC' },
     });
 
     return {
@@ -88,10 +78,10 @@ export class LeaveService {
     if (targetUserId !== userId && !isPrivileged) {
       const userDept = await this.userRepo.findOne({
         where: { id: targetUserId },
-        select: { department_id: true },
+        select: ['departmentId'],
       });
       
-      if (!userDept || !managedDepartmentIds.includes(userDept.department_id!)) {
+      if (!userDept || !managedDepartmentIds.includes(userDept.departmentId!)) {
         throw new ForbiddenException('You do not have permission to apply leave for this user');
       }
     }
@@ -103,10 +93,10 @@ export class LeaveService {
       
       const userDept = await this.userRepo.findOne({
         where: { id: targetUserId },
-        select: { department_id: true },
+        select: ['departmentId'],
       });
       
-      if (!userDept || !managedDepartmentIds.includes(userDept.department_id!)) {
+      if (!userDept || !managedDepartmentIds.includes(userDept.departmentId!)) {
         throw new ForbiddenException('You can only auto-approve leave for employees in your managed departments');
       }
     }
@@ -124,32 +114,17 @@ export class LeaveService {
       throw new BadRequestException('Leave applications must be for future dates');
     }
 
-    const overlapping = await this.leaveApplicationRepo.findOne({
-      where: {
-        user_id: targetUserId,
-        status: { in: ['Pending', 'Approved'] },
-        OR: [
-          {
-            AND: [
-              { start_date: { lte: startDate } },
-              { end_date: { gte: startDate } },
-            ],
-          },
-          {
-            AND: [
-              { start_date: { lte: endDate } },
-              { end_date: { gte: endDate } },
-            ],
-          },
-          {
-            AND: [
-              { start_date: { gte: startDate } },
-              { end_date: { lte: endDate } },
-            ],
-          },
-        ],
-      },
-    });
+    const overlapping = await this.leaveApplicationRepo
+      .createQueryBuilder('la')
+      .where('la.userId = :userId', { userId: targetUserId })
+      .andWhere('la.status IN (:...statuses)', { statuses: ['Pending', 'Approved'] })
+      .andWhere(
+        '((la.startDate <= :start AND la.endDate >= :start) OR ' +
+        '(la.startDate <= :end AND la.endDate >= :end) OR ' +
+        '(la.startDate >= :start AND la.endDate <= :end))',
+        { start: startDate, end: endDate }
+      )
+      .getOne();
 
     if (overlapping) {
       throw new BadRequestException('Overlapping leave application already exists');
@@ -159,7 +134,7 @@ export class LeaveService {
       where: { id: dto.leave_type_id },
     });
 
-    if (!leaveType || !leaveType.is_active) {
+    if (!leaveType || !leaveType.isActive) {
       throw new BadRequestException('Invalid or inactive leave type');
     }
 
@@ -174,21 +149,21 @@ export class LeaveService {
       hoursNeeded = daysRequested * 8;
     }
 
-    if (leaveType.max_consecutive_days && daysRequested > leaveType.max_consecutive_days) {
+    if (leaveType.maxConsecutiveDays && daysRequested > leaveType.maxConsecutiveDays) {
       throw new BadRequestException(
-        `This leave type allows a maximum of ${leaveType.max_consecutive_days} consecutive days. You requested ${daysRequested} days.`
+        `This leave type allows a maximum of ${leaveType.maxConsecutiveDays} consecutive days. You requested ${daysRequested} days.`
       );
     }
 
-    if (leaveType.requires_approval && dto.auto_approve && !isPrivileged) {
+    if (leaveType.requiresApproval && dto.auto_approve && !isPrivileged) {
       throw new BadRequestException('This leave type requires approval and cannot be auto-approved');
     }
 
     const currentYear = new Date().getFullYear();
     const leaveBalance = await this.leaveBalanceRepo.findOne({
       where: {
-        user_id: targetUserId,
-        leave_type_id: dto.leave_type_id,
+        userId: targetUserId,
+        leaveTypeId: dto.leave_type_id,
         year: currentYear,
       },
     });
@@ -200,78 +175,63 @@ export class LeaveService {
     }
 
     const now = new Date();
-    const application = await this.leaveApplicationRepo.save(this.leaveApplicationRepo.create({
-        user_id: targetUserId,
-        leave_type_id: dto.leave_type_id,
-        start_date: startDate,
-        end_date: endDate,
-        reason: dto.reason || null,
-        is_hourly: dto.is_hourly || false,
-        hours_requested: dto.hours_requested || null,
-        status: dto.auto_approve ? 'Approved' : 'Pending',
-        manager_approved_id: dto.auto_approve ? applierId : null,
-        approved_at: dto.auto_approve ? now : null,
-      },
-      relations: {
-        leave_types: true,
-        users_leave_applications_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-    });
+    const applicationData: any = {
+      userId: targetUserId,
+      leaveTypeId: dto.leave_type_id,
+      startDate: startDate,
+      endDate: endDate,
+      isHourly: dto.is_hourly || false,
+      status: dto.auto_approve ? 'Approved' : 'Pending',
+    };
+
+    if (dto.reason) {
+      applicationData.reason = dto.reason;
+    }
+    if (dto.hours_requested) {
+      applicationData.hoursRequested = dto.hours_requested;
+    }
+    if (dto.auto_approve) {
+      applicationData.managerApprovedId = applierId;
+      applicationData.approvedAt = now;
+    }
+
+    const application = this.leaveApplicationRepo.create(applicationData);
+    await this.leaveApplicationRepo.save(application);
 
     if (dto.auto_approve && leaveBalance) {
-      await this.leaveBalanceRepo.update({
-        where: { id: leaveBalance.id },
-        data: {
-          balance: leaveBalance.balance - hoursNeeded,
-          used_this_year: (leaveBalance.used_this_year || 0) + hoursNeeded,
-        },
+      await this.leaveBalanceRepo.update(leaveBalance.id, {
+        balance: leaveBalance.balance - hoursNeeded,
+        usedThisYear: (leaveBalance.usedThisYear || 0) + hoursNeeded,
       });
     }
 
-    return application;
+    return this.leaveApplicationRepo.findOne({
+      where: {
+        userId: targetUserId,
+        leaveTypeId: dto.leave_type_id,
+        startDate: startDate,
+        endDate: endDate,
+      },
+      relations: ['leaveType', 'user'],
+    });
   }
 
   async getMyApplications(userId: number, dto: GetLeaveApplicationsDto) {
     const { page = 1, per_page = 20, status } = dto;
     const skip = (page - 1) * per_page;
 
-    const where: any = { user_id: userId };
+    const where: any = { userId: userId };
     if (status) {
       where.status = status;
     }
 
-    const [applications, total] = await Promise.all([
-      this.leaveApplicationRepo.find({
-        where,
-        relations: {
-          leave_types: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          users_leave_applications_manager_approved_idTousers: {
-            select: {
-              id: true,
-              username: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
-        },
-        order: { created_at: 'desc' },
-        skip,
-        take: per_page,
-      }),
-      this.leaveApplicationRepo.count({ where }),
-    ]);
+    const [applications, total] = await this.leaveApplicationRepo.findAndCount({
+      where,
+      relations: ['leaveType', 'managerApproved'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take: per_page,
+    });
 
     return {
       applications,
@@ -296,11 +256,11 @@ export class LeaveService {
 
     if (!isPrivileged && managedDepartmentIds.length > 0) {
       const usersInManagedDepts = await this.userRepo.find({
-        where: { department_id: { in: managedDepartmentIds } },
-        select: { id: true },
+        where: { departmentId: In(managedDepartmentIds) },
+        select: ['id'],
       });
       const userIds = usersInManagedDepts.map((u) => u.id);
-      where.user_id = { in: userIds };
+      where.userId = In(userIds);
     }
 
     if (status) {
@@ -311,49 +271,22 @@ export class LeaveService {
       if (!isPrivileged && managedDepartmentIds.length > 0) {
         const userDept = await this.userRepo.findOne({
           where: { id: user_id },
-          select: { department_id: true },
+          select: ['departmentId'],
         });
-        if (!userDept || !managedDepartmentIds.includes(userDept.department_id!)) {
+        if (!userDept || !managedDepartmentIds.includes(userDept.departmentId!)) {
           throw new ForbiddenException('You do not have permission to view this user');
         }
       }
-      where.user_id = user_id;
+      where.userId = user_id;
     }
 
-    const [applications, total] = await Promise.all([
-      this.leaveApplicationRepo.find({
-        where,
-        relations: {
-          leave_types: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          users_leave_applications_user_idTousers: {
-            select: {
-              id: true,
-              username: true,
-              first_name: true,
-              last_name: true,
-              department_id: true,
-            },
-          },
-          users_leave_applications_manager_approved_idTousers: {
-            select: {
-              id: true,
-              username: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
-        },
-        order: { created_at: 'desc' },
-        skip,
-        take: per_page,
-      }),
-      this.leaveApplicationRepo.count({ where }),
-    ]);
+    const [applications, total] = await this.leaveApplicationRepo.findAndCount({
+      where,
+      relations: ['leaveType', 'user', 'managerApproved'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take: per_page,
+    });
 
     return {
       applications,
@@ -369,11 +302,7 @@ export class LeaveService {
   async approveApplication(applicationId: number, approverId: number, dto: UpdateLeaveApplicationDto, isPrivileged: boolean, managedDepartmentIds: number[]) {
     const application = await this.leaveApplicationRepo.findOne({
       where: { id: applicationId },
-      relations: {
-        users_leave_applications_user_idTousers: {
-          select: { department_id: true },
-        },
-      },
+      relations: ['user'],
     });
 
     if (!application) {
@@ -385,7 +314,7 @@ export class LeaveService {
     }
 
     if (!isPrivileged) {
-      const userDeptId = application.users_leave_applications_user_idTousers.department_id;
+      const userDeptId = application.user.departmentId;
       if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
         throw new ForbiddenException('You do not have permission to approve this application');
       }
@@ -394,17 +323,17 @@ export class LeaveService {
     const currentYear = new Date().getFullYear();
     const leaveBalance = await this.leaveBalanceRepo.findOne({
       where: {
-        user_id: application.user_id,
-        leave_type_id: application.leave_type_id,
+        userId: application.userId,
+        leaveTypeId: application.leaveTypeId,
         year: currentYear,
       },
     });
 
     let hoursToDeduct: number;
-    if (application.is_hourly && application.hours_requested) {
-      hoursToDeduct = application.hours_requested;
+    if (application.isHourly && application.hoursRequested) {
+      hoursToDeduct = application.hoursRequested;
     } else {
-      const daysRequested = Math.floor((application.end_date.getTime() - application.start_date.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const daysRequested = Math.floor((application.endDate.getTime() - application.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       hoursToDeduct = daysRequested * 8;
     }
 
@@ -413,46 +342,33 @@ export class LeaveService {
         throw new BadRequestException('Insufficient leave balance');
       }
 
-      await this.leaveBalanceRepo.update({
-        where: { id: leaveBalance.id },
-        data: {
-          balance: leaveBalance.balance - hoursToDeduct,
-          used_this_year: (leaveBalance.used_this_year || 0) + hoursToDeduct,
-        },
+      await this.leaveBalanceRepo.update(leaveBalance.id, {
+        balance: leaveBalance.balance - hoursToDeduct,
+        usedThisYear: (leaveBalance.usedThisYear || 0) + hoursToDeduct,
       });
     }
 
     const now = new Date();
-    return this.leaveApplicationRepo.update({
+    const updateData: any = {
+      status: 'Approved',
+      managerApprovedId: approverId,
+      approvedAt: now,
+    };
+    if (dto.manager_comments) {
+      updateData.managerComments = dto.manager_comments;
+    }
+    await this.leaveApplicationRepo.update(applicationId, updateData);
+
+    return this.leaveApplicationRepo.findOne({
       where: { id: applicationId },
-      data: {
-        status: 'Approved',
-        manager_approved_id: approverId,
-        manager_comments: dto.manager_comments || null,
-        approved_at: now,
-      },
-      relations: {
-        leave_types: true,
-        users_leave_applications_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
+      relations: ['leaveType', 'user'],
     });
   }
 
   async rejectApplication(applicationId: number, approverId: number, dto: UpdateLeaveApplicationDto, isPrivileged: boolean, managedDepartmentIds: number[]) {
     const application = await this.leaveApplicationRepo.findOne({
       where: { id: applicationId },
-      relations: {
-        users_leave_applications_user_idTousers: {
-          select: { department_id: true },
-        },
-      },
+      relations: ['user'],
     });
 
     if (!application) {
@@ -464,30 +380,24 @@ export class LeaveService {
     }
 
     if (!isPrivileged) {
-      const userDeptId = application.users_leave_applications_user_idTousers.department_id;
+      const userDeptId = application.user.departmentId;
       if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
         throw new ForbiddenException('You do not have permission to reject this application');
       }
     }
 
-    return this.leaveApplicationRepo.update({
+    const updateData: any = {
+      status: 'Rejected',
+      managerApprovedId: approverId,
+    };
+    if (dto.manager_comments) {
+      updateData.managerComments = dto.manager_comments;
+    }
+    await this.leaveApplicationRepo.update(applicationId, updateData);
+
+    return this.leaveApplicationRepo.findOne({
       where: { id: applicationId },
-      data: {
-        status: 'Rejected',
-        manager_approved_id: approverId,
-        manager_comments: dto.manager_comments || null,
-      },
-      relations: {
-        leave_types: true,
-        users_leave_applications_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
+      relations: ['leaveType', 'user'],
     });
   }
 
@@ -495,7 +405,7 @@ export class LeaveService {
     const application = await this.leaveApplicationRepo.findOne({
       where: {
         id: applicationId,
-        user_id: userId,
+        userId: userId,
       },
     });
 
@@ -507,7 +417,7 @@ export class LeaveService {
       throw new BadRequestException('Only pending or approved applications can be cancelled');
     }
 
-    if (application.status === 'Approved' && application.start_date <= new Date()) {
+    if (application.status === 'Approved' && application.startDate <= new Date()) {
       throw new BadRequestException('Cannot cancel approved leave that has already started');
     }
 
@@ -515,41 +425,41 @@ export class LeaveService {
       const currentYear = new Date().getFullYear();
       const leaveBalance = await this.leaveBalanceRepo.findOne({
         where: {
-          user_id: application.user_id,
-          leave_type_id: application.leave_type_id,
+          userId: application.userId,
+          leaveTypeId: application.leaveTypeId,
           year: currentYear,
         },
       });
 
       if (leaveBalance) {
         let hoursToRestore: number;
-        if (application.is_hourly && application.hours_requested) {
-          hoursToRestore = application.hours_requested;
+        if (application.isHourly && application.hoursRequested) {
+          hoursToRestore = application.hoursRequested;
         } else {
-          const daysRequested = Math.floor((application.end_date.getTime() - application.start_date.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const daysRequested = Math.floor((application.endDate.getTime() - application.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           hoursToRestore = daysRequested * 8;
         }
 
-        await this.leaveBalanceRepo.update({
-          where: { id: leaveBalance.id },
-          data: {
-            balance: leaveBalance.balance + hoursToRestore,
-            used_this_year: Math.max(0, (leaveBalance.used_this_year || 0) - hoursToRestore),
-          },
+        await this.leaveBalanceRepo.update(leaveBalance.id, {
+          balance: leaveBalance.balance + hoursToRestore,
+          usedThisYear: Math.max(0, (leaveBalance.usedThisYear || 0) - hoursToRestore),
         });
       }
     }
 
-    return this.leaveApplicationRepo.update({
+    await this.leaveApplicationRepo.update(applicationId, {
+      status: 'Cancelled',
+    });
+
+    return this.leaveApplicationRepo.findOne({
       where: { id: applicationId },
-      data: { status: 'Cancelled' },
-      relations: { leave_types: true },
+      relations: ['leaveType'],
     });
   }
 
   async getLeaveTypes() {
     return this.leaveTypeRepo.find({
-      order: { name: 'asc' },
+      order: { name: 'ASC' },
     });
   }
 
@@ -563,9 +473,9 @@ export class LeaveService {
     }
 
     const [totalApplications, pendingApplications, approvedApplications] = await Promise.all([
-      this.leaveApplicationRepo.count({ where: { leave_type_id: id } }),
-      this.leaveApplicationRepo.count({ where: { leave_type_id: id, status: 'Pending' } }),
-      this.leaveApplicationRepo.count({ where: { leave_type_id: id, status: 'Approved' } }),
+      this.leaveApplicationRepo.count({ where: { leaveTypeId: id } }),
+      this.leaveApplicationRepo.count({ where: { leaveTypeId: id, status: 'Pending' } }),
+      this.leaveApplicationRepo.count({ where: { leaveTypeId: id, status: 'Approved' } }),
     ]);
 
     return {
@@ -587,14 +497,23 @@ export class LeaveService {
       throw new BadRequestException('A leave type with this name already exists');
     }
 
-    return this.leaveTypeRepo.save(this.leaveTypeRepo.create({
-        name: dto.name,
-        description: dto.description || null,
-        default_accrual_rate: dto.default_accrual_rate || null,
-        requires_approval: dto.requires_approval ?? true,
-        max_consecutive_days: dto.max_consecutive_days || null,
-      },
-    });
+    const leaveTypeData: any = {
+      name: dto.name,
+      requiresApproval: dto.requires_approval ?? true,
+    };
+
+    if (dto.description) {
+      leaveTypeData.description = dto.description;
+    }
+    if (dto.default_accrual_rate) {
+      leaveTypeData.defaultAccrualRate = dto.default_accrual_rate;
+    }
+    if (dto.max_consecutive_days) {
+      leaveTypeData.maxConsecutiveDays = dto.max_consecutive_days;
+    }
+
+    const leaveType = this.leaveTypeRepo.create(leaveTypeData);
+    return this.leaveTypeRepo.save(leaveType);
   }
 
   async updateLeaveType(id: number, dto: UpdateLeaveTypeDto) {
@@ -610,7 +529,7 @@ export class LeaveService {
       const existing = await this.leaveTypeRepo.findOne({
         where: {
           name: dto.name,
-          NOT: { id },
+          id: Not(id),
         },
       });
 
@@ -622,7 +541,7 @@ export class LeaveService {
     if (dto.is_active === false) {
       const pendingCount = await this.leaveApplicationRepo.count({
         where: {
-          leave_type_id: id,
+          leaveTypeId: id,
           status: 'Pending',
         },
       });
@@ -634,17 +553,17 @@ export class LeaveService {
       }
     }
 
-    return this.leaveTypeRepo.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        default_accrual_rate: dto.default_accrual_rate,
-        requires_approval: dto.requires_approval,
-        max_consecutive_days: dto.max_consecutive_days,
-        is_active: dto.is_active,
-      },
-    });
+    const updateData: any = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.default_accrual_rate !== undefined) updateData.defaultAccrualRate = dto.default_accrual_rate;
+    if (dto.requires_approval !== undefined) updateData.requiresApproval = dto.requires_approval;
+    if (dto.max_consecutive_days !== undefined) updateData.maxConsecutiveDays = dto.max_consecutive_days;
+    if (dto.is_active !== undefined) updateData.isActive = dto.is_active;
+
+    await this.leaveTypeRepo.update(id, updateData);
+
+    return this.leaveTypeRepo.findOne({ where: { id } });
   }
 
   async getLeaveBalances(year?: number, userId?: number, leaveTypeId?: number) {
@@ -652,33 +571,18 @@ export class LeaveService {
 
     const where: any = { year: currentYear };
     if (userId) {
-      where.user_id = userId;
+      where.userId = userId;
     }
     if (leaveTypeId) {
-      where.leave_type_id = leaveTypeId;
+      where.leaveTypeId = leaveTypeId;
     }
 
     return this.leaveBalanceRepo.find({
       where,
-      relations: {
-        users: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-        leave_types: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+      relations: ['user', 'leaveType'],
       order: {
-        users: {
-          username: 'asc',
+        user: {
+          username: 'ASC',
         },
       },
     });
@@ -695,13 +599,12 @@ export class LeaveService {
 
     const adjustment = dto.new_balance - balance.balance;
 
-    return this.leaveBalanceRepo.update({
-      where: { id: balanceId },
-      data: {
-        balance: dto.new_balance,
-        accrued_this_year: (balance.accrued_this_year || 0) + Math.max(0, adjustment),
-      },
+    await this.leaveBalanceRepo.update(balanceId, {
+      balance: dto.new_balance,
+      accruedThisYear: (balance.accruedThisYear || 0) + Math.max(0, adjustment),
     });
+
+    return this.leaveBalanceRepo.findOne({ where: { id: balanceId } });
   }
 
   async runAccrual() {
@@ -711,13 +614,13 @@ export class LeaveService {
     let usersProcessed = 0;
 
     const users = await this.userRepo.find({
-      where: { is_active: true },
+      where: { isActive: true },
     });
 
     const leaveTypes = await this.leaveTypeRepo.find({
       where: {
-        is_active: true,
-        default_accrual_rate: { not: null },
+        isActive: true,
+        defaultAccrualRate: Not(IsNull()),
       },
     });
 
@@ -725,39 +628,36 @@ export class LeaveService {
       for (const leaveType of leaveTypes) {
         let balance = await this.leaveBalanceRepo.findOne({
           where: {
-            user_id: user.id,
-            leave_type_id: leaveType.id,
+            userId: user.id,
+            leaveTypeId: leaveType.id,
             year: currentYear,
           },
         });
 
         if (!balance) {
-          balance = await this.leaveBalanceRepo.save(this.leaveBalanceRepo.create({
-              user_id: user.id,
-              leave_type_id: leaveType.id,
-              year: currentYear,
-              balance: 0,
-              accrued_this_year: 0,
-              used_this_year: 0,
-            },
+          balance = this.leaveBalanceRepo.create({
+            userId: user.id,
+            leaveTypeId: leaveType.id,
+            year: currentYear,
+            balance: 0,
+            accruedThisYear: 0,
+            usedThisYear: 0,
           });
+          balance = await this.leaveBalanceRepo.save(balance);
         }
 
-        const lastAccrualDate = balance.last_accrual_date ? new Date(balance.last_accrual_date) : null;
+        const lastAccrualDate = balance.lastAccrualDate ? new Date(balance.lastAccrualDate) : null;
         const needsAccrual = !lastAccrualDate || 
           lastAccrualDate.getFullYear() !== currentYear ||
           lastAccrualDate.getMonth() !== currentMonth;
 
-        if (needsAccrual && leaveType.default_accrual_rate) {
-          const monthlyAccrual = leaveType.default_accrual_rate / 12;
+        if (needsAccrual && leaveType.defaultAccrualRate) {
+          const monthlyAccrual = leaveType.defaultAccrualRate / 12;
 
-          await this.leaveBalanceRepo.update({
-            where: { id: balance.id },
-            data: {
-              balance: balance.balance + monthlyAccrual,
-              accrued_this_year: (balance.accrued_this_year || 0) + monthlyAccrual,
-              last_accrual_date: accrualDate,
-            },
+          await this.leaveBalanceRepo.update(balance.id, {
+            balance: balance.balance + monthlyAccrual,
+            accruedThisYear: (balance.accruedThisYear || 0) + monthlyAccrual,
+            lastAccrualDate: accrualDate,
           });
 
           usersProcessed++;

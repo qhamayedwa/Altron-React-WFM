@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { TimeEntry } from '../entities/time-entry.entity';
 import { LeaveApplication } from '../entities/leave-application.entity';
 import { PayCalculation } from '../entities/pay-calculation.entity';
 import { User } from '../entities/user.entity';
+import { Department } from '../entities/department.entity';
 
 @Injectable()
 export class ReportsService {
@@ -17,42 +18,35 @@ export class ReportsService {
     private payCalculationRepo: Repository<PayCalculation>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(Department)
+    private departmentRepo: Repository<Department>,
   ) {}
 
   async getTimeEntryReport(startDate: Date, endDate: Date, userId?: number, departmentId?: number) {
-    const where: any = {
-      clock_in_time: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
+    const queryBuilder = this.timeEntryRepo
+      .createQueryBuilder('timeEntry')
+      .leftJoinAndSelect('timeEntry.user', 'user')
+      .leftJoinAndSelect('user.department', 'department')
+      .where('timeEntry.clockInTime BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
 
-    if (userId) where.user_id = userId;
-    if (departmentId) {
-      where.users_time_entries_user_idTousers = {
-        department_id: departmentId,
-      };
+    if (userId) {
+      queryBuilder.andWhere('timeEntry.userId = :userId', { userId });
     }
 
-    const entries = await this.timeEntryRepo.find({
-      where,
-      relations: {
-        users_time_entries_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-            department_id: true,
-          },
-        },
-      },
-      order: { clock_in_time: 'desc' },
-    });
+    if (departmentId) {
+      queryBuilder.andWhere('user.departmentId = :departmentId', { departmentId });
+    }
 
-    const totalHours = entries.reduce((sum: number, entry: any) => {
-      if (entry.clock_in_time && entry.clock_out_time) {
-        const hours = (entry.clock_out_time.getTime() - entry.clock_in_time.getTime()) / (1000 * 60 * 60);
+    const entries = await queryBuilder
+      .orderBy('timeEntry.clockInTime', 'DESC')
+      .getMany();
+
+    const totalHours = entries.reduce((sum: number, entry: TimeEntry) => {
+      if (entry.clockInTime && entry.clockOutTime) {
+        const hours = (entry.clockOutTime.getTime() - entry.clockInTime.getTime()) / (1000 * 60 * 60);
         return sum + hours;
       }
       return sum;
@@ -60,51 +54,52 @@ export class ReportsService {
 
     return {
       success: true,
-      entries,
+      entries: entries.map(entry => ({
+        id: entry.id,
+        userId: entry.userId,
+        clockInTime: entry.clockInTime,
+        clockOutTime: entry.clockOutTime,
+        status: entry.status,
+        notes: entry.notes,
+        user: entry.user ? {
+          id: entry.user.id,
+          username: entry.user.username,
+          firstName: entry.user.firstName,
+          lastName: entry.user.lastName,
+          departmentId: entry.user.departmentId,
+        } : null,
+      })),
       summary: {
-        total_entries: entries.length,
-        total_hours: totalHours.toFixed(2),
+        totalEntries: entries.length,
+        totalHours: totalHours.toFixed(2),
         period: { start: startDate, end: endDate },
       },
     };
   }
 
   async getLeaveReport(startDate: Date, endDate: Date, userId?: number, departmentId?: number) {
-    const where: any = {
-      start_date: {
-        gte: startDate,
-      },
-      end_date: {
-        lte: endDate,
-      },
-    };
+    const queryBuilder = this.leaveApplicationRepo
+      .createQueryBuilder('leave')
+      .leftJoinAndSelect('leave.user', 'user')
+      .leftJoinAndSelect('leave.leaveType', 'leaveType')
+      .leftJoinAndSelect('user.department', 'department')
+      .where('leave.startDate >= :startDate', { startDate })
+      .andWhere('leave.endDate <= :endDate', { endDate });
 
-    if (userId) where.user_id = userId;
-    if (departmentId) {
-      where.users_leave_applications_user_idTousers = {
-        department_id: departmentId,
-      };
+    if (userId) {
+      queryBuilder.andWhere('leave.userId = :userId', { userId });
     }
 
-    const applications = await this.leaveApplicationRepo.find({
-      where,
-      relations: {
-        users_leave_applications_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-            department_id: true,
-          },
-        },
-        leave_types: true,
-      },
-      order: { start_date: 'desc' },
-    });
+    if (departmentId) {
+      queryBuilder.andWhere('user.departmentId = :departmentId', { departmentId });
+    }
+
+    const applications = await queryBuilder
+      .orderBy('leave.startDate', 'DESC')
+      .getMany();
 
     const totalDays = applications.reduce((sum, app) => {
-      const days = Math.ceil((app.end_date.getTime() - app.start_date.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const days = Math.ceil((app.endDate.getTime() - app.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       return sum + days;
     }, 0);
 
@@ -115,108 +110,132 @@ export class ReportsService {
 
     return {
       success: true,
-      applications,
+      applications: applications.map(app => ({
+        id: app.id,
+        userId: app.userId,
+        leaveTypeId: app.leaveTypeId,
+        startDate: app.startDate,
+        endDate: app.endDate,
+        reason: app.reason,
+        status: app.status,
+        isHourly: app.isHourly,
+        hoursRequested: app.hoursRequested,
+        user: app.user ? {
+          id: app.user.id,
+          username: app.user.username,
+          firstName: app.user.firstName,
+          lastName: app.user.lastName,
+          departmentId: app.user.departmentId,
+        } : null,
+        leaveType: app.leaveType ? {
+          id: app.leaveType.id,
+          name: app.leaveType.name,
+        } : null,
+      })),
       summary: {
-        total_applications: applications.length,
-        total_days: totalDays,
-        by_status: byStatus,
+        totalApplications: applications.length,
+        totalDays,
+        byStatus,
         period: { start: startDate, end: endDate },
       },
     };
   }
 
   async getAttendanceReport(startDate: Date, endDate: Date, departmentId?: number) {
-    const where: any = {
-      clock_in_time: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
+    const queryBuilder = this.timeEntryRepo
+      .createQueryBuilder('timeEntry')
+      .leftJoinAndSelect('timeEntry.user', 'user')
+      .where('timeEntry.clockInTime BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
 
     if (departmentId) {
-      where.users_time_entries_user_idTousers = {
-        department_id: departmentId,
-      };
+      queryBuilder.andWhere('user.departmentId = :departmentId', { departmentId });
     }
 
-    const entries = await this.timeEntryRepo.find({
-      where,
-      relations: {
-        users_time_entries_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-    });
+    const entries = await queryBuilder.getMany();
 
-    const byUser = entries.reduce((acc: any, entry: any) => {
-      const userId = entry.user_id;
+    const byUser = entries.reduce((acc: any, entry: TimeEntry) => {
+      const userId = entry.userId;
       if (!acc[userId]) {
         acc[userId] = {
-          user: entry.users_time_entries_user_idTousers,
-          total_days: 0,
-          total_hours: 0,
+          user: entry.user ? {
+            id: entry.user.id,
+            username: entry.user.username,
+            firstName: entry.user.firstName,
+            lastName: entry.user.lastName,
+          } : null,
+          totalDays: 0,
+          totalHours: 0,
         };
       }
-      acc[userId].total_days += 1;
-      if (entry.clock_in_time && entry.clock_out_time) {
-        const hours = (entry.clock_out_time.getTime() - entry.clock_in_time.getTime()) / (1000 * 60 * 60);
-        acc[userId].total_hours += hours;
+      acc[userId].totalDays += 1;
+      if (entry.clockInTime && entry.clockOutTime) {
+        const hours = (entry.clockOutTime.getTime() - entry.clockInTime.getTime()) / (1000 * 60 * 60);
+        acc[userId].totalHours += hours;
       }
       return acc;
     }, {});
 
-    const summary = Object.values(byUser);
+    const attendance = Object.values(byUser);
 
     return {
       success: true,
-      attendance: summary,
+      attendance,
       summary: {
-        total_unique_employees: summary.length,
-        total_attendance_records: entries.length,
+        totalUniqueEmployees: attendance.length,
+        totalAttendanceRecords: entries.length,
         period: { start: startDate, end: endDate },
       },
     };
   }
 
   async getPayrollSummary(startDate: Date, endDate: Date, departmentId?: number) {
-    const calculations = await this.payCalculationRepo.find({
-      where: {
-        pay_period_start: {
-          gte: startDate,
-        },
-        pay_period_end: {
-          lte: endDate,
-        },
-      },
-      relations: {
-        users_pay_calculations_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-            department_id: true,
-          },
-        },
-      },
-      order: { id: 'desc' },
-    });
+    const queryBuilder = this.payCalculationRepo
+      .createQueryBuilder('calc')
+      .leftJoinAndSelect('calc.user', 'user')
+      .leftJoinAndSelect('user.department', 'department')
+      .where('calc.payPeriodStart >= :startDate', { startDate })
+      .andWhere('calc.payPeriodEnd <= :endDate', { endDate });
 
-    const totalHours = calculations.reduce((sum: number, calc: any) => sum + Number(calc.total_hours || 0), 0);
-    const totalAllowances = calculations.reduce((sum: number, calc: any) => sum + Number(calc.total_allowances || 0), 0);
+    if (departmentId) {
+      queryBuilder.andWhere('user.departmentId = :departmentId', { departmentId });
+    }
+
+    const calculations = await queryBuilder
+      .orderBy('calc.id', 'DESC')
+      .getMany();
+
+    const totalHours = calculations.reduce((sum: number, calc: PayCalculation) => sum + Number(calc.totalHours || 0), 0);
+    const totalAllowances = calculations.reduce((sum: number, calc: PayCalculation) => sum + Number(calc.totalAllowances || 0), 0);
 
     return {
       success: true,
-      calculations,
+      calculations: calculations.map(calc => ({
+        id: calc.id,
+        userId: calc.userId,
+        timeEntryId: calc.timeEntryId,
+        payPeriodStart: calc.payPeriodStart,
+        payPeriodEnd: calc.payPeriodEnd,
+        payComponents: calc.payComponents,
+        totalHours: calc.totalHours,
+        regularHours: calc.regularHours,
+        overtimeHours: calc.overtimeHours,
+        doubleTimeHours: calc.doubleTimeHours,
+        totalAllowances: calc.totalAllowances,
+        user: calc.user ? {
+          id: calc.user.id,
+          username: calc.user.username,
+          firstName: calc.user.firstName,
+          lastName: calc.user.lastName,
+          departmentId: calc.user.departmentId,
+        } : null,
+      })),
       summary: {
-        total_calculations: calculations.length,
-        total_hours: totalHours.toFixed(2),
-        total_allowances: totalAllowances.toFixed(2),
+        totalCalculations: calculations.length,
+        totalHours: totalHours.toFixed(2),
+        totalAllowances: totalAllowances.toFixed(2),
         period: { start: startDate, end: endDate },
       },
     };
