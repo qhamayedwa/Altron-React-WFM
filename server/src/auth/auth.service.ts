@@ -1,129 +1,104 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../entities/user.entity';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+  ) {}
 
   async validateUser(username: string, password: string): Promise<any> {
-    const user = await this.prisma.users.findUnique({
+    const user = await this.userRepo.findOne({
       where: { username },
-      include: {
-        jobs: true,
-        departments_users_department_idTodepartments: {
-          include: {
-            sites: {
-              include: {
-                regions: {
-                  include: {
-                    companies: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        user_roles: {
-          include: {
-            roles: true,
-          },
-        },
-      },
+      relations: [
+        'job',
+        'department',
+        'department.site',
+        'department.site.region',
+        'department.site.region.company',
+        'userRoles',
+        'userRoles.role',
+      ],
     });
 
-    if (!user || !user.is_active) {
+    if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials or inactive account');
     }
 
-    if (!user.password_hash) {
+    if (!user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const { password_hash, ...result } = user;
+    const { passwordHash, ...result } = user;
     return result;
   }
 
   async getUserById(id: number): Promise<any> {
-    const user = await this.prisma.users.findUnique({
+    const user = await this.userRepo.findOne({
       where: { id },
-      include: {
-        jobs: true,
-        departments_users_department_idTodepartments: {
-          include: {
-            sites: {
-              include: {
-                regions: {
-                  include: {
-                    companies: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        user_roles: {
-          include: {
-            roles: true,
-          },
-        },
-      },
+      relations: [
+        'job',
+        'department',
+        'department.site',
+        'department.site.region',
+        'department.site.region.company',
+        'userRoles',
+        'userRoles.role',
+      ],
     });
 
-    if (!user || !user.is_active) {
+    if (!user || !user.isActive) {
       return null;
     }
 
-    const { password_hash, ...result } = user;
+    const { passwordHash, ...result } = user;
     return result;
   }
 
   async updateProfile(userId: number, data: any): Promise<any> {
-    const user = await this.prisma.users.update({
-      where: { id: userId },
-      data: {
-        email: data.email,
-        phone_number: data.phone_number || data.phone,
-        mobile_number: data.mobile_number,
-        first_name: data.first_name,
-        last_name: data.last_name,
-      },
+    await this.userRepo.update(userId, {
+      email: data.email,
+      phone: data.phone_number || data.phone,
+      firstName: data.first_name,
+      lastName: data.last_name,
     });
 
-    const { password_hash, ...result } = user;
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const { passwordHash, ...result } = user;
     return result;
   }
 
   async changePassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
-    const user = await this.prisma.users.findUnique({
+    const user = await this.userRepo.findOne({
       where: { id: userId },
     });
 
-    if (!user || !user.password_hash) {
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException('User not found');
     }
 
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await this.prisma.users.update({
-      where: { id: userId },
-      data: {
-        password_hash: hashedPassword,
-      },
+    await this.userRepo.update(userId, {
+      passwordHash: hashedPassword,
     });
   }
 
   getUserRoles(user: any): string[] {
-    return user.user_roles?.map((ur: any) => ur.roles.name) || [];
+    return user.userRoles?.map((ur: any) => ur.role.name) || [];
   }
 
   hasRole(user: any, requiredRole: string): boolean {

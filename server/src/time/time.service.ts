@@ -1,32 +1,41 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, In, MoreThanOrEqual, LessThanOrEqual, IsNull } from 'typeorm';
+import { TimeEntry } from '../entities/time-entry.entity';
+import { Department } from '../entities/department.entity';
+import { User } from '../entities/user.entity';
 import { ClockInDto } from './dto/clock-in.dto';
 import { ClockOutDto } from './dto/clock-out.dto';
 import { GetTimeEntriesDto } from './dto/get-time-entries.dto';
 
 @Injectable()
 export class TimeService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(TimeEntry)
+    private timeEntryRepo: Repository<TimeEntry>,
+    @InjectRepository(Department)
+    private departmentRepo: Repository<Department>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   async getManagedDepartmentIds(userId: number): Promise<number[]> {
-    const departments = await this.prisma.departments.findMany({
-      where: {
-        OR: [
-          { manager_id: userId },
-          { deputy_manager_id: userId },
-        ],
-      },
-      select: { id: true },
+    const departments = await this.departmentRepo.find({
+      where: [
+        { managerId: userId },
+        { deputyManagerId: userId },
+      ],
+      select: ['id'],
     });
     
     return departments.map((dept) => dept.id);
   }
 
   async clockIn(userId: number, dto: ClockInDto) {
-    const activeEntry = await this.prisma.time_entries.findFirst({
+    const activeEntry = await this.timeEntryRepo.findOne({
       where: {
-        user_id: userId,
-        clock_out_time: null,
+        userId: userId,
+        clockOutTime: IsNull(),
       },
     });
 
@@ -34,29 +43,29 @@ export class TimeService {
       throw new BadRequestException('You are already clocked in');
     }
 
-    const timeEntry = await this.prisma.time_entries.create({
-      data: {
-        user_id: userId,
-        clock_in_time: new Date(),
-        status: 'Open',
-        notes: dto.notes,
-        clock_in_latitude: dto.latitude,
-        clock_in_longitude: dto.longitude,
-      },
+    const timeEntry = this.timeEntryRepo.create({
+      userId: userId,
+      clockInTime: new Date(),
+      status: 'Open',
+      notes: dto.notes,
+      clockInLatitude: dto.latitude,
+      clockInLongitude: dto.longitude,
     });
 
+    const savedEntry = await this.timeEntryRepo.save(timeEntry);
+
     return {
-      entry_id: timeEntry.id,
-      clock_in_time: timeEntry.clock_in_time,
+      entry_id: savedEntry.id,
+      clock_in_time: savedEntry.clockInTime,
       status: 'clocked_in',
     };
   }
 
   async clockOut(userId: number, dto: ClockOutDto) {
-    const activeEntry = await this.prisma.time_entries.findFirst({
+    const activeEntry = await this.timeEntryRepo.findOne({
       where: {
-        user_id: userId,
-        clock_out_time: null,
+        userId: userId,
+        clockOutTime: IsNull(),
       },
     });
 
@@ -66,54 +75,49 @@ export class TimeService {
 
     const clockOutTime = new Date();
     const totalHours =
-      (clockOutTime.getTime() - activeEntry.clock_in_time.getTime()) / (1000 * 60 * 60);
+      (clockOutTime.getTime() - activeEntry.clockInTime.getTime()) / (1000 * 60 * 60);
 
-    const updatedEntry = await this.prisma.time_entries.update({
-      where: { id: activeEntry.id },
-      data: {
-        clock_out_time: clockOutTime,
-        status: 'Closed',
-        clock_out_latitude: dto.latitude,
-        clock_out_longitude: dto.longitude,
-        notes: dto.notes
-          ? activeEntry.notes
-            ? `${activeEntry.notes}\n${dto.notes}`
-            : dto.notes
-          : activeEntry.notes,
-      },
-    });
+    activeEntry.clockOutTime = clockOutTime;
+    activeEntry.status = 'Closed';
+    activeEntry.clockOutLatitude = dto.latitude;
+    activeEntry.clockOutLongitude = dto.longitude;
+    activeEntry.notes = dto.notes
+      ? activeEntry.notes
+        ? `${activeEntry.notes}\n${dto.notes}`
+        : dto.notes
+      : activeEntry.notes;
+
+    const updatedEntry = await this.timeEntryRepo.save(activeEntry);
 
     return {
       entry_id: updatedEntry.id,
-      clock_out_time: updatedEntry.clock_out_time,
+      clock_out_time: updatedEntry.clockOutTime,
       total_hours: parseFloat(totalHours.toFixed(2)),
       status: 'clocked_out',
     };
   }
 
   async getCurrentStatus(userId: number) {
-    const activeEntry = await this.prisma.time_entries.findFirst({
+    const activeEntry = await this.timeEntryRepo.findOne({
       where: {
-        user_id: userId,
-        clock_out_time: null,
+        userId: userId,
+        clockOutTime: IsNull(),
       },
     });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const todayEntries = await this.prisma.time_entries.findMany({
+    const todayEntries = await this.timeEntryRepo.find({
       where: {
-        user_id: userId,
-        clock_in_time: {
-          gte: today,
-        },
+        userId: userId,
+        clockInTime: MoreThanOrEqual(today),
       },
     });
 
     const todayHours = todayEntries.reduce((sum, entry) => {
-      if (entry.clock_out_time) {
-        const hours = (entry.clock_out_time.getTime() - entry.clock_in_time.getTime()) / (1000 * 60 * 60);
+      if (entry.clockOutTime) {
+        const hours = (entry.clockOutTime.getTime() - entry.clockInTime.getTime()) / (1000 * 60 * 60);
         return sum + hours;
       }
       return sum;
@@ -126,9 +130,9 @@ export class TimeService {
 
     if (activeEntry) {
       const currentDuration =
-        (new Date().getTime() - activeEntry.clock_in_time.getTime()) / (1000 * 60 * 60);
+        (new Date().getTime() - activeEntry.clockInTime.getTime()) / (1000 * 60 * 60);
       statusData.entry_id = activeEntry.id;
-      statusData.clock_in_time = activeEntry.clock_in_time;
+      statusData.clock_in_time = activeEntry.clockInTime;
       statusData.current_duration = parseFloat(currentDuration.toFixed(2));
     }
 
@@ -142,43 +146,40 @@ export class TimeService {
     const where: any = {};
 
     if (!isSuperUser && managedDepartmentIds.length === 0) {
-      where.user_id = userId;
+      where.userId = userId;
     } else if (!isSuperUser && managedDepartmentIds.length > 0) {
-      const usersInManagedDepts = await this.prisma.users.findMany({
-        where: { department_id: { in: managedDepartmentIds } },
-        select: { id: true },
+      const usersInManagedDepts = await this.userRepo.find({
+        where: { departmentId: In(managedDepartmentIds) },
+        select: ['id'],
       });
       const userIds = usersInManagedDepts.map((u) => u.id);
-      where.user_id = { in: userIds };
+      where.userId = In(userIds);
     }
 
     if (user_id && (isSuperUser || managedDepartmentIds.length > 0)) {
       if (!isSuperUser && managedDepartmentIds.length > 0) {
-        const userDept = await this.prisma.users.findUnique({
+        const userDept = await this.userRepo.findOne({
           where: { id: user_id },
-          select: { department_id: true },
+          select: ['departmentId'],
         });
-        if (!userDept || !managedDepartmentIds.includes(userDept.department_id!)) {
+        if (!userDept || !managedDepartmentIds.includes(userDept.departmentId!)) {
           throw new ForbiddenException('You do not have permission to view this user');
         }
       }
-      where.user_id = user_id;
+      where.userId = user_id;
     }
 
-    if (start_date) {
-      where.clock_in_time = {
-        ...where.clock_in_time,
-        gte: new Date(start_date),
-      };
-    }
-
-    if (end_date) {
+    if (start_date && end_date) {
       const endDateTime = new Date(end_date);
       endDateTime.setHours(23, 59, 59, 999);
-      where.clock_in_time = {
-        ...where.clock_in_time,
-        lte: endDateTime,
-      };
+      where.clockInTime = MoreThanOrEqual(new Date(start_date));
+      where.clockInTime = LessThanOrEqual(endDateTime);
+    } else if (start_date) {
+      where.clockInTime = MoreThanOrEqual(new Date(start_date));
+    } else if (end_date) {
+      const endDateTime = new Date(end_date);
+      endDateTime.setHours(23, 59, 59, 999);
+      where.clockInTime = LessThanOrEqual(endDateTime);
     }
 
     if (status) {
@@ -186,48 +187,44 @@ export class TimeService {
     }
 
     const [entries, total] = await Promise.all([
-      this.prisma.time_entries.findMany({
+      this.timeEntryRepo.find({
         where,
-        include: {
-          users_time_entries_user_idTousers: {
-            select: {
-              id: true,
-              username: true,
-              first_name: true,
-              last_name: true,
-              employee_id: true,
-            },
-          },
-        },
-        orderBy: {
-          clock_in_time: 'desc',
+        relations: ['user'],
+        order: {
+          clockInTime: 'DESC',
         },
         skip,
         take: per_page,
       }),
-      this.prisma.time_entries.count({ where }),
+      this.timeEntryRepo.count({ where }),
     ]);
 
     return {
       entries: entries.map((entry) => {
-        const totalHours = entry.clock_out_time
-          ? (entry.clock_out_time.getTime() - entry.clock_in_time.getTime()) / (1000 * 60 * 60)
+        const totalHours = entry.clockOutTime
+          ? (entry.clockOutTime.getTime() - entry.clockInTime.getTime()) / (1000 * 60 * 60)
           : 0;
         
         return {
           id: entry.id,
-          user: entry.users_time_entries_user_idTousers,
-          clock_in_time: entry.clock_in_time,
-          clock_out_time: entry.clock_out_time,
+          user: {
+            id: entry.user.id,
+            username: entry.user.username,
+            first_name: entry.user.firstName,
+            last_name: entry.user.lastName,
+            employee_id: entry.user.employeeNumber,
+          },
+          clock_in_time: entry.clockInTime,
+          clock_out_time: entry.clockOutTime,
           total_hours: parseFloat(totalHours.toFixed(2)),
           status: entry.status,
           notes: entry.notes,
-          approved_by_id: entry.approved_by_manager_id,
-          clock_in_location: entry.clock_in_latitude && entry.clock_in_longitude
-            ? { latitude: entry.clock_in_latitude, longitude: entry.clock_in_longitude }
+          approved_by_id: entry.approvedByManagerId,
+          clock_in_location: entry.clockInLatitude && entry.clockInLongitude
+            ? { latitude: entry.clockInLatitude, longitude: entry.clockInLongitude }
             : null,
-          clock_out_location: entry.clock_out_latitude && entry.clock_out_longitude
-            ? { latitude: entry.clock_out_latitude, longitude: entry.clock_out_longitude }
+          clock_out_location: entry.clockOutLatitude && entry.clockOutLongitude
+            ? { latitude: entry.clockOutLatitude, longitude: entry.clockOutLongitude }
             : null,
         };
       }),
@@ -250,43 +247,39 @@ export class TimeService {
     };
 
     if (!isSuperUser && managedDepartmentIds.length > 0) {
-      const usersInManagedDepts = await this.prisma.users.findMany({
-        where: { department_id: { in: managedDepartmentIds } },
-        select: { id: true },
+      const usersInManagedDepts = await this.userRepo.find({
+        where: { departmentId: In(managedDepartmentIds) },
+        select: ['id'],
       });
       const userIds = usersInManagedDepts.map((u) => u.id);
-      where.user_id = { in: userIds };
+      where.userId = In(userIds);
     }
 
-    const pendingEntries = await this.prisma.time_entries.findMany({
+    const pendingEntries = await this.timeEntryRepo.find({
       where,
-      include: {
-        users_time_entries_user_idTousers: {
-          select: {
-            id: true,
-            username: true,
-            first_name: true,
-            last_name: true,
-            employee_id: true,
-            department: true,
-          },
-        },
-      },
-      orderBy: {
-        clock_in_time: 'desc',
+      relations: ['user', 'user.department'],
+      order: {
+        clockInTime: 'DESC',
       },
     });
 
     return pendingEntries.map((entry) => {
-      const totalHours = entry.clock_out_time
-        ? (entry.clock_out_time.getTime() - entry.clock_in_time.getTime()) / (1000 * 60 * 60)
+      const totalHours = entry.clockOutTime
+        ? (entry.clockOutTime.getTime() - entry.clockInTime.getTime()) / (1000 * 60 * 60)
         : 0;
       
       return {
         id: entry.id,
-        user: entry.users_time_entries_user_idTousers,
-        clock_in_time: entry.clock_in_time,
-        clock_out_time: entry.clock_out_time,
+        user: {
+          id: entry.user.id,
+          username: entry.user.username,
+          first_name: entry.user.firstName,
+          last_name: entry.user.lastName,
+          employee_id: entry.user.employeeNumber,
+          department: entry.user.department,
+        },
+        clock_in_time: entry.clockInTime,
+        clock_out_time: entry.clockOutTime,
         total_hours: parseFloat(totalHours.toFixed(2)),
         status: entry.status,
         notes: entry.notes,
@@ -295,15 +288,9 @@ export class TimeService {
   }
 
   async approveTimeEntry(entryId: number, approverId: number, isSuperUser: boolean, managedDepartmentIds: number[], notes?: string) {
-    const entry = await this.prisma.time_entries.findUnique({
+    const entry = await this.timeEntryRepo.findOne({
       where: { id: entryId },
-      include: {
-        users_time_entries_user_idTousers: {
-          select: {
-            department_id: true,
-          },
-        },
-      },
+      relations: ['user'],
     });
 
     if (!entry) {
@@ -315,22 +302,23 @@ export class TimeService {
     }
 
     if (!isSuperUser) {
-      const userDeptId = entry.users_time_entries_user_idTousers.department_id;
+      const user = await this.userRepo.findOne({
+        where: { id: entry.userId },
+        select: ['departmentId'],
+      });
+      const userDeptId = user?.departmentId;
       if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
         throw new ForbiddenException('You do not have permission to approve this time entry');
       }
     }
 
     const now = new Date();
-    const updatedEntry = await this.prisma.time_entries.update({
-      where: { id: entryId },
-      data: {
-        status: 'Approved',
-        approved_by_manager_id: approverId,
-        updated_at: now,
-        notes: notes ? (entry.notes ? `${entry.notes}\nApproval note: ${notes}` : `Approval note: ${notes}`) : entry.notes,
-      },
-    });
+    entry.status = 'Approved';
+    entry.approvedByManagerId = approverId;
+    entry.updatedAt = now;
+    entry.notes = notes ? (entry.notes ? `${entry.notes}\nApproval note: ${notes}` : `Approval note: ${notes}`) : entry.notes;
+
+    const updatedEntry = await this.timeEntryRepo.save(entry);
 
     return {
       entry_id: updatedEntry.id,
@@ -340,15 +328,9 @@ export class TimeService {
   }
 
   async rejectTimeEntry(entryId: number, approverId: number, isSuperUser: boolean, managedDepartmentIds: number[], notes?: string) {
-    const entry = await this.prisma.time_entries.findUnique({
+    const entry = await this.timeEntryRepo.findOne({
       where: { id: entryId },
-      include: {
-        users_time_entries_user_idTousers: {
-          select: {
-            department_id: true,
-          },
-        },
-      },
+      relations: ['user'],
     });
 
     if (!entry) {
@@ -360,22 +342,23 @@ export class TimeService {
     }
 
     if (!isSuperUser) {
-      const userDeptId = entry.users_time_entries_user_idTousers.department_id;
+      const user = await this.userRepo.findOne({
+        where: { id: entry.userId },
+        select: ['departmentId'],
+      });
+      const userDeptId = user?.departmentId;
       if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
         throw new ForbiddenException('You do not have permission to reject this time entry');
       }
     }
 
     const now = new Date();
-    const updatedEntry = await this.prisma.time_entries.update({
-      where: { id: entryId },
-      data: {
-        status: 'Rejected',
-        approved_by_manager_id: approverId,
-        updated_at: now,
-        notes: notes ? (entry.notes ? `${entry.notes}\nRejection reason: ${notes}` : `Rejection reason: ${notes}`) : entry.notes,
-      },
-    });
+    entry.status = 'Rejected';
+    entry.approvedByManagerId = approverId;
+    entry.updatedAt = now;
+    entry.notes = notes ? (entry.notes ? `${entry.notes}\nRejection reason: ${notes}` : `Rejection reason: ${notes}`) : entry.notes;
+
+    const updatedEntry = await this.timeEntryRepo.save(entry);
 
     return {
       entry_id: updatedEntry.id,

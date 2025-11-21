@@ -15,10 +15,17 @@ import { LeaveApplication } from './leave-application.entity';
 import { LeaveBalance } from './leave-balance.entity';
 import { Schedule } from './schedule.entity';
 import { Notification } from './notification.entity';
+import { NotificationPreference } from './notification-preference.entity';
 import { DashboardConfig } from './dashboard-config.entity';
 import { PayCalculation } from './pay-calculation.entity';
+import { PayCode } from './pay-code.entity';
+import { PayRule } from './pay-rule.entity';
+import { Post } from './post.entity';
+import { PulseSurvey } from './pulse-survey.entity';
 import { PulseSurveyResponse } from './pulse-survey-response.entity';
 import { UserRole } from './user-role.entity';
+import { WorkflowConfig } from './workflow-config.entity';
+import { WorkflowExecution } from './workflow-execution.entity';
 
 @Entity('users')
 export class User {
@@ -202,4 +209,37 @@ export class User {
 
   @OneToMany(() => UserRole, (userRole) => userRole.user)
   userRoles: UserRole[];
+
+  @OneToMany(() => Schedule, (schedule) => schedule.assignedByManager)
+  assignedSchedules: Schedule[];
+
+  @OneToMany(() => TimeEntry, (timeEntry) => timeEntry.approvedByManager)
+  approvedTimeEntries: TimeEntry[];
+
+  @OneToMany(() => TimeEntry, (timeEntry) => timeEntry.absenceApprovedBy)
+  absenceApprovedTimeEntries: TimeEntry[];
+
+  @OneToMany(() => PayCalculation, (calc) => calc.calculatedBy)
+  calculatedPayCalculations: PayCalculation[];
+
+  @OneToMany(() => Post, (post) => post.user)
+  posts: Post[];
+
+  @OneToMany(() => PulseSurvey, (survey) => survey.createdBy)
+  createdPulseSurveys: PulseSurvey[];
+
+  @OneToMany(() => NotificationPreference, (pref) => pref.user)
+  notificationPreferences: NotificationPreference[];
+
+  @OneToMany(() => PayCode, (payCode) => payCode.createdBy)
+  payCodes: PayCode[];
+
+  @OneToMany(() => PayRule, (payRule) => payRule.createdBy)
+  payRules: PayRule[];
+
+  @OneToMany(() => WorkflowConfig, (config) => config.user)
+  workflowConfigs: WorkflowConfig[];
+
+  @OneToMany(() => WorkflowExecution, (execution) => execution.triggeredByUser)
+  workflowExecutions: WorkflowExecution[];
 }
