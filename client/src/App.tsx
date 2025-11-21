@@ -11,6 +11,7 @@ import { UnauthorizedPage } from './pages/UnauthorizedPage';
 import { TimeTrackingPage } from './pages/TimeTrackingPage';
 import { TimeEntriesPage } from './pages/TimeEntriesPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
+import { ManualTimeEntryPage } from './pages/ManualTimeEntryPage';
 import LeaveBalancesPage from './pages/LeaveBalancesPage';
 import LeaveApplicationsPage from './pages/LeaveApplicationsPage';
 import LeaveApprovalsPage from './pages/LeaveApprovalsPage';
@@ -62,6 +63,14 @@ function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/time" element={<TimeTrackingPage />} />
               <Route path="/time/entries" element={<TimeEntriesPage />} />
+              <Route
+                path="/time/manual-entry"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Super User', 'system_super_admin', 'Admin']}>
+                    <ManualTimeEntryPage />
+                  </RoleProtectedRoute>
+                }
+              />
               <Route
                 path="/approvals"
                 element={
