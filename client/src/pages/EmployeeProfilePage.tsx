@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Badge, Button, Tab, Tabs, Table, Alert } from 'react-bootstrap';
-import { User, Mail, Phone, Calendar, Clock, TrendingUp, FileText } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Clock, TrendingUp } from 'lucide-react';
 import { api } from '../lib/api';
 
 export default function EmployeeProfilePage() {

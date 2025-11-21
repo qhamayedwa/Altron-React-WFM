@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Table, Button, Modal, Form, Alert, Badge } from 'react-bootstrap';
-import { MapPin, Plus, Edit2, Trash2, Mail, Phone, Building } from 'lucide-react';
+import { MapPin, Plus, Edit2, Trash2, Mail, Phone } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface Company {

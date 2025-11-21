@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Badge, Button, Alert, Form } from 'react-bootstrap';
-import { Calendar as CalendarIcon, Users, Filter } from 'lucide-react';
+import { Container, Row, Col, Card, Badge, Alert, Form } from 'react-bootstrap';
+import { Calendar as CalendarIcon, Users } from 'lucide-react';
 import { api } from '../lib/api';
 
 export default function LeaveCalendarPage() {

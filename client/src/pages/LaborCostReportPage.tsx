@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Container, Row, Col, Card, Button, Form, Alert, Table, Badge } from 'react-bootstrap';
-import { DollarSign, TrendingUp, Download, BarChart3 } from 'lucide-react';
+import { DollarSign, TrendingUp, BarChart3 } from 'lucide-react';
 import { api } from '../lib/api';
 
 export default function LaborCostReportPage() {

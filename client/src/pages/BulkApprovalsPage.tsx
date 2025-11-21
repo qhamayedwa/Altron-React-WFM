@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, Alert, Badge, Table } from 'react-bootstrap';
-import { CheckSquare, XSquare, Filter, Clock, Calendar } from 'lucide-react';
+import { CheckSquare, XSquare, Clock, Calendar } from 'lucide-react';
 import { api } from '../lib/api';
 
 export default function BulkApprovalsPage() {
@@ -191,7 +191,7 @@ export default function BulkApprovalsPage() {
                 <Table responsive hover>
                   <thead>
                     <tr>
-                      <th width="50">
+                      <th style={{width: '50px'}}>
                         <Form.Check
                           type="checkbox"
                           checked={selectedTimeEntries.length === timeEntries.length}
@@ -267,7 +267,7 @@ export default function BulkApprovalsPage() {
                 <Table responsive hover>
                   <thead>
                     <tr>
-                      <th width="50">
+                      <th style={{width: '50px'}}>
                         <Form.Check
                           type="checkbox"
                           checked={selectedLeaveApps.length === leaveApplications.length}

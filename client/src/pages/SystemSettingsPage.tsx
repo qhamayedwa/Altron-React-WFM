@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, InputGroup } from 'react-bootstrap';
 import { Settings, Save, DollarSign, Clock, Calendar, Globe } from 'lucide-react';
 import { api } from '../lib/api';
