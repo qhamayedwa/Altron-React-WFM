@@ -1,19 +1,41 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Department } from '../entities/department.entity';
+import { LeaveApplication } from '../entities/leave-application.entity';
+import { LeaveType } from '../entities/leave-type.entity';
+import { Notification } from '../entities/notification.entity';
+import { NotificationPreference } from '../entities/notification-preference.entity';
+import { NotificationType } from '../entities/notification-type.entity';
+import { User } from '../entities/user.entity';
 import { CreateNotificationDto, NotificationPriority, NotificationCategory } from './dto';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Department)
+    private departmentRepo: Repository<Department>,
+    @InjectRepository(LeaveApplication)
+    private leaveApplicationRepo: Repository<LeaveApplication>,
+    @InjectRepository(LeaveType)
+    private leaveTypeRepo: Repository<LeaveType>,
+    @InjectRepository(Notification)
+    private notificationRepo: Repository<Notification>,
+    @InjectRepository(NotificationPreference)
+    private notificationPreferenceRepo: Repository<NotificationPreference>,
+    @InjectRepository(NotificationType)
+    private notificationTypeRepo: Repository<NotificationType>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   async createNotification(dto: CreateNotificationDto) {
-    let notificationType = await this.prisma.notification_types.findFirst({
+    let notificationType = await this.notificationTypeRepo.findOne({
       where: { name: dto.type_name },
     });
 
     if (!notificationType) {
-      notificationType = await this.prisma.notification_types.create({
-        data: {
+      notificationType = await this.notificationTypeRepo.save(this.notificationTypeRepo.create({
           name: dto.type_name,
           display_name: dto.type_name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
           icon: 'bell',
@@ -27,8 +49,7 @@ export class NotificationsService {
       ? new Date(Date.now() + dto.expires_hours * 60 * 60 * 1000)
       : null;
 
-    const notification = await this.prisma.notifications.create({
-      data: {
+    const notification = await this.notificationRepo.save(this.notificationRepo.create({
         user_id: dto.user_id,
         type_id: notificationType.id,
         title: dto.title,
@@ -48,9 +69,9 @@ export class NotificationsService {
   }
 
   async createLeaveApprovalNotification(leaveApplicationId: number) {
-    const leaveApp = await this.prisma.leave_applications.findUnique({
+    const leaveApp = await this.leaveApplicationRepo.findOne({
       where: { id: leaveApplicationId },
-      include: {
+      relations: {
         users_leave_applications_user_idTousers: true,
         leave_types: true,
       },
@@ -60,7 +81,7 @@ export class NotificationsService {
       return null;
     }
 
-    const department = await this.prisma.departments.findUnique({
+    const department = await this.departmentRepo.findOne({
       where: { id: leaveApp.users_leave_applications_user_idTousers.department_id },
     });
 
@@ -96,9 +117,9 @@ export class NotificationsService {
   }
 
   async createLeaveStatusNotification(leaveApplicationId: number, status: string) {
-    const leaveApp = await this.prisma.leave_applications.findUnique({
+    const leaveApp = await this.leaveApplicationRepo.findOne({
       where: { id: leaveApplicationId },
-      include: {
+      relations: {
         users_leave_applications_user_idTousers: true,
         leave_types: true,
       },
@@ -141,9 +162,9 @@ export class NotificationsService {
   }
 
   async getUserNotifications(userId: number, limit = 50, unreadOnly = false, category?: NotificationCategory) {
-    const user = await this.prisma.users.findUnique({
+    const user = await this.userRepo.findOne({
       where: { id: userId },
-      include: { user_roles: { include: { roles: true } } },
+      relations: { user_roles: { relations: { roles: true } } },
     });
 
     if (!user) {
@@ -160,7 +181,7 @@ export class NotificationsService {
     };
 
     if (isManager && user.department_id) {
-      const departmentEmployees = await this.prisma.users.findMany({
+      const departmentEmployees = await this.userRepo.find({
         where: {
           department_id: user.department_id,
           is_active: true,
@@ -188,9 +209,9 @@ export class NotificationsService {
       whereConditions.category = category;
     }
 
-    const notifications = await this.prisma.notifications.findMany({
+    const notifications = await this.notificationRepo.find({
       where: whereConditions,
-      include: {
+      relations: {
         notification_types: true,
         users: {
           select: {
@@ -201,7 +222,7 @@ export class NotificationsService {
           },
         },
       },
-      orderBy: { created_at: 'desc' },
+      order: { created_at: 'desc' },
       take: limit,
     });
 
@@ -209,9 +230,9 @@ export class NotificationsService {
   }
 
   async getUnreadCount(userId: number) {
-    const user = await this.prisma.users.findUnique({
+    const user = await this.userRepo.findOne({
       where: { id: userId },
-      include: { user_roles: { include: { roles: true } } },
+      relations: { user_roles: { relations: { roles: true } } },
     });
 
     if (!user) {
@@ -229,7 +250,7 @@ export class NotificationsService {
     };
 
     if (isManager && user.department_id) {
-      const departmentEmployees = await this.prisma.users.findMany({
+      const departmentEmployees = await this.userRepo.find({
         where: {
           department_id: user.department_id,
           is_active: true,
@@ -249,7 +270,7 @@ export class NotificationsService {
       }
     }
 
-    const count = await this.prisma.notifications.count({
+    const count = await this.notificationRepo.count({
       where: whereConditions,
     });
 
@@ -257,7 +278,7 @@ export class NotificationsService {
   }
 
   async markAsRead(notificationId: number, userId: number) {
-    const notification = await this.prisma.notifications.findFirst({
+    const notification = await this.notificationRepo.findOne({
       where: {
         id: notificationId,
         user_id: userId,
@@ -268,7 +289,7 @@ export class NotificationsService {
       throw new NotFoundException('Notification not found');
     }
 
-    const updated = await this.prisma.notifications.update({
+    const updated = await this.notificationRepo.update({
       where: { id: notificationId },
       data: {
         is_read: true,
@@ -307,20 +328,20 @@ export class NotificationsService {
   }
 
   async getNotificationTypes() {
-    return this.prisma.notification_types.findMany({
+    return this.notificationTypeRepo.find({
       where: { is_active: true },
     });
   }
 
   async getUserPreferences(userId: number) {
-    return this.prisma.notification_preferences.findMany({
+    return this.notificationPreferenceRepo.find({
       where: { user_id: userId },
-      include: { notification_types: true },
+      relations: { notification_types: true },
     });
   }
 
   async updatePreference(userId: number, typeId: number, preferences: any) {
-    const existing = await this.prisma.notification_preferences.findFirst({
+    const existing = await this.notificationPreferenceRepo.findOne({
       where: {
         user_id: userId,
         type_id: typeId,
@@ -328,13 +349,12 @@ export class NotificationsService {
     });
 
     if (existing) {
-      return this.prisma.notification_preferences.update({
+      return this.notificationPreferenceRepo.update({
         where: { id: existing.id },
         data: preferences,
       });
     } else {
-      return this.prisma.notification_preferences.create({
-        data: {
+      return this.notificationPreferenceRepo.save(this.notificationPreferenceRepo.create({
           user_id: userId,
           type_id: typeId,
           ...preferences,

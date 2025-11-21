@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Department } from '../entities/department.entity';
+import { Schedule } from '../entities/schedule.entity';
+import { ShiftType } from '../entities/shift-type.entity';
+import { User } from '../entities/user.entity';
 import { CreateShiftTypeDto } from './dto/create-shift-type.dto';
 import { UpdateShiftTypeDto } from './dto/update-shift-type.dto';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
@@ -9,10 +14,19 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class SchedulingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Department)
+    private departmentRepo: Repository<Department>,
+    @InjectRepository(Schedule)
+    private scheduleRepo: Repository<Schedule>,
+    @InjectRepository(ShiftType)
+    private shiftTypeRepo: Repository<ShiftType>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   async getManagedDepartmentIds(userId: number): Promise<number[]> {
-    const departments = await this.prisma.departments.findMany({
+    const departments = await this.departmentRepo.find({
       where: {
         OR: [
           { manager_id: userId },
@@ -25,7 +39,7 @@ export class SchedulingService {
   }
 
   async createShiftType(dto: CreateShiftTypeDto) {
-    const existing = await this.prisma.shift_types.findUnique({
+    const existing = await this.shiftTypeRepo.findOne({
       where: { name: dto.name },
     });
 
@@ -36,8 +50,7 @@ export class SchedulingService {
     const startTime = new Date(`1970-01-01T${dto.default_start_time}:00Z`);
     const endTime = new Date(`1970-01-01T${dto.default_end_time}:00Z`);
 
-    return this.prisma.shift_types.create({
-      data: {
+    return this.shiftTypeRepo.save(this.shiftTypeRepo.create({
         name: dto.name,
         description: dto.description || null,
         default_start_time: startTime,
@@ -50,14 +63,14 @@ export class SchedulingService {
   async getShiftTypes(activeOnly = true) {
     const where = activeOnly ? { is_active: true } : {};
     
-    return this.prisma.shift_types.findMany({
+    return this.shiftTypeRepo.find({
       where,
-      orderBy: { name: 'asc' },
+      order: { name: 'asc' },
     });
   }
 
   async getShiftType(id: number) {
-    const shiftType = await this.prisma.shift_types.findUnique({
+    const shiftType = await this.shiftTypeRepo.findOne({
       where: { id },
     });
 
@@ -72,7 +85,7 @@ export class SchedulingService {
     const shiftType = await this.getShiftType(id);
 
     if (dto.name && dto.name !== shiftType.name) {
-      const existing = await this.prisma.shift_types.findUnique({
+      const existing = await this.shiftTypeRepo.findOne({
         where: { name: dto.name },
       });
 
@@ -95,7 +108,7 @@ export class SchedulingService {
       updateData.default_end_time = new Date(`1970-01-01T${dto.default_end_time}:00Z`);
     }
 
-    return this.prisma.shift_types.update({
+    return this.shiftTypeRepo.update({
       where: { id },
       data: updateData,
     });
@@ -104,7 +117,7 @@ export class SchedulingService {
   async deleteShiftType(id: number) {
     const shiftType = await this.getShiftType(id);
 
-    const scheduleCount = await this.prisma.schedules.count({
+    const scheduleCount = await this.scheduleRepo.count({
       where: { shift_type_id: id },
     });
 
@@ -114,7 +127,7 @@ export class SchedulingService {
       );
     }
 
-    return this.prisma.shift_types.delete({
+    return this.shiftTypeRepo.delete({
       where: { id },
     });
   }
@@ -171,9 +184,9 @@ export class SchedulingService {
       };
     }
 
-    return this.prisma.schedules.findMany({
+    return this.scheduleRepo.find({
       where,
-      include: {
+      relations: {
         users_schedules_user_idTousers: {
           select: {
             id: true,
@@ -198,7 +211,7 @@ export class SchedulingService {
           },
         },
       },
-      orderBy: [
+      order: [
         { batch_id: 'desc' },
         { start_time: 'desc' },
       ],
@@ -224,9 +237,9 @@ export class SchedulingService {
       };
     }
 
-    return this.prisma.schedules.findMany({
+    return this.scheduleRepo.find({
       where,
-      include: {
+      relations: {
         shift_types: {
           select: {
             id: true,
@@ -234,7 +247,7 @@ export class SchedulingService {
           },
         },
       },
-      orderBy: { start_time: 'asc' },
+      order: { start_time: 'asc' },
     });
   }
 
@@ -271,9 +284,9 @@ export class SchedulingService {
       where.NOT = { id: dto.exclude_schedule_id };
     }
 
-    const conflicts = await this.prisma.schedules.findMany({
+    const conflicts = await this.scheduleRepo.find({
       where,
-      include: {
+      relations: {
         shift_types: {
           select: {
             id: true,
@@ -312,7 +325,7 @@ export class SchedulingService {
 
     for (const userId of dto.user_ids) {
       if (!isSuperUser) {
-        const user = await this.prisma.users.findUnique({
+        const user = await this.userRepo.findOne({
           where: { id: userId },
           select: { department_id: true },
         });
@@ -329,7 +342,7 @@ export class SchedulingService {
       });
 
       if (conflicts.has_conflicts) {
-        const user = await this.prisma.users.findUnique({
+        const user = await this.userRepo.findOne({
           where: { id: userId },
           select: { username: true, first_name: true, last_name: true },
         });
@@ -342,8 +355,7 @@ export class SchedulingService {
         continue;
       }
 
-      const schedule = await this.prisma.schedules.create({
-        data: {
+      const schedule = await this.scheduleRepo.save(this.scheduleRepo.create({
           user_id: userId,
           shift_type_id: dto.shift_type_id || null,
           start_time: startTime,
@@ -372,9 +384,9 @@ export class SchedulingService {
       throw new ForbiddenException('You do not have permission to update schedules. No managed departments assigned.');
     }
 
-    const schedule = await this.prisma.schedules.findUnique({
+    const schedule = await this.scheduleRepo.findOne({
       where: { id },
-      include: {
+      relations: {
         users_schedules_user_idTousers: {
           select: { department_id: true },
         },
@@ -416,7 +428,7 @@ export class SchedulingService {
     if (dto.notes !== undefined) updateData.notes = dto.notes;
     if (dto.status) updateData.status = dto.status;
 
-    return this.prisma.schedules.update({
+    return this.scheduleRepo.update({
       where: { id },
       data: updateData,
     });
@@ -427,9 +439,9 @@ export class SchedulingService {
       throw new ForbiddenException('You do not have permission to delete schedules. No managed departments assigned.');
     }
 
-    const schedule = await this.prisma.schedules.findUnique({
+    const schedule = await this.scheduleRepo.findOne({
       where: { id },
-      include: {
+      relations: {
         users_schedules_user_idTousers: {
           select: { department_id: true },
         },
@@ -446,7 +458,7 @@ export class SchedulingService {
       }
     }
 
-    return this.prisma.schedules.delete({
+    return this.scheduleRepo.delete({
       where: { id },
     });
   }

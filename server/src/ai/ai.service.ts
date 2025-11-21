@@ -1,6 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Department } from '../entities/department.entity';
+import { LeaveApplication } from '../entities/leave-application.entity';
+import { PayCalculation } from '../entities/pay-calculation.entity';
+import { Role } from '../entities/role.entity';
+import { Schedule } from '../entities/schedule.entity';
+import { ShiftType } from '../entities/shift-type.entity';
+import { TimeEntry } from '../entities/time-entry.entity';
+import { User } from '../entities/user.entity';
+import { UserRole } from '../entities/user-role.entity';
 import OpenAI from 'openai';
 import { AiFallbackService } from './ai-fallback.service';
 
@@ -121,7 +131,24 @@ export class AiService {
   private readonly isAvailable: boolean;
 
   constructor(
-    private prisma: PrismaService,
+    @InjectRepository(Department)
+    private departmentRepo: Repository<Department>,
+    @InjectRepository(LeaveApplication)
+    private leaveApplicationRepo: Repository<LeaveApplication>,
+    @InjectRepository(PayCalculation)
+    private payCalculationRepo: Repository<PayCalculation>,
+    @InjectRepository(Role)
+    private roleRepo: Repository<Role>,
+    @InjectRepository(Schedule)
+    private scheduleRepo: Repository<Schedule>,
+    @InjectRepository(ShiftType)
+    private shiftTypeRepo: Repository<ShiftType>,
+    @InjectRepository(TimeEntry)
+    private timeEntryRepo: Repository<TimeEntry>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+    @InjectRepository(UserRole)
+    private userRoleRepo: Repository<UserRole>,
     private configService: ConfigService,
     private fallbackService: AiFallbackService,
   ) {
@@ -168,13 +195,13 @@ export class AiService {
         };
       }
 
-      const schedules = await this.prisma.schedules.findMany({
+      const schedules = await this.scheduleRepo.find({
         where,
-        include: {
+        relations: {
           users_schedules_user_idTousers: true,
           shift_types: true,
         },
-        orderBy: { start_time: 'asc' },
+        order: { start_time: 'asc' },
       });
 
       const scheduleData = schedules.slice(0, 50).map((schedule) => {
@@ -277,13 +304,13 @@ export class AiService {
 
     try {
       const [calculations, timeEntries] = await Promise.all([
-        this.prisma.pay_calculations.findMany({
+        this.payCalculationRepo.find({
           where: {
             pay_period_start: { gte: payPeriodStart },
             pay_period_end: { lte: payPeriodEnd },
           },
         }),
-        this.prisma.time_entries.findMany({
+        this.timeEntryRepo.find({
           where: {
             clock_in_time: {
               gte: payPeriodStart,
@@ -414,9 +441,9 @@ export class AiService {
         where.user_id = employeeId;
       }
 
-      const entries = await this.prisma.time_entries.findMany({
+      const entries = await this.timeEntryRepo.find({
         where,
-        orderBy: { clock_in_time: 'asc' },
+        order: { clock_in_time: 'asc' },
       });
 
       const attendanceData = entries.map((entry) => {
@@ -524,13 +551,13 @@ export class AiService {
     try {
       const dayOfWeek = targetDate.getDay();
 
-      const historicalSchedules = await this.prisma.schedules.findMany({
+      const historicalSchedules = await this.scheduleRepo.find({
         where: {
           start_time: {
             gte: new Date(targetDate.getTime() - 60 * 24 * 60 * 60 * 1000),
           },
         },
-        include: {
+        relations: {
           shift_types: true,
         },
         take: 50,
@@ -541,11 +568,11 @@ export class AiService {
         employeesQuery.department_id = departmentId;
       }
 
-      const employees = await this.prisma.users.findMany({
+      const employees = await this.userRepo.find({
         where: employeesQuery,
-        include: {
+        relations: {
           user_roles: {
-            include: {
+            relations: {
               roles: true,
             },
           },
@@ -642,22 +669,22 @@ export class AiService {
     try {
       const [totalEmployees, recentEntries, recentSchedules, pendingLeave] =
         await Promise.all([
-          this.prisma.users.count({ where: { is_active: true } }),
-          this.prisma.time_entries.count({
+          this.userRepo.count({ where: { is_active: true } }),
+          this.timeEntryRepo.count({
             where: {
               clock_in_time: {
                 gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
               },
             },
           }),
-          this.prisma.schedules.count({
+          this.scheduleRepo.count({
             where: {
               start_time: {
                 gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
               },
             },
           }),
-          this.prisma.leave_applications.count({
+          this.leaveApplicationRepo.count({
             where: { status: 'Pending' },
           }),
         ]);

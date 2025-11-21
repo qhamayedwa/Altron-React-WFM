@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { TimeEntry } from '../entities/time-entry.entity';
+import { LeaveApplication } from '../entities/leave-application.entity';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class SageVipService {
@@ -12,8 +16,13 @@ export class SageVipService {
   private readonly companyDb: string;
 
   constructor(
+    @InjectRepository(TimeEntry)
+    private timeEntryRepo: Repository<TimeEntry>,
+    @InjectRepository(LeaveApplication)
+    private leaveApplicationRepo: Repository<LeaveApplication>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
     private configService: ConfigService,
-    private prisma: PrismaService,
   ) {
     this.baseUrl = this.configService.get('SAGE_VIP_BASE_URL') || '';
     this.apiKey = this.configService.get('SAGE_VIP_API_KEY') || '';
@@ -67,7 +76,7 @@ export class SageVipService {
 
     this.logger.log(`Pushing timesheets from ${startDate} to ${endDate}...`);
 
-    const timeEntries = await this.prisma.time_entries.findMany({
+    const timeEntries = await this.timeEntryRepo.find({
       where: {
         clock_in_time: {
           gte: startDate,
@@ -75,7 +84,7 @@ export class SageVipService {
         },
         status: 'approved',
       },
-      include: {
+      relations: {
         users_time_entries_user_idTousers: true,
       },
     });
@@ -95,7 +104,7 @@ export class SageVipService {
 
     this.logger.log(`Transferring leave from ${startDate} to ${endDate}...`);
 
-    const leaveApps = await this.prisma.leave_applications.findMany({
+    const leaveApps = await this.leaveApplicationRepo.find({
       where: {
         start_date: {
           gte: startDate,
@@ -105,7 +114,7 @@ export class SageVipService {
         },
         status: 'Approved',
       },
-      include: {
+      relations: {
         users_leave_applications_user_idTousers: true,
         leave_types: true,
       },

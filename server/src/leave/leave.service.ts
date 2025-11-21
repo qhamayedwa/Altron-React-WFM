@@ -1,5 +1,11 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, In, MoreThanOrEqual, LessThanOrEqual, Not } from 'typeorm';
+import { Department } from '../entities/department.entity';
+import { LeaveApplication } from '../entities/leave-application.entity';
+import { LeaveBalance } from '../entities/leave-balance.entity';
+import { LeaveType } from '../entities/leave-type.entity';
+import { User } from '../entities/user.entity';
 import { CreateLeaveApplicationDto } from './dto/create-leave-application.dto';
 import { UpdateLeaveApplicationDto } from './dto/update-leave-application.dto';
 import { GetLeaveApplicationsDto } from './dto/get-leave-applications.dto';
@@ -9,10 +15,21 @@ import { AdjustLeaveBalanceDto } from './dto/adjust-leave-balance.dto';
 
 @Injectable()
 export class LeaveService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Department)
+    private departmentRepo: Repository<Department>,
+    @InjectRepository(LeaveApplication)
+    private leaveApplicationRepo: Repository<LeaveApplication>,
+    @InjectRepository(LeaveBalance)
+    private leaveBalanceRepo: Repository<LeaveBalance>,
+    @InjectRepository(LeaveType)
+    private leaveTypeRepo: Repository<LeaveType>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   async getManagedDepartmentIds(userId: number): Promise<number[]> {
-    const departments = await this.prisma.departments.findMany({
+    const departments = await this.departmentRepo.find({
       where: {
         OR: [
           { manager_id: userId },
@@ -28,12 +45,12 @@ export class LeaveService {
   async getMyLeaveBalances(userId: number) {
     const currentYear = new Date().getFullYear();
     
-    const balances = await this.prisma.leave_balances.findMany({
+    const balances = await this.leaveBalanceRepo.find({
       where: {
         user_id: userId,
         year: currentYear,
       },
-      include: {
+      relations: {
         leave_types: {
           select: {
             id: true,
@@ -42,16 +59,16 @@ export class LeaveService {
           },
         },
       },
-      orderBy: {
+      order: {
         leave_types: {
           name: 'asc',
         },
       },
     });
 
-    const activeLeaveTypes = await this.prisma.leave_types.findMany({
+    const activeLeaveTypes = await this.leaveTypeRepo.find({
       where: { is_active: true },
-      orderBy: { name: 'asc' },
+      order: { name: 'asc' },
     });
 
     return {
@@ -69,7 +86,7 @@ export class LeaveService {
     }
 
     if (targetUserId !== userId && !isPrivileged) {
-      const userDept = await this.prisma.users.findUnique({
+      const userDept = await this.userRepo.findOne({
         where: { id: targetUserId },
         select: { department_id: true },
       });
@@ -84,7 +101,7 @@ export class LeaveService {
         throw new ForbiddenException('Only managers and admins can auto-approve leave applications');
       }
       
-      const userDept = await this.prisma.users.findUnique({
+      const userDept = await this.userRepo.findOne({
         where: { id: targetUserId },
         select: { department_id: true },
       });
@@ -107,7 +124,7 @@ export class LeaveService {
       throw new BadRequestException('Leave applications must be for future dates');
     }
 
-    const overlapping = await this.prisma.leave_applications.findFirst({
+    const overlapping = await this.leaveApplicationRepo.findOne({
       where: {
         user_id: targetUserId,
         status: { in: ['Pending', 'Approved'] },
@@ -138,7 +155,7 @@ export class LeaveService {
       throw new BadRequestException('Overlapping leave application already exists');
     }
 
-    const leaveType = await this.prisma.leave_types.findUnique({
+    const leaveType = await this.leaveTypeRepo.findOne({
       where: { id: dto.leave_type_id },
     });
 
@@ -168,7 +185,7 @@ export class LeaveService {
     }
 
     const currentYear = new Date().getFullYear();
-    const leaveBalance = await this.prisma.leave_balances.findFirst({
+    const leaveBalance = await this.leaveBalanceRepo.findOne({
       where: {
         user_id: targetUserId,
         leave_type_id: dto.leave_type_id,
@@ -183,8 +200,7 @@ export class LeaveService {
     }
 
     const now = new Date();
-    const application = await this.prisma.leave_applications.create({
-      data: {
+    const application = await this.leaveApplicationRepo.save(this.leaveApplicationRepo.create({
         user_id: targetUserId,
         leave_type_id: dto.leave_type_id,
         start_date: startDate,
@@ -196,7 +212,7 @@ export class LeaveService {
         manager_approved_id: dto.auto_approve ? applierId : null,
         approved_at: dto.auto_approve ? now : null,
       },
-      include: {
+      relations: {
         leave_types: true,
         users_leave_applications_user_idTousers: {
           select: {
@@ -210,7 +226,7 @@ export class LeaveService {
     });
 
     if (dto.auto_approve && leaveBalance) {
-      await this.prisma.leave_balances.update({
+      await this.leaveBalanceRepo.update({
         where: { id: leaveBalance.id },
         data: {
           balance: leaveBalance.balance - hoursNeeded,
@@ -232,9 +248,9 @@ export class LeaveService {
     }
 
     const [applications, total] = await Promise.all([
-      this.prisma.leave_applications.findMany({
+      this.leaveApplicationRepo.find({
         where,
-        include: {
+        relations: {
           leave_types: {
             select: {
               id: true,
@@ -250,11 +266,11 @@ export class LeaveService {
             },
           },
         },
-        orderBy: { created_at: 'desc' },
+        order: { created_at: 'desc' },
         skip,
         take: per_page,
       }),
-      this.prisma.leave_applications.count({ where }),
+      this.leaveApplicationRepo.count({ where }),
     ]);
 
     return {
@@ -279,7 +295,7 @@ export class LeaveService {
     const where: any = {};
 
     if (!isPrivileged && managedDepartmentIds.length > 0) {
-      const usersInManagedDepts = await this.prisma.users.findMany({
+      const usersInManagedDepts = await this.userRepo.find({
         where: { department_id: { in: managedDepartmentIds } },
         select: { id: true },
       });
@@ -293,7 +309,7 @@ export class LeaveService {
 
     if (user_id) {
       if (!isPrivileged && managedDepartmentIds.length > 0) {
-        const userDept = await this.prisma.users.findUnique({
+        const userDept = await this.userRepo.findOne({
           where: { id: user_id },
           select: { department_id: true },
         });
@@ -305,9 +321,9 @@ export class LeaveService {
     }
 
     const [applications, total] = await Promise.all([
-      this.prisma.leave_applications.findMany({
+      this.leaveApplicationRepo.find({
         where,
-        include: {
+        relations: {
           leave_types: {
             select: {
               id: true,
@@ -332,11 +348,11 @@ export class LeaveService {
             },
           },
         },
-        orderBy: { created_at: 'desc' },
+        order: { created_at: 'desc' },
         skip,
         take: per_page,
       }),
-      this.prisma.leave_applications.count({ where }),
+      this.leaveApplicationRepo.count({ where }),
     ]);
 
     return {
@@ -351,9 +367,9 @@ export class LeaveService {
   }
 
   async approveApplication(applicationId: number, approverId: number, dto: UpdateLeaveApplicationDto, isPrivileged: boolean, managedDepartmentIds: number[]) {
-    const application = await this.prisma.leave_applications.findUnique({
+    const application = await this.leaveApplicationRepo.findOne({
       where: { id: applicationId },
-      include: {
+      relations: {
         users_leave_applications_user_idTousers: {
           select: { department_id: true },
         },
@@ -376,7 +392,7 @@ export class LeaveService {
     }
 
     const currentYear = new Date().getFullYear();
-    const leaveBalance = await this.prisma.leave_balances.findFirst({
+    const leaveBalance = await this.leaveBalanceRepo.findOne({
       where: {
         user_id: application.user_id,
         leave_type_id: application.leave_type_id,
@@ -397,7 +413,7 @@ export class LeaveService {
         throw new BadRequestException('Insufficient leave balance');
       }
 
-      await this.prisma.leave_balances.update({
+      await this.leaveBalanceRepo.update({
         where: { id: leaveBalance.id },
         data: {
           balance: leaveBalance.balance - hoursToDeduct,
@@ -407,7 +423,7 @@ export class LeaveService {
     }
 
     const now = new Date();
-    return this.prisma.leave_applications.update({
+    return this.leaveApplicationRepo.update({
       where: { id: applicationId },
       data: {
         status: 'Approved',
@@ -415,7 +431,7 @@ export class LeaveService {
         manager_comments: dto.manager_comments || null,
         approved_at: now,
       },
-      include: {
+      relations: {
         leave_types: true,
         users_leave_applications_user_idTousers: {
           select: {
@@ -430,9 +446,9 @@ export class LeaveService {
   }
 
   async rejectApplication(applicationId: number, approverId: number, dto: UpdateLeaveApplicationDto, isPrivileged: boolean, managedDepartmentIds: number[]) {
-    const application = await this.prisma.leave_applications.findUnique({
+    const application = await this.leaveApplicationRepo.findOne({
       where: { id: applicationId },
-      include: {
+      relations: {
         users_leave_applications_user_idTousers: {
           select: { department_id: true },
         },
@@ -454,14 +470,14 @@ export class LeaveService {
       }
     }
 
-    return this.prisma.leave_applications.update({
+    return this.leaveApplicationRepo.update({
       where: { id: applicationId },
       data: {
         status: 'Rejected',
         manager_approved_id: approverId,
         manager_comments: dto.manager_comments || null,
       },
-      include: {
+      relations: {
         leave_types: true,
         users_leave_applications_user_idTousers: {
           select: {
@@ -476,7 +492,7 @@ export class LeaveService {
   }
 
   async cancelApplication(applicationId: number, userId: number) {
-    const application = await this.prisma.leave_applications.findFirst({
+    const application = await this.leaveApplicationRepo.findOne({
       where: {
         id: applicationId,
         user_id: userId,
@@ -497,7 +513,7 @@ export class LeaveService {
 
     if (application.status === 'Approved') {
       const currentYear = new Date().getFullYear();
-      const leaveBalance = await this.prisma.leave_balances.findFirst({
+      const leaveBalance = await this.leaveBalanceRepo.findOne({
         where: {
           user_id: application.user_id,
           leave_type_id: application.leave_type_id,
@@ -514,7 +530,7 @@ export class LeaveService {
           hoursToRestore = daysRequested * 8;
         }
 
-        await this.prisma.leave_balances.update({
+        await this.leaveBalanceRepo.update({
           where: { id: leaveBalance.id },
           data: {
             balance: leaveBalance.balance + hoursToRestore,
@@ -524,21 +540,21 @@ export class LeaveService {
       }
     }
 
-    return this.prisma.leave_applications.update({
+    return this.leaveApplicationRepo.update({
       where: { id: applicationId },
       data: { status: 'Cancelled' },
-      include: { leave_types: true },
+      relations: { leave_types: true },
     });
   }
 
   async getLeaveTypes() {
-    return this.prisma.leave_types.findMany({
-      orderBy: { name: 'asc' },
+    return this.leaveTypeRepo.find({
+      order: { name: 'asc' },
     });
   }
 
   async getLeaveType(id: number) {
-    const leaveType = await this.prisma.leave_types.findUnique({
+    const leaveType = await this.leaveTypeRepo.findOne({
       where: { id },
     });
 
@@ -547,9 +563,9 @@ export class LeaveService {
     }
 
     const [totalApplications, pendingApplications, approvedApplications] = await Promise.all([
-      this.prisma.leave_applications.count({ where: { leave_type_id: id } }),
-      this.prisma.leave_applications.count({ where: { leave_type_id: id, status: 'Pending' } }),
-      this.prisma.leave_applications.count({ where: { leave_type_id: id, status: 'Approved' } }),
+      this.leaveApplicationRepo.count({ where: { leave_type_id: id } }),
+      this.leaveApplicationRepo.count({ where: { leave_type_id: id, status: 'Pending' } }),
+      this.leaveApplicationRepo.count({ where: { leave_type_id: id, status: 'Approved' } }),
     ]);
 
     return {
@@ -563,7 +579,7 @@ export class LeaveService {
   }
 
   async createLeaveType(dto: CreateLeaveTypeDto) {
-    const existing = await this.prisma.leave_types.findFirst({
+    const existing = await this.leaveTypeRepo.findOne({
       where: { name: dto.name },
     });
 
@@ -571,8 +587,7 @@ export class LeaveService {
       throw new BadRequestException('A leave type with this name already exists');
     }
 
-    return this.prisma.leave_types.create({
-      data: {
+    return this.leaveTypeRepo.save(this.leaveTypeRepo.create({
         name: dto.name,
         description: dto.description || null,
         default_accrual_rate: dto.default_accrual_rate || null,
@@ -583,7 +598,7 @@ export class LeaveService {
   }
 
   async updateLeaveType(id: number, dto: UpdateLeaveTypeDto) {
-    const leaveType = await this.prisma.leave_types.findUnique({
+    const leaveType = await this.leaveTypeRepo.findOne({
       where: { id },
     });
 
@@ -592,7 +607,7 @@ export class LeaveService {
     }
 
     if (dto.name) {
-      const existing = await this.prisma.leave_types.findFirst({
+      const existing = await this.leaveTypeRepo.findOne({
         where: {
           name: dto.name,
           NOT: { id },
@@ -605,7 +620,7 @@ export class LeaveService {
     }
 
     if (dto.is_active === false) {
-      const pendingCount = await this.prisma.leave_applications.count({
+      const pendingCount = await this.leaveApplicationRepo.count({
         where: {
           leave_type_id: id,
           status: 'Pending',
@@ -619,7 +634,7 @@ export class LeaveService {
       }
     }
 
-    return this.prisma.leave_types.update({
+    return this.leaveTypeRepo.update({
       where: { id },
       data: {
         name: dto.name,
@@ -643,9 +658,9 @@ export class LeaveService {
       where.leave_type_id = leaveTypeId;
     }
 
-    return this.prisma.leave_balances.findMany({
+    return this.leaveBalanceRepo.find({
       where,
-      include: {
+      relations: {
         users: {
           select: {
             id: true,
@@ -661,7 +676,7 @@ export class LeaveService {
           },
         },
       },
-      orderBy: {
+      order: {
         users: {
           username: 'asc',
         },
@@ -670,7 +685,7 @@ export class LeaveService {
   }
 
   async adjustLeaveBalance(balanceId: number, dto: AdjustLeaveBalanceDto) {
-    const balance = await this.prisma.leave_balances.findUnique({
+    const balance = await this.leaveBalanceRepo.findOne({
       where: { id: balanceId },
     });
 
@@ -680,7 +695,7 @@ export class LeaveService {
 
     const adjustment = dto.new_balance - balance.balance;
 
-    return this.prisma.leave_balances.update({
+    return this.leaveBalanceRepo.update({
       where: { id: balanceId },
       data: {
         balance: dto.new_balance,
@@ -695,11 +710,11 @@ export class LeaveService {
     const currentMonth = accrualDate.getMonth();
     let usersProcessed = 0;
 
-    const users = await this.prisma.users.findMany({
+    const users = await this.userRepo.find({
       where: { is_active: true },
     });
 
-    const leaveTypes = await this.prisma.leave_types.findMany({
+    const leaveTypes = await this.leaveTypeRepo.find({
       where: {
         is_active: true,
         default_accrual_rate: { not: null },
@@ -708,7 +723,7 @@ export class LeaveService {
 
     for (const user of users) {
       for (const leaveType of leaveTypes) {
-        let balance = await this.prisma.leave_balances.findFirst({
+        let balance = await this.leaveBalanceRepo.findOne({
           where: {
             user_id: user.id,
             leave_type_id: leaveType.id,
@@ -717,8 +732,7 @@ export class LeaveService {
         });
 
         if (!balance) {
-          balance = await this.prisma.leave_balances.create({
-            data: {
+          balance = await this.leaveBalanceRepo.save(this.leaveBalanceRepo.create({
               user_id: user.id,
               leave_type_id: leaveType.id,
               year: currentYear,
@@ -737,7 +751,7 @@ export class LeaveService {
         if (needsAccrual && leaveType.default_accrual_rate) {
           const monthlyAccrual = leaveType.default_accrual_rate / 12;
 
-          await this.prisma.leave_balances.update({
+          await this.leaveBalanceRepo.update({
             where: { id: balance.id },
             data: {
               balance: balance.balance + monthlyAccrual,

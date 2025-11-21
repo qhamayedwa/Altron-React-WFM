@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Schedule } from '../entities/schedule.entity';
+import { TimeEntry } from '../entities/time-entry.entity';
+import { User } from '../entities/user.entity';
 import type {
   SchedulingAnalysis,
   PayrollInsights,
@@ -10,7 +14,14 @@ import type {
 export class AiFallbackService {
   private readonly logger = new Logger(AiFallbackService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Schedule)
+    private scheduleRepo: Repository<Schedule>,
+    @InjectRepository(TimeEntry)
+    private timeEntryRepo: Repository<TimeEntry>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   async analyzeSchedulingPatterns(
     departmentId?: number,
@@ -34,9 +45,9 @@ export class AiFallbackService {
         };
       }
 
-      const schedules = await this.prisma.schedules.findMany({
+      const schedules = await this.scheduleRepo.find({
         where,
-        include: {
+        relations: {
           users_schedules_user_idTousers: true,
         },
       });
@@ -159,7 +170,7 @@ export class AiFallbackService {
     payPeriodEnd: Date,
   ): Promise<PayrollInsights> {
     try {
-      const timeEntries = await this.prisma.time_entries.findMany({
+      const timeEntries = await this.timeEntryRepo.find({
         where: {
           clock_in_time: {
             gte: payPeriodStart,
@@ -330,7 +341,7 @@ export class AiFallbackService {
         where.user_id = employeeId;
       }
 
-      const entries = await this.prisma.time_entries.findMany({
+      const entries = await this.timeEntryRepo.find({
         where,
       });
 

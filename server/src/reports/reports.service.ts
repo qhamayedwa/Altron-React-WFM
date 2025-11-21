@@ -1,9 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { TimeEntry } from '../entities/time-entry.entity';
+import { LeaveApplication } from '../entities/leave-application.entity';
+import { PayCalculation } from '../entities/pay-calculation.entity';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(TimeEntry)
+    private timeEntryRepo: Repository<TimeEntry>,
+    @InjectRepository(LeaveApplication)
+    private leaveApplicationRepo: Repository<LeaveApplication>,
+    @InjectRepository(PayCalculation)
+    private payCalculationRepo: Repository<PayCalculation>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   async getTimeEntryReport(startDate: Date, endDate: Date, userId?: number, departmentId?: number) {
     const where: any = {
@@ -20,9 +34,9 @@ export class ReportsService {
       };
     }
 
-    const entries = await this.prisma.time_entries.findMany({
+    const entries = await this.timeEntryRepo.find({
       where,
-      include: {
+      relations: {
         users_time_entries_user_idTousers: {
           select: {
             id: true,
@@ -33,7 +47,7 @@ export class ReportsService {
           },
         },
       },
-      orderBy: { clock_in_time: 'desc' },
+      order: { clock_in_time: 'desc' },
     });
 
     const totalHours = entries.reduce((sum: number, entry: any) => {
@@ -72,9 +86,9 @@ export class ReportsService {
       };
     }
 
-    const applications = await this.prisma.leave_applications.findMany({
+    const applications = await this.leaveApplicationRepo.find({
       where,
-      include: {
+      relations: {
         users_leave_applications_user_idTousers: {
           select: {
             id: true,
@@ -86,7 +100,7 @@ export class ReportsService {
         },
         leave_types: true,
       },
-      orderBy: { start_date: 'desc' },
+      order: { start_date: 'desc' },
     });
 
     const totalDays = applications.reduce((sum, app) => {
@@ -125,9 +139,9 @@ export class ReportsService {
       };
     }
 
-    const entries = await this.prisma.time_entries.findMany({
+    const entries = await this.timeEntryRepo.find({
       where,
-      include: {
+      relations: {
         users_time_entries_user_idTousers: {
           select: {
             id: true,
@@ -170,7 +184,7 @@ export class ReportsService {
   }
 
   async getPayrollSummary(startDate: Date, endDate: Date, departmentId?: number) {
-    const calculations = await this.prisma.pay_calculations.findMany({
+    const calculations = await this.payCalculationRepo.find({
       where: {
         pay_period_start: {
           gte: startDate,
@@ -179,7 +193,7 @@ export class ReportsService {
           lte: endDate,
         },
       },
-      include: {
+      relations: {
         users_pay_calculations_user_idTousers: {
           select: {
             id: true,
@@ -190,7 +204,7 @@ export class ReportsService {
           },
         },
       },
-      orderBy: { id: 'desc' },
+      order: { id: 'desc' },
     });
 
     const totalHours = calculations.reduce((sum: number, calc: any) => sum + Number(calc.total_hours || 0), 0);

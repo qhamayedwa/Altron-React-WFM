@@ -1,15 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { TimeEntry } from '../entities/time-entry.entity';
+import { LeaveApplication } from '../entities/leave-application.entity';
+import { LeaveBalance } from '../entities/leave-balance.entity';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(TimeEntry)
+    private timeEntryRepo: Repository<TimeEntry>,
+    @InjectRepository(LeaveApplication)
+    private leaveApplicationRepo: Repository<LeaveApplication>,
+    @InjectRepository(LeaveBalance)
+    private leaveBalanceRepo: Repository<LeaveBalance>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   async getDashboardStats(userId: number, role: string) {
     const today = new Date();
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const timeEntriesToday = await this.prisma.time_entries.findMany({
+    const timeEntriesToday = await this.timeEntryRepo.find({
       where: {
         user_id: userId,
         clock_in_time: {
@@ -18,32 +32,32 @@ export class DashboardService {
       },
     });
 
-    const leaveApplications = await this.prisma.leave_applications.findMany({
+    const leaveApplications = await this.leaveApplicationRepo.find({
       where: {
         user_id: userId,
       },
-      orderBy: { created_at: 'desc' },
+      order: { created_at: 'desc' },
       take: 5,
     });
 
-    const leaveBalances = await this.prisma.leave_balances.findMany({
+    const leaveBalances = await this.leaveBalanceRepo.find({
       where: {
         user_id: userId,
       },
-      include: {
+      relations: {
         leave_types: true,
       },
     });
 
     let pendingApprovals = 0;
     if (['Manager', 'Admin', 'Super User', 'system_super_admin'].includes(role)) {
-      const pendingTimeEntries = await this.prisma.time_entries.count({
+      const pendingTimeEntries = await this.timeEntryRepo.count({
         where: {
           status: 'pending',
         },
       });
 
-      const pendingLeaveApps = await this.prisma.leave_applications.count({
+      const pendingLeaveApps = await this.leaveApplicationRepo.count({
         where: {
           status: 'pending',
         },
@@ -73,11 +87,11 @@ export class DashboardService {
       return { success: true, pending_time_entries: [], pending_leave_applications: [] };
     }
 
-    const pendingTimeEntries = await this.prisma.time_entries.findMany({
+    const pendingTimeEntries = await this.timeEntryRepo.find({
       where: {
         status: 'pending',
       },
-      include: {
+      relations: {
         users_time_entries_user_idTousers: {
           select: {
             id: true,
@@ -87,15 +101,15 @@ export class DashboardService {
           },
         },
       },
-      orderBy: { clock_in_time: 'desc' },
+      order: { clock_in_time: 'desc' },
       take: 10,
     });
 
-    const pendingLeaveApplications = await this.prisma.leave_applications.findMany({
+    const pendingLeaveApplications = await this.leaveApplicationRepo.find({
       where: {
         status: 'pending',
       },
-      include: {
+      relations: {
         users_leave_applications_user_idTousers: {
           select: {
             id: true,
@@ -106,7 +120,7 @@ export class DashboardService {
         },
         leave_types: true,
       },
-      orderBy: { created_at: 'desc' },
+      order: { created_at: 'desc' },
       take: 10,
     });
 
@@ -120,11 +134,11 @@ export class DashboardService {
   async getRecentActivities(userId: number, role: string) {
     const activities = [];
 
-    const recentTimeEntries = await this.prisma.time_entries.findMany({
+    const recentTimeEntries = await this.timeEntryRepo.find({
       where: {
         user_id: userId,
       },
-      orderBy: { clock_in_time: 'desc' },
+      order: { clock_in_time: 'desc' },
       take: 5,
     });
 
@@ -137,11 +151,11 @@ export class DashboardService {
       });
     }
 
-    const recentLeaveApps = await this.prisma.leave_applications.findMany({
+    const recentLeaveApps = await this.leaveApplicationRepo.find({
       where: {
         user_id: userId,
       },
-      orderBy: { created_at: 'desc' },
+      order: { created_at: 'desc' },
       take: 5,
     });
 

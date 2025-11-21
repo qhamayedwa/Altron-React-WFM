@@ -1,5 +1,11 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Company } from '../../entities/company.entity';
+import { Department } from '../../entities/department.entity';
+import { Region } from '../../entities/region.entity';
+import { Site } from '../../entities/site.entity';
+import { User } from '../../entities/user.entity';
 import {
   CreateCompanyDto,
   UpdateCompanyDto,
@@ -14,20 +20,31 @@ import {
 
 @Injectable()
 export class OrganizationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Company)
+    private companyRepo: Repository<Company>,
+    @InjectRepository(Department)
+    private departmentRepo: Repository<Department>,
+    @InjectRepository(Region)
+    private regionRepo: Repository<Region>,
+    @InjectRepository(Site)
+    private siteRepo: Repository<Site>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+  ) {}
 
   async getDashboard() {
     const [companies, regions, sites, departments, employees] = await Promise.all([
-      this.prisma.companies.count({ where: { is_active: true } }),
-      this.prisma.regions.count({ where: { is_active: true } }),
-      this.prisma.sites.count({ where: { is_active: true } }),
-      this.prisma.departments.count({ where: { is_active: true } }),
-      this.prisma.users.count({ where: { is_active: true } }),
+      this.companyRepo.count({ where: { is_active: true } }),
+      this.regionRepo.count({ where: { is_active: true } }),
+      this.siteRepo.count({ where: { is_active: true } }),
+      this.departmentRepo.count({ where: { is_active: true } }),
+      this.userRepo.count({ where: { is_active: true } }),
     ]);
 
-    const companiesList = await this.prisma.companies.findMany({
+    const companiesList = await this.companyRepo.find({
       where: { is_active: true },
-      include: {
+      relations: {
         regions: { where: { is_active: true } },
       },
     });
@@ -35,19 +52,19 @@ export class OrganizationService {
     const companyDetails = await Promise.all(
       companiesList.map(async (company) => {
         const [sitesCount, departmentsCount, employeesCount] = await Promise.all([
-          this.prisma.sites.count({
+          this.siteRepo.count({
             where: {
               regions: { company_id: company.id },
               is_active: true,
             },
           }),
-          this.prisma.departments.count({
+          this.departmentRepo.count({
             where: {
               sites: { regions: { companies: { id: company.id } } },
               is_active: true,
             },
           }),
-          this.prisma.users.count({
+          this.userRepo.count({
             where: {
               departments_users_department_idTodepartments: { 
                 sites: { regions: { company_id: company.id } } 
@@ -81,8 +98,8 @@ export class OrganizationService {
   }
 
   async findAllCompanies() {
-    const companies = await this.prisma.companies.findMany({
-      include: {
+    const companies = await this.companyRepo.find({
+      relations: {
         regions: { where: { is_active: true } },
       },
     });
@@ -90,19 +107,19 @@ export class OrganizationService {
     const companiesWithStats = await Promise.all(
       companies.map(async (company) => {
         const [sitesCount, departmentsCount, employeesCount] = await Promise.all([
-          this.prisma.sites.count({
+          this.siteRepo.count({
             where: {
               regions: { company_id: company.id },
               is_active: true,
             },
           }),
-          this.prisma.departments.count({
+          this.departmentRepo.count({
             where: {
               sites: { regions: { companies: { id: company.id } } },
               is_active: true,
             },
           }),
-          this.prisma.users.count({
+          this.userRepo.count({
             where: {
               departments_users_department_idTodepartments: { 
                 sites: { regions: { company_id: company.id } } 
@@ -128,9 +145,9 @@ export class OrganizationService {
   }
 
   async findCompany(id: number) {
-    const company = await this.prisma.companies.findUnique({
+    const company = await this.companyRepo.findOne({
       where: { id },
-      include: {
+      relations: {
         regions: { where: { is_active: true } },
       },
     });
@@ -140,19 +157,19 @@ export class OrganizationService {
     }
 
     const [sitesCount, departmentsCount, employeesCount] = await Promise.all([
-      this.prisma.sites.count({
+      this.siteRepo.count({
         where: {
           regions: { company_id: id },
           is_active: true,
         },
       }),
-      this.prisma.departments.count({
+      this.departmentRepo.count({
         where: {
           sites: { regions: { companies: { id } } },
           is_active: true,
         },
       }),
-      this.prisma.users.count({
+      this.userRepo.count({
         where: {
           departments_users_department_idTodepartments: { sites: { regions: { companies: { id } } } },
           is_active: true,
@@ -174,7 +191,7 @@ export class OrganizationService {
   }
 
   async createCompany(dto: CreateCompanyDto) {
-    const existingCompany = await this.prisma.companies.findFirst({
+    const existingCompany = await this.companyRepo.findOne({
       where: { code: dto.code },
     });
 
@@ -182,8 +199,7 @@ export class OrganizationService {
       throw new ConflictException(`Company with code ${dto.code} already exists`);
     }
 
-    const company = await this.prisma.companies.create({
-      data: {
+    const company = await this.companyRepo.save(this.companyRepo.create({
         ...dto,
         country: dto.country || 'South Africa',
         timezone: dto.timezone || 'Africa/Johannesburg',
@@ -196,7 +212,7 @@ export class OrganizationService {
   }
 
   async updateCompany(id: number, dto: UpdateCompanyDto) {
-    const existingCompany = await this.prisma.companies.findUnique({
+    const existingCompany = await this.companyRepo.findOne({
       where: { id },
     });
 
@@ -204,7 +220,7 @@ export class OrganizationService {
       throw new NotFoundException(`Company with ID ${id} not found`);
     }
 
-    const company = await this.prisma.companies.update({
+    const company = await this.companyRepo.update({
       where: { id },
       data: {
         ...dto,
@@ -216,7 +232,7 @@ export class OrganizationService {
   }
 
   async deleteCompany(id: number) {
-    const company = await this.prisma.companies.findUnique({
+    const company = await this.companyRepo.findOne({
       where: { id },
     });
 
@@ -225,10 +241,10 @@ export class OrganizationService {
     }
 
     const [regionsCount, sitesCount, departmentsCount, employeesCount] = await Promise.all([
-      this.prisma.regions.count({ where: { company_id: id, is_active: true } }),
-      this.prisma.sites.count({ where: { regions: { company_id: id }, is_active: true } }),
-      this.prisma.departments.count({ where: { sites: { regions: { company_id: id } }, is_active: true } }),
-      this.prisma.users.count({ where: { departments_users_department_idTodepartments: { sites: { regions: { company_id: id } } }, is_active: true } }),
+      this.regionRepo.count({ where: { company_id: id, is_active: true } }),
+      this.siteRepo.count({ where: { regions: { company_id: id }, is_active: true } }),
+      this.departmentRepo.count({ where: { sites: { regions: { company_id: id } }, is_active: true } }),
+      this.userRepo.count({ where: { departments_users_department_idTodepartments: { sites: { regions: { company_id: id } } }, is_active: true } }),
     ]);
 
     if (regionsCount > 0 || sitesCount > 0 || departmentsCount > 0 || employeesCount > 0) {
@@ -237,7 +253,7 @@ export class OrganizationService {
       );
     }
 
-    const deleted = await this.prisma.companies.update({
+    const deleted = await this.companyRepo.update({
       where: { id },
       data: {
         is_active: false,
@@ -248,7 +264,7 @@ export class OrganizationService {
   }
 
   async createRegion(companyId: number, dto: CreateRegionDto) {
-    const company = await this.prisma.companies.findUnique({
+    const company = await this.companyRepo.findOne({
       where: { id: companyId },
     });
 
@@ -256,7 +272,7 @@ export class OrganizationService {
       throw new NotFoundException(`Company with ID ${companyId} not found`);
     }
 
-    const existingRegion = await this.prisma.regions.findFirst({
+    const existingRegion = await this.regionRepo.findOne({
       where: { company_id: companyId, code: dto.code },
     });
 
@@ -264,8 +280,7 @@ export class OrganizationService {
       throw new ConflictException(`Region with code ${dto.code} already exists for this company`);
     }
 
-    const region = await this.prisma.regions.create({
-      data: {
+    const region = await this.regionRepo.save(this.regionRepo.create({
         ...dto,
         company_id: companyId,
       },
@@ -275,9 +290,9 @@ export class OrganizationService {
   }
 
   async findRegion(id: number) {
-    const region = await this.prisma.regions.findUnique({
+    const region = await this.regionRepo.findOne({
       where: { id },
-      include: {
+      relations: {
         companies: true,
         sites: { where: { is_active: true } },
       },
@@ -288,13 +303,13 @@ export class OrganizationService {
     }
 
     const [departmentsCount, employeesCount] = await Promise.all([
-      this.prisma.departments.count({
+      this.departmentRepo.count({
         where: {
           sites: { region_id: id },
           is_active: true,
         },
       }),
-      this.prisma.users.count({
+      this.userRepo.count({
         where: {
           departments_users_department_idTodepartments: { sites: { region_id: id } },
           is_active: true,
@@ -314,14 +329,14 @@ export class OrganizationService {
   }
 
   async updateRegion(id: number, dto: UpdateRegionDto) {
-    const region = await this.prisma.regions.findUnique({ where: { id } });
+    const region = await this.regionRepo.findOne({ where: { id } });
 
     if (!region) {
       throw new NotFoundException(`Region with ID ${id} not found`);
     }
 
     if (dto.code && dto.code !== region.code) {
-      const duplicate = await this.prisma.regions.findFirst({
+      const duplicate = await this.regionRepo.findOne({
         where: {
           company_id: region.company_id,
           code: dto.code,
@@ -333,7 +348,7 @@ export class OrganizationService {
       }
     }
 
-    const updated = await this.prisma.regions.update({
+    const updated = await this.regionRepo.update({
       where: { id },
       data: {
         ...dto,
@@ -345,9 +360,9 @@ export class OrganizationService {
   }
 
   async deleteRegion(id: number) {
-    const region = await this.prisma.regions.findUnique({
+    const region = await this.regionRepo.findOne({
       where: { id },
-      include: {
+      relations: {
         sites: { where: { is_active: true } },
       },
     });
@@ -362,7 +377,7 @@ export class OrganizationService {
       );
     }
 
-    const deleted = await this.prisma.regions.update({
+    const deleted = await this.regionRepo.update({
       where: { id },
       data: {
         is_active: false,
@@ -373,7 +388,7 @@ export class OrganizationService {
   }
 
   async createSite(regionId: number, dto: CreateSiteDto) {
-    const region = await this.prisma.regions.findUnique({
+    const region = await this.regionRepo.findOne({
       where: { id: regionId },
     });
 
@@ -381,8 +396,7 @@ export class OrganizationService {
       throw new NotFoundException(`Region with ID ${regionId} not found`);
     }
 
-    const site = await this.prisma.sites.create({
-      data: {
+    const site = await this.siteRepo.save(this.siteRepo.create({
         ...dto,
         region_id: regionId,
         geo_fence_radius: dto.geo_fence_radius || 100,
@@ -394,10 +408,10 @@ export class OrganizationService {
   }
 
   async findSite(id: number) {
-    const site = await this.prisma.sites.findUnique({
+    const site = await this.siteRepo.findOne({
       where: { id },
-      include: {
-        regions: { include: { companies: true } },
+      relations: {
+        regions: { relations: { companies: true } },
         departments: { where: { is_active: true } },
       },
     });
@@ -408,7 +422,7 @@ export class OrganizationService {
 
     const departmentDetails = await Promise.all(
       site.departments.map(async (dept) => {
-        const employeeCount = await this.prisma.users.count({
+        const employeeCount = await this.userRepo.count({
           where: { department_id: dept.id, is_active: true },
         });
         return {
@@ -432,13 +446,13 @@ export class OrganizationService {
   }
 
   async updateSite(id: number, dto: UpdateSiteDto) {
-    const site = await this.prisma.sites.findUnique({ where: { id } });
+    const site = await this.siteRepo.findOne({ where: { id } });
 
     if (!site) {
       throw new NotFoundException(`Site with ID ${id} not found`);
     }
 
-    const updated = await this.prisma.sites.update({
+    const updated = await this.siteRepo.update({
       where: { id },
       data: {
         ...dto,
@@ -450,15 +464,15 @@ export class OrganizationService {
   }
 
   async deleteSite(id: number) {
-    const site = await this.prisma.sites.findUnique({ where: { id } });
+    const site = await this.siteRepo.findOne({ where: { id } });
 
     if (!site) {
       throw new NotFoundException(`Site with ID ${id} not found`);
     }
 
     const [departmentsCount, employeesCount] = await Promise.all([
-      this.prisma.departments.count({ where: { site_id: id, is_active: true } }),
-      this.prisma.users.count({ where: { departments_users_department_idTodepartments: { site_id: id }, is_active: true } }),
+      this.departmentRepo.count({ where: { site_id: id, is_active: true } }),
+      this.userRepo.count({ where: { departments_users_department_idTodepartments: { site_id: id }, is_active: true } }),
     ]);
 
     if (departmentsCount > 0 || employeesCount > 0) {
@@ -467,7 +481,7 @@ export class OrganizationService {
       );
     }
 
-    const deleted = await this.prisma.sites.update({
+    const deleted = await this.siteRepo.update({
       where: { id },
       data: {
         is_active: false,
@@ -478,7 +492,7 @@ export class OrganizationService {
   }
 
   async createDepartment(siteId: number, dto: CreateDepartmentDto) {
-    const site = await this.prisma.sites.findUnique({
+    const site = await this.siteRepo.findOne({
       where: { id: siteId },
     });
 
@@ -487,7 +501,7 @@ export class OrganizationService {
     }
 
     if (dto.manager_id) {
-      const manager = await this.prisma.users.findUnique({
+      const manager = await this.userRepo.findOne({
         where: { id: dto.manager_id },
       });
       if (!manager) {
@@ -496,7 +510,7 @@ export class OrganizationService {
     }
 
     if (dto.deputy_manager_id) {
-      const deputyManager = await this.prisma.users.findUnique({
+      const deputyManager = await this.userRepo.findOne({
         where: { id: dto.deputy_manager_id },
       });
       if (!deputyManager) {
@@ -504,8 +518,7 @@ export class OrganizationService {
       }
     }
 
-    const department = await this.prisma.departments.create({
-      data: {
+    const department = await this.departmentRepo.save(this.departmentRepo.create({
         ...dto,
         site_id: siteId,
         standard_hours_per_day: dto.standard_hours_per_day || 8.0,
@@ -517,10 +530,10 @@ export class OrganizationService {
   }
 
   async findDepartment(id: number) {
-    const department = await this.prisma.departments.findUnique({
+    const department = await this.departmentRepo.findOne({
       where: { id },
-      include: {
-        sites: { include: { regions: { include: { companies: true } } } },
+      relations: {
+        sites: { relations: { regions: { relations: { companies: true } } } },
         users_departments_manager_idTousers: true,
         users_departments_deputy_manager_idTousers: true,
       },
@@ -530,7 +543,7 @@ export class OrganizationService {
       throw new NotFoundException(`Department with ID ${id} not found`);
     }
 
-    const allEmployees = await this.prisma.users.findMany({
+    const allEmployees = await this.userRepo.find({
       where: { department_id: id },
     });
 
@@ -553,27 +566,27 @@ export class OrganizationService {
   }
 
   async updateDepartment(id: number, dto: UpdateDepartmentDto) {
-    const department = await this.prisma.departments.findUnique({ where: { id } });
+    const department = await this.departmentRepo.findOne({ where: { id } });
 
     if (!department) {
       throw new NotFoundException(`Department with ID ${id} not found`);
     }
 
     if (dto.manager_id) {
-      const manager = await this.prisma.users.findUnique({ where: { id: dto.manager_id } });
+      const manager = await this.userRepo.findOne({ where: { id: dto.manager_id } });
       if (!manager) {
         throw new BadRequestException(`Manager with ID ${dto.manager_id} not found`);
       }
     }
 
     if (dto.deputy_manager_id) {
-      const deputyManager = await this.prisma.users.findUnique({ where: { id: dto.deputy_manager_id } });
+      const deputyManager = await this.userRepo.findOne({ where: { id: dto.deputy_manager_id } });
       if (!deputyManager) {
         throw new BadRequestException(`Deputy manager with ID ${dto.deputy_manager_id} not found`);
       }
     }
 
-    const updated = await this.prisma.departments.update({
+    const updated = await this.departmentRepo.update({
       where: { id },
       data: {
         ...dto,
@@ -585,13 +598,13 @@ export class OrganizationService {
   }
 
   async deleteDepartment(id: number) {
-    const department = await this.prisma.departments.findUnique({ where: { id } });
+    const department = await this.departmentRepo.findOne({ where: { id } });
 
     if (!department) {
       throw new NotFoundException(`Department with ID ${id} not found`);
     }
 
-    const employeeCount = await this.prisma.users.count({
+    const employeeCount = await this.userRepo.count({
       where: { department_id: id },
     });
 
@@ -601,7 +614,7 @@ export class OrganizationService {
       );
     }
 
-    const deleted = await this.prisma.departments.update({
+    const deleted = await this.departmentRepo.update({
       where: { id },
       data: {
         is_active: false,
@@ -613,8 +626,8 @@ export class OrganizationService {
 
   async assignEmployee(dto: AssignEmployeeDto) {
     const [employee, department] = await Promise.all([
-      this.prisma.users.findUnique({ where: { id: dto.employee_id } }),
-      this.prisma.departments.findUnique({ where: { id: dto.department_id } }),
+      this.userRepo.findOne({ where: { id: dto.employee_id } }),
+      this.departmentRepo.findOne({ where: { id: dto.department_id } }),
     ]);
 
     if (!employee) {
@@ -625,10 +638,10 @@ export class OrganizationService {
     }
 
     const oldDepartment = employee.department_id
-      ? await this.prisma.departments.findUnique({ where: { id: employee.department_id } })
+      ? await this.departmentRepo.findOne({ where: { id: employee.department_id } })
       : null;
 
-    const updated = await this.prisma.users.update({
+    const updated = await this.userRepo.update({
       where: { id: dto.employee_id },
       data: { department_id: dto.department_id },
     });
@@ -645,15 +658,15 @@ export class OrganizationService {
   }
 
   async getHierarchy(companyId: number) {
-    const company = await this.prisma.companies.findUnique({
+    const company = await this.companyRepo.findOne({
       where: { id: companyId },
-      include: {
+      relations: {
         regions: {
           where: { is_active: true },
-          include: {
+          relations: {
             sites: {
               where: { is_active: true },
-              include: {
+              relations: {
                 departments: {
                   where: { is_active: true },
                 },
@@ -686,7 +699,7 @@ export class OrganizationService {
               code: site.code,
               departments: await Promise.all(
                 site.departments.map(async (dept) => {
-                  const employeeCount = await this.prisma.users.count({
+                  const employeeCount = await this.userRepo.count({
                     where: { department_id: dept.id, is_active: true },
                   });
                   return {
@@ -712,35 +725,35 @@ export class OrganizationService {
     }
 
     const [companies, regions, sites, departments] = await Promise.all([
-      this.prisma.companies.findMany({
+      this.companyRepo.find({
         where: {
           name: { contains: query, mode: 'insensitive' },
           is_active: true,
         },
         take: 5,
       }),
-      this.prisma.regions.findMany({
+      this.regionRepo.find({
         where: {
           name: { contains: query, mode: 'insensitive' },
           is_active: true,
         },
-        include: { companies: true },
+        relations: { companies: true },
         take: 5,
       }),
-      this.prisma.sites.findMany({
+      this.siteRepo.find({
         where: {
           name: { contains: query, mode: 'insensitive' },
           is_active: true,
         },
-        include: { regions: { include: { companies: true } } },
+        relations: { regions: { relations: { companies: true } } },
         take: 5,
       }),
-      this.prisma.departments.findMany({
+      this.departmentRepo.find({
         where: {
           name: { contains: query, mode: 'insensitive' },
           is_active: true,
         },
-        include: { sites: { include: { regions: { include: { companies: true } } } } },
+        relations: { sites: { relations: { regions: { relations: { companies: true } } } } },
         take: 5,
       }),
     ]);
@@ -782,13 +795,13 @@ export class OrganizationService {
   }
 
   async findAllDepartments() {
-    const departments = await this.prisma.departments.findMany({
+    const departments = await this.departmentRepo.find({
       where: { is_active: true },
-      include: {
+      relations: {
         sites: {
-          include: {
+          relations: {
             regions: {
-              include: {
+              relations: {
                 companies: true,
               },
             },

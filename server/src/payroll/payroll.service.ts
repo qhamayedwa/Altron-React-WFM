@@ -1,5 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { PayCalculation } from '../entities/pay-calculation.entity';
+import { PayCode } from '../entities/pay-code.entity';
+import { PayRule } from '../entities/pay-rule.entity';
+import { TimeEntry } from '../entities/time-entry.entity';
+import { User } from '../entities/user.entity';
+import { UserRole } from '../entities/user-role.entity';
 import { CreatePayCodeDto } from './dto/create-pay-code.dto';
 import { UpdatePayCodeDto } from './dto/update-pay-code.dto';
 import { CreatePayRuleDto } from './dto/create-pay-rule.dto';
@@ -32,7 +39,20 @@ export interface PayCalculationResult {
 
 @Injectable()
 export class PayrollService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(PayCalculation)
+    private payCalculationRepo: Repository<PayCalculation>,
+    @InjectRepository(PayCode)
+    private payCodeRepo: Repository<PayCode>,
+    @InjectRepository(PayRule)
+    private payRuleRepo: Repository<PayRule>,
+    @InjectRepository(TimeEntry)
+    private timeEntryRepo: Repository<TimeEntry>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
+    @InjectRepository(UserRole)
+    private userRoleRepo: Repository<UserRole>,
+  ) {}
 
   // ==================== PAY CODES ====================
 
@@ -58,12 +78,12 @@ export class PayrollService {
     }
 
     const [payCodes, total] = await Promise.all([
-      this.prisma.pay_codes.findMany({
+      this.payCodeRepo.find({
         where,
-        orderBy: { code: 'asc' },
+        order: { code: 'asc' },
         skip,
         take: perPage,
-        include: {
+        relations: {
           users: {
             select: {
               id: true,
@@ -74,7 +94,7 @@ export class PayrollService {
           },
         },
       }),
-      this.prisma.pay_codes.count({ where }),
+      this.payCodeRepo.count({ where }),
     ]);
 
     return {
@@ -87,9 +107,9 @@ export class PayrollService {
   }
 
   async getPayCodeById(id: number) {
-    const payCode = await this.prisma.pay_codes.findUnique({
+    const payCode = await this.payCodeRepo.findOne({
       where: { id },
-      include: {
+      relations: {
         users: {
           select: {
             id: true,
@@ -106,7 +126,7 @@ export class PayrollService {
     }
 
     // Get usage statistics
-    const timeEntriesCount = await this.prisma.time_entries.count({
+    const timeEntriesCount = await this.timeEntryRepo.count({
       where: {
         OR: [
           { absence_pay_code_id: id },
@@ -123,7 +143,7 @@ export class PayrollService {
 
   async createPayCode(dto: CreatePayCodeDto, createdById: number) {
     // Check if code already exists
-    const existing = await this.prisma.pay_codes.findUnique({
+    const existing = await this.payCodeRepo.findOne({
       where: { code: dto.code.toUpperCase() },
     });
 
@@ -131,8 +151,7 @@ export class PayrollService {
       throw new BadRequestException(`Pay code "${dto.code}" already exists`);
     }
 
-    const payCode = await this.prisma.pay_codes.create({
-      data: {
+    const payCode = await this.payCodeRepo.save(this.payCodeRepo.create({
         code: dto.code.toUpperCase(),
         description: dto.description,
         is_absence_code: dto.is_absence_code,
@@ -140,7 +159,7 @@ export class PayrollService {
         created_by_id: createdById,
         is_active: true,
       },
-      include: {
+      relations: {
         users: {
           select: {
             id: true,
@@ -156,13 +175,13 @@ export class PayrollService {
   }
 
   async updatePayCode(id: number, dto: UpdatePayCodeDto) {
-    const payCode = await this.prisma.pay_codes.findUnique({ where: { id } });
+    const payCode = await this.payCodeRepo.findOne({ where: { id } });
     
     if (!payCode) {
       throw new NotFoundException(`Pay code with ID ${id} not found`);
     }
 
-    const updated = await this.prisma.pay_codes.update({
+    const updated = await this.payCodeRepo.update({
       where: { id },
       data: {
         description: dto.description,
@@ -170,7 +189,7 @@ export class PayrollService {
         configuration: dto.configuration ? JSON.stringify(dto.configuration) : undefined,
         updated_at: new Date(),
       },
-      include: {
+      relations: {
         users: {
           select: {
             id: true,
@@ -187,7 +206,7 @@ export class PayrollService {
 
   async deletePayCode(id: number) {
     // Check if code is used in any time entries
-    const entriesUsingCode = await this.prisma.time_entries.count({
+    const entriesUsingCode = await this.timeEntryRepo.count({
       where: {
         OR: [
           { absence_pay_code_id: id },
@@ -202,18 +221,18 @@ export class PayrollService {
       );
     }
 
-    await this.prisma.pay_codes.delete({ where: { id } });
+    await this.payCodeRepo.delete({ where: { id } });
     return { message: 'Pay code deleted successfully' };
   }
 
   async togglePayCodeStatus(id: number) {
-    const payCode = await this.prisma.pay_codes.findUnique({ where: { id } });
+    const payCode = await this.payCodeRepo.findOne({ where: { id } });
     
     if (!payCode) {
       throw new NotFoundException(`Pay code with ID ${id} not found`);
     }
 
-    const updated = await this.prisma.pay_codes.update({
+    const updated = await this.payCodeRepo.update({
       where: { id },
       data: {
         is_active: !payCode.is_active,
@@ -228,12 +247,12 @@ export class PayrollService {
   }
 
   async getAbsenceCodes() {
-    const codes = await this.prisma.pay_codes.findMany({
+    const codes = await this.payCodeRepo.find({
       where: {
         is_absence_code: true,
         is_active: true,
       },
-      orderBy: { code: 'asc' },
+      order: { code: 'asc' },
     });
 
     return codes.map((code) => {
@@ -267,12 +286,12 @@ export class PayrollService {
     }
 
     const [payRules, total] = await Promise.all([
-      this.prisma.pay_rules.findMany({
+      this.payRuleRepo.find({
         where,
-        orderBy: [{ priority: 'asc' }, { created_at: 'desc' }],
+        order: [{ priority: 'asc' }, { created_at: 'desc' }],
         skip,
         take: perPage,
-        include: {
+        relations: {
           users: {
             select: {
               id: true,
@@ -283,7 +302,7 @@ export class PayrollService {
           },
         },
       }),
-      this.prisma.pay_rules.count({ where }),
+      this.payRuleRepo.count({ where }),
     ]);
 
     return {
@@ -296,9 +315,9 @@ export class PayrollService {
   }
 
   async getPayRuleById(id: number) {
-    const payRule = await this.prisma.pay_rules.findUnique({
+    const payRule = await this.payRuleRepo.findOne({
       where: { id },
-      include: {
+      relations: {
         users: {
           select: {
             id: true,
@@ -319,7 +338,7 @@ export class PayrollService {
 
   async createPayRule(dto: CreatePayRuleDto, createdById: number) {
     // Check if rule name already exists
-    const existing = await this.prisma.pay_rules.findUnique({
+    const existing = await this.payRuleRepo.findOne({
       where: { name: dto.name },
     });
 
@@ -336,8 +355,7 @@ export class PayrollService {
       throw new BadRequestException('At least one action must be specified');
     }
 
-    const payRule = await this.prisma.pay_rules.create({
-      data: {
+    const payRule = await this.payRuleRepo.save(this.payRuleRepo.create({
         name: dto.name,
         description: dto.description || '',
         priority: dto.priority,
@@ -346,7 +364,7 @@ export class PayrollService {
         created_by_id: createdById,
         is_active: true,
       },
-      include: {
+      relations: {
         users: {
           select: {
             id: true,
@@ -362,7 +380,7 @@ export class PayrollService {
   }
 
   async updatePayRule(id: number, dto: UpdatePayRuleDto) {
-    const payRule = await this.prisma.pay_rules.findUnique({ where: { id } });
+    const payRule = await this.payRuleRepo.findOne({ where: { id } });
     
     if (!payRule) {
       throw new NotFoundException(`Pay rule with ID ${id} not found`);
@@ -377,7 +395,7 @@ export class PayrollService {
       throw new BadRequestException('At least one action must be specified');
     }
 
-    const updated = await this.prisma.pay_rules.update({
+    const updated = await this.payRuleRepo.update({
       where: { id },
       data: {
         name: dto.name,
@@ -388,7 +406,7 @@ export class PayrollService {
         actions: dto.actions ? JSON.stringify(dto.actions) : undefined,
         updated_at: new Date(),
       },
-      include: {
+      relations: {
         users: {
           select: {
             id: true,
@@ -404,14 +422,14 @@ export class PayrollService {
   }
 
   async deletePayRule(id: number) {
-    const payRule = await this.prisma.pay_rules.findUnique({ where: { id } });
+    const payRule = await this.payRuleRepo.findOne({ where: { id } });
     
     if (!payRule) {
       throw new NotFoundException(`Pay rule with ID ${id} not found`);
     }
 
     // Check if rule is used in any calculations (search in pay_components JSON)
-    const calculationsCount = await this.prisma.pay_calculations.count({
+    const calculationsCount = await this.payCalculationRepo.count({
       where: {
         pay_components: {
           contains: payRule.name,
@@ -425,18 +443,18 @@ export class PayrollService {
       );
     }
 
-    await this.prisma.pay_rules.delete({ where: { id } });
+    await this.payRuleRepo.delete({ where: { id } });
     return { message: 'Pay rule deleted successfully' };
   }
 
   async togglePayRuleStatus(id: number) {
-    const payRule = await this.prisma.pay_rules.findUnique({ where: { id } });
+    const payRule = await this.payRuleRepo.findOne({ where: { id } });
     
     if (!payRule) {
       throw new NotFoundException(`Pay rule with ID ${id} not found`);
     }
 
-    const updated = await this.prisma.pay_rules.update({
+    const updated = await this.payRuleRepo.update({
       where: { id },
       data: {
         is_active: !payRule.is_active,
@@ -454,7 +472,7 @@ export class PayrollService {
     // Update priorities in transaction
     await this.prisma.$transaction(
       ruleOrders.map((order) =>
-        this.prisma.pay_rules.update({
+        this.payRuleRepo.update({
           where: { id: order.id },
           data: {
             priority: order.priority,
@@ -655,9 +673,9 @@ export class PayrollService {
 
     // Get all time entries and active pay rules
     const [timeEntries, payRules] = await Promise.all([
-      this.prisma.time_entries.findMany({
+      this.timeEntryRepo.find({
         where,
-        include: {
+        relations: {
           users_time_entries_user_idTousers: {
             select: {
               id: true,
@@ -667,11 +685,11 @@ export class PayrollService {
             },
           },
         },
-        orderBy: { clock_in_time: 'asc' },
+        order: { clock_in_time: 'asc' },
       }),
-      this.prisma.pay_rules.findMany({
+      this.payRuleRepo.find({
         where: { is_active: true },
-        orderBy: { priority: 'asc' },
+        order: { priority: 'asc' },
       }),
     ]);
 
@@ -696,9 +714,9 @@ export class PayrollService {
       const user = userEntries[0].users_time_entries_user_idTousers;
       
       // Get user roles from user_roles table
-      const userRoles = await this.prisma.user_roles.findMany({
+      const userRoles = await this.userRoleRepo.find({
         where: { user_id: userId },
-        include: {
+        relations: {
           roles: {
             select: {
               name: true,
@@ -786,8 +804,7 @@ export class PayrollService {
       for (const [userId, result] of Object.entries(employeeResults)) {
         const userEntries = entriesByEmployee.get(Number(userId))!;
         
-        const calculation = await this.prisma.pay_calculations.create({
-          data: {
+        const calculation = await this.payCalculationRepo.save(this.payCalculationRepo.create({
             user_id: Number(userId),
             time_entry_id: userEntries[0].id,
             pay_period_start: startDate,
@@ -845,12 +862,12 @@ export class PayrollService {
     }
 
     const [calculations, total] = await Promise.all([
-      this.prisma.pay_calculations.findMany({
+      this.payCalculationRepo.find({
         where,
-        orderBy: { calculated_at: 'desc' },
+        order: { calculated_at: 'desc' },
         skip,
         take: perPage,
-        include: {
+        relations: {
           users_pay_calculations_user_idTousers: {
             select: {
               id: true,
@@ -867,7 +884,7 @@ export class PayrollService {
           },
         },
       }),
-      this.prisma.pay_calculations.count({ where }),
+      this.payCalculationRepo.count({ where }),
     ]);
 
     return {
