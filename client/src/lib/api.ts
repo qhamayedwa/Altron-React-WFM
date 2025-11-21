@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// Use relative URLs to work through the Flask proxy on port 5000
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const api = axios.create({
