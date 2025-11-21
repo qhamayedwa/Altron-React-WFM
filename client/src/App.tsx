@@ -39,6 +39,15 @@ import AIAttendanceAnalyzerPage from './pages/AIAttendanceAnalyzerPage';
 import OrganizationDashboardPage from './pages/OrganizationDashboardPage';
 import OrgHierarchyPage from './pages/OrgHierarchyPage';
 import CompanyManagementPage from './pages/CompanyManagementPage';
+import RegionManagementPage from './pages/RegionManagementPage';
+import SiteManagementPage from './pages/SiteManagementPage';
+import BulkApprovalsPage from './pages/BulkApprovalsPage';
+import AttendanceReportsPage from './pages/AttendanceReportsPage';
+import LaborCostReportPage from './pages/LaborCostReportPage';
+import EmployeeProfilePage from './pages/EmployeeProfilePage';
+import LeaveCalendarPage from './pages/LeaveCalendarPage';
+import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
+import SystemSettingsPage from './pages/SystemSettingsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SageVipPage from './pages/SageVipPage';
 import ReportsPage from './pages/ReportsPage';
@@ -286,6 +295,76 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Admin', 'Super User', 'system_super_admin']}>
                     <CompanyManagementPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization/regions"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Admin', 'HR', 'Super User', 'system_super_admin']}>
+                    <RegionManagementPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization/sites"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Admin', 'HR', 'Super User', 'system_super_admin']}>
+                    <SiteManagementPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/bulk-approvals"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'Super User', 'system_super_admin']}>
+                    <BulkApprovalsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports/attendance"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'HR', 'Super User', 'system_super_admin']}>
+                    <AttendanceReportsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports/labor-cost"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Admin', 'Payroll', 'Super User', 'system_super_admin']}>
+                    <LaborCostReportPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/employees/:id"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'HR', 'Super User', 'system_super_admin']}>
+                    <EmployeeProfilePage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/leave/calendar"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'HR', 'Super User', 'system_super_admin']}>
+                    <LeaveCalendarPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications/preferences"
+                element={
+                  <NotificationPreferencesPage />
+                }
+              />
+              <Route
+                path="/system-settings"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Super User', 'system_super_admin']}>
+                    <SystemSettingsPage />
                   </RoleProtectedRoute>
                 }
               />
