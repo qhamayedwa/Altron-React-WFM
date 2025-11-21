@@ -5,7 +5,7 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   type: 'postgres',
   url: process.env.DATABASE_URL,
   entities: [join(__dirname, '..', 'entities', '*.entity{.ts,.js}')],
-  synchronize: false, // Never auto-sync in production
+  synchronize: true, // Auto-create tables in development
   logging: process.env.NODE_ENV === 'development',
   ssl: process.env.DATABASE_URL?.includes('sslmode=require')
     ? { rejectUnauthorized: false }
