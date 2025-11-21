@@ -14,12 +14,13 @@ const sage_vip_service_1 = require("./sage-vip.service");
 const time_entry_entity_1 = require("../entities/time-entry.entity");
 const leave_application_entity_1 = require("../entities/leave-application.entity");
 const user_entity_1 = require("../entities/user.entity");
+const pay_code_entity_1 = require("../entities/pay-code.entity");
 let SageVipModule = class SageVipModule {
 };
 exports.SageVipModule = SageVipModule;
 exports.SageVipModule = SageVipModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([time_entry_entity_1.TimeEntry, leave_application_entity_1.LeaveApplication, user_entity_1.User])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, time_entry_entity_1.TimeEntry, leave_application_entity_1.LeaveApplication, pay_code_entity_1.PayCode])],
         controllers: [sage_vip_controller_1.SageVipController],
         providers: [sage_vip_service_1.SageVipService],
         exports: [sage_vip_service_1.SageVipService],

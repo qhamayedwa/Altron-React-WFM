@@ -86,40 +86,37 @@ let AiService = AiService_1 = class AiService {
             const startDate = new Date(endDate);
             startDate.setDate(startDate.getDate() - days);
             const where = {
-                start_time: {
-                    gte: startDate,
-                    lte: endDate,
-                },
+                startTime: (0, typeorm_2.Between)(startDate, endDate),
             };
             if (departmentId) {
-                where.users_schedules_user_idTousers = {
-                    department_id: departmentId,
+                where.user = {
+                    departmentId: departmentId,
                 };
             }
             const schedules = await this.scheduleRepo.find({
                 where,
                 relations: {
-                    users_schedules_user_idTousers: true,
-                    shift_types: true,
+                    user: true,
+                    shiftType: true,
                 },
-                order: { start_time: 'asc' },
+                order: { startTime: 'ASC' },
             });
             const scheduleData = schedules.slice(0, 50).map((schedule) => {
-                const duration = schedule.end_time && schedule.start_time
-                    ? (new Date(schedule.end_time).getTime() -
-                        new Date(schedule.start_time).getTime()) /
+                const duration = schedule.endTime && schedule.startTime
+                    ? (new Date(schedule.endTime).getTime() -
+                        new Date(schedule.startTime).getTime()) /
                         (1000 * 60 * 60)
                     : 0;
                 return {
-                    date: new Date(schedule.start_time).toISOString().split('T')[0],
-                    day_of_week: new Date(schedule.start_time).getDay(),
-                    start_time: new Date(schedule.start_time).toTimeString().slice(0, 5),
-                    end_time: schedule.end_time
-                        ? new Date(schedule.end_time).toTimeString().slice(0, 5)
+                    date: new Date(schedule.startTime).toISOString().split('T')[0],
+                    day_of_week: new Date(schedule.startTime).getDay(),
+                    start_time: new Date(schedule.startTime).toTimeString().slice(0, 5),
+                    end_time: schedule.endTime
+                        ? new Date(schedule.endTime).toTimeString().slice(0, 5)
                         : 'N/A',
                     duration_hours: duration,
-                    shift_type: schedule.shift_types?.name || 'Regular',
-                    employee_id: schedule.user_id,
+                    shift_type: schedule.shiftType?.name || 'Regular',
+                    employee_id: schedule.userId,
                     status: schedule.status || 'Scheduled',
                 };
             });
@@ -183,36 +180,33 @@ let AiService = AiService_1 = class AiService {
             const [calculations, timeEntries] = await Promise.all([
                 this.payCalculationRepo.find({
                     where: {
-                        pay_period_start: { gte: payPeriodStart },
-                        pay_period_end: { lte: payPeriodEnd },
+                        payPeriodStart: (0, typeorm_2.MoreThanOrEqual)(payPeriodStart),
+                        payPeriodEnd: (0, typeorm_2.LessThanOrEqual)(payPeriodEnd),
                     },
                 }),
                 this.timeEntryRepo.find({
                     where: {
-                        clock_in_time: {
-                            gte: payPeriodStart,
-                            lte: new Date(payPeriodEnd.getTime() + 24 * 60 * 60 * 1000),
-                        },
+                        clockInTime: (0, typeorm_2.Between)(payPeriodStart, new Date(payPeriodEnd.getTime() + 24 * 60 * 60 * 1000)),
                     },
                 }),
             ]);
             const payrollData = calculations.map((calc) => ({
-                employee_id: calc.user_id,
-                regular_hours: Number(calc.regular_hours),
-                overtime_hours: Number(calc.overtime_hours),
-                total_hours: Number(calc.total_hours),
+                employee_id: calc.userId,
+                regular_hours: Number(calc.regularHours),
+                overtime_hours: Number(calc.overtimeHours),
+                total_hours: Number(calc.totalHours),
             }));
             const timeData = timeEntries
-                .filter((entry) => entry.clock_out_time)
+                .filter((entry) => entry.clockOutTime)
                 .map((entry) => ({
-                employee_id: entry.user_id,
-                date: new Date(entry.clock_in_time).toISOString().split('T')[0],
-                total_hours: (new Date(entry.clock_out_time).getTime() -
-                    new Date(entry.clock_in_time).getTime()) /
+                employee_id: entry.userId,
+                date: new Date(entry.clockInTime).toISOString().split('T')[0],
+                total_hours: (new Date(entry.clockOutTime).getTime() -
+                    new Date(entry.clockInTime).getTime()) /
                     (1000 * 60 * 60),
-                clock_in: new Date(entry.clock_in_time).toTimeString().slice(0, 5),
-                clock_out: entry.clock_out_time
-                    ? new Date(entry.clock_out_time).toTimeString().slice(0, 5)
+                clock_in: new Date(entry.clockInTime).toTimeString().slice(0, 5),
+                clock_out: entry.clockOutTime
+                    ? new Date(entry.clockOutTime).toTimeString().slice(0, 5)
                     : null,
             }));
             const prompt = `
@@ -286,30 +280,27 @@ let AiService = AiService_1 = class AiService {
             const startDate = new Date(endDate);
             startDate.setDate(startDate.getDate() - days);
             const where = {
-                clock_in_time: {
-                    gte: startDate,
-                    lte: endDate,
-                },
+                clockInTime: (0, typeorm_2.Between)(startDate, endDate),
             };
             if (employeeId) {
-                where.user_id = employeeId;
+                where.userId = employeeId;
             }
             const entries = await this.timeEntryRepo.find({
                 where,
-                order: { clock_in_time: 'asc' },
+                order: { clockInTime: 'ASC' },
             });
             const attendanceData = entries.map((entry) => {
-                const clockInDate = new Date(entry.clock_in_time);
-                const totalHours = entry.clock_out_time
-                    ? (new Date(entry.clock_out_time).getTime() - clockInDate.getTime()) /
+                const clockInDate = new Date(entry.clockInTime);
+                const totalHours = entry.clockOutTime
+                    ? (new Date(entry.clockOutTime).getTime() - clockInDate.getTime()) /
                         (1000 * 60 * 60)
                     : 0;
                 return {
-                    employee_id: entry.user_id,
+                    employee_id: entry.userId,
                     date: clockInDate.toISOString().split('T')[0],
                     clock_in_time: clockInDate.toTimeString().slice(0, 5),
-                    clock_out_time: entry.clock_out_time
-                        ? new Date(entry.clock_out_time).toTimeString().slice(0, 5)
+                    clock_out_time: entry.clockOutTime
+                        ? new Date(entry.clockOutTime).toTimeString().slice(0, 5)
                         : 'Still active',
                     total_hours: totalHours,
                     day_of_week: clockInDate.getDay(),
@@ -388,44 +379,40 @@ let AiService = AiService_1 = class AiService {
             const dayOfWeek = targetDate.getDay();
             const historicalSchedules = await this.scheduleRepo.find({
                 where: {
-                    start_time: {
-                        gte: new Date(targetDate.getTime() - 60 * 24 * 60 * 60 * 1000),
-                    },
+                    startTime: (0, typeorm_2.MoreThanOrEqual)(new Date(targetDate.getTime() - 60 * 24 * 60 * 60 * 1000)),
                 },
                 relations: {
-                    shift_types: true,
+                    shiftType: true,
                 },
                 take: 50,
             });
-            const employeesQuery = { is_active: true };
+            const employeesQuery = { isActive: true };
             if (departmentId) {
-                employeesQuery.department_id = departmentId;
+                employeesQuery.departmentId = departmentId;
             }
             const employees = await this.userRepo.find({
                 where: employeesQuery,
                 relations: {
-                    user_roles: {
-                        relations: {
-                            roles: true,
-                        },
+                    userRoles: {
+                        role: true,
                     },
                 },
             });
             const historicalData = historicalSchedules.map((schedule) => ({
-                date: new Date(schedule.start_time).toISOString().split('T')[0],
-                employee_id: schedule.user_id,
-                start_time: new Date(schedule.start_time).toTimeString().slice(0, 5),
-                end_time: schedule.end_time
-                    ? new Date(schedule.end_time).toTimeString().slice(0, 5)
+                date: new Date(schedule.startTime).toISOString().split('T')[0],
+                employee_id: schedule.userId,
+                start_time: new Date(schedule.startTime).toTimeString().slice(0, 5),
+                end_time: schedule.endTime
+                    ? new Date(schedule.endTime).toTimeString().slice(0, 5)
                     : 'N/A',
-                shift_type: schedule.shift_types?.name || 'Regular',
+                shift_type: schedule.shiftType?.name || 'Regular',
             }));
             const employeeData = employees.map((emp) => ({
                 id: emp.id,
-                role: emp.user_roles.length > 0
-                    ? emp.user_roles[0].roles.name
+                role: emp.userRoles.length > 0
+                    ? emp.userRoles[0].role.name
                     : 'Employee',
-                department: emp.department_id || 'General',
+                department: emp.departmentId || 'General',
             }));
             const prompt = `
       Generate an optimal schedule for ${targetDate.toISOString().split('T')[0]} (${targetDate.toLocaleDateString('en-US', { weekday: 'long' })}):
@@ -490,19 +477,15 @@ let AiService = AiService_1 = class AiService {
         }
         try {
             const [totalEmployees, recentEntries, recentSchedules, pendingLeave] = await Promise.all([
-                this.userRepo.count({ where: { is_active: true } }),
+                this.userRepo.count({ where: { isActive: true } }),
                 this.timeEntryRepo.count({
                     where: {
-                        clock_in_time: {
-                            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                        },
+                        clockInTime: (0, typeorm_2.MoreThanOrEqual)(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
                     },
                 }),
                 this.scheduleRepo.count({
                     where: {
-                        start_time: {
-                            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                        },
+                        startTime: (0, typeorm_2.MoreThanOrEqual)(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
                     },
                 }),
                 this.leaveApplicationRepo.count({

@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import { TimeEntry } from '../entities/time-entry.entity';
 import { LeaveApplication } from '../entities/leave-application.entity';
 import { User } from '../entities/user.entity';
+import { PayCode } from '../entities/pay-code.entity';
 
 @Injectable()
 export class SageVipService {
@@ -22,6 +23,8 @@ export class SageVipService {
     private leaveApplicationRepo: Repository<LeaveApplication>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(PayCode)
+    private payCodeRepo: Repository<PayCode>,
     private configService: ConfigService,
   ) {
     this.baseUrl = this.configService.get('SAGE_VIP_BASE_URL') || '';
@@ -78,14 +81,13 @@ export class SageVipService {
 
     const timeEntries = await this.timeEntryRepo.find({
       where: {
-        clock_in_time: {
-          gte: startDate,
-          lte: endDate,
-        },
+        clockInTime: Between(startDate, endDate),
         status: 'approved',
       },
       relations: {
-        users_time_entries_user_idTousers: true,
+        user: true,
+        payCode: true,
+        absencePayCode: true,
       },
     });
 
@@ -106,17 +108,13 @@ export class SageVipService {
 
     const leaveApps = await this.leaveApplicationRepo.find({
       where: {
-        start_date: {
-          gte: startDate,
-        },
-        end_date: {
-          lte: endDate,
-        },
+        startDate: MoreThanOrEqual(startDate),
+        endDate: LessThanOrEqual(endDate),
         status: 'Approved',
       },
       relations: {
-        users_leave_applications_user_idTousers: true,
-        leave_types: true,
+        user: true,
+        leaveType: true,
       },
     });
 

@@ -7,6 +7,7 @@ import { ShiftType } from '../entities/shift-type.entity';
 import { User } from '../entities/user.entity';
 import { Department } from '../entities/department.entity';
 import { AuthModule } from '../auth/auth.module';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Module({
   imports: [

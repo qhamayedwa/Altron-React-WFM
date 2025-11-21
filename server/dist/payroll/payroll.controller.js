@@ -55,7 +55,7 @@ let PayrollController = class PayrollController {
         return {
             success: true,
             data: payCode,
-            message: `Pay code "${payCode.code}" updated successfully`,
+            message: `Pay code "${payCode?.code || 'N/A'}" updated successfully`,
         };
     }
     async deletePayCode(id) {
@@ -99,7 +99,7 @@ let PayrollController = class PayrollController {
         return {
             success: true,
             data: payRule,
-            message: `Pay rule "${payRule.name}" created successfully`,
+            message: `Pay rule "${payRule?.name || 'N/A'}" created successfully`,
         };
     }
     async updatePayRule(id, dto) {
@@ -107,7 +107,7 @@ let PayrollController = class PayrollController {
         return {
             success: true,
             data: payRule,
-            message: `Pay rule "${payRule.name}" updated successfully`,
+            message: `Pay rule "${payRule?.name || 'N/A'}" updated successfully`,
         };
     }
     async deletePayRule(id) {

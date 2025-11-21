@@ -21,10 +21,12 @@ const typeorm_2 = require("typeorm");
 const time_entry_entity_1 = require("../entities/time-entry.entity");
 const leave_application_entity_1 = require("../entities/leave-application.entity");
 const user_entity_1 = require("../entities/user.entity");
+const pay_code_entity_1 = require("../entities/pay-code.entity");
 let SageVipService = SageVipService_1 = class SageVipService {
     timeEntryRepo;
     leaveApplicationRepo;
     userRepo;
+    payCodeRepo;
     configService;
     logger = new common_1.Logger(SageVipService_1.name);
     baseUrl;
@@ -32,10 +34,11 @@ let SageVipService = SageVipService_1 = class SageVipService {
     username;
     password;
     companyDb;
-    constructor(timeEntryRepo, leaveApplicationRepo, userRepo, configService) {
+    constructor(timeEntryRepo, leaveApplicationRepo, userRepo, payCodeRepo, configService) {
         this.timeEntryRepo = timeEntryRepo;
         this.leaveApplicationRepo = leaveApplicationRepo;
         this.userRepo = userRepo;
+        this.payCodeRepo = payCodeRepo;
         this.configService = configService;
         this.baseUrl = this.configService.get('SAGE_VIP_BASE_URL') || '';
         this.apiKey = this.configService.get('SAGE_VIP_API_KEY') || '';
@@ -82,14 +85,13 @@ let SageVipService = SageVipService_1 = class SageVipService {
         this.logger.log(`Pushing timesheets from ${startDate} to ${endDate}...`);
         const timeEntries = await this.timeEntryRepo.find({
             where: {
-                clock_in_time: {
-                    gte: startDate,
-                    lte: endDate,
-                },
+                clockInTime: (0, typeorm_2.Between)(startDate, endDate),
                 status: 'approved',
             },
             relations: {
-                users_time_entries_user_idTousers: true,
+                user: true,
+                payCode: true,
+                absencePayCode: true,
             },
         });
         return {
@@ -106,17 +108,13 @@ let SageVipService = SageVipService_1 = class SageVipService {
         this.logger.log(`Transferring leave from ${startDate} to ${endDate}...`);
         const leaveApps = await this.leaveApplicationRepo.find({
             where: {
-                start_date: {
-                    gte: startDate,
-                },
-                end_date: {
-                    lte: endDate,
-                },
+                startDate: (0, typeorm_2.MoreThanOrEqual)(startDate),
+                endDate: (0, typeorm_2.LessThanOrEqual)(endDate),
                 status: 'Approved',
             },
             relations: {
-                users_leave_applications_user_idTousers: true,
-                leave_types: true,
+                user: true,
+                leaveType: true,
             },
         });
         return {
@@ -151,7 +149,9 @@ exports.SageVipService = SageVipService = SageVipService_1 = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(time_entry_entity_1.TimeEntry)),
     __param(1, (0, typeorm_1.InjectRepository)(leave_application_entity_1.LeaveApplication)),
     __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(3, (0, typeorm_1.InjectRepository)(pay_code_entity_1.PayCode)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         config_1.ConfigService])

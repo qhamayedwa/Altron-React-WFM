@@ -8,6 +8,8 @@ import { PayRule } from '../entities/pay-rule.entity';
 import { TimeEntry } from '../entities/time-entry.entity';
 import { User } from '../entities/user.entity';
 import { UserRole } from '../entities/user-role.entity';
+import { AuthModule } from '../auth/auth.module';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Module({
   imports: [
@@ -19,6 +21,7 @@ import { UserRole } from '../entities/user-role.entity';
       User,
       UserRole,
     ]),
+    AuthModule,
   ],
   controllers: [PayrollController],
   providers: [PayrollService],

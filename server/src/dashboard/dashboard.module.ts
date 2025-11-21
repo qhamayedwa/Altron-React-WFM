@@ -8,6 +8,7 @@ import { TimeEntry } from '../entities/time-entry.entity';
 import { LeaveApplication } from '../entities/leave-application.entity';
 import { LeaveBalance } from '../entities/leave-balance.entity';
 import { Department } from '../entities/department.entity';
+import { PayCalculation } from '../entities/pay-calculation.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Department } from '../entities/department.entity';
       LeaveApplication,
       LeaveBalance,
       Department,
+      PayCalculation,
     ]),
   ],
   controllers: [DashboardController],

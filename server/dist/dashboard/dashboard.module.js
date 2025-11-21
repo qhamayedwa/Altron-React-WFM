@@ -17,6 +17,7 @@ const time_entry_entity_1 = require("../entities/time-entry.entity");
 const leave_application_entity_1 = require("../entities/leave-application.entity");
 const leave_balance_entity_1 = require("../entities/leave-balance.entity");
 const department_entity_1 = require("../entities/department.entity");
+const pay_calculation_entity_1 = require("../entities/pay-calculation.entity");
 let DashboardModule = class DashboardModule {
 };
 exports.DashboardModule = DashboardModule;
@@ -30,6 +31,7 @@ exports.DashboardModule = DashboardModule = __decorate([
                 leave_application_entity_1.LeaveApplication,
                 leave_balance_entity_1.LeaveBalance,
                 department_entity_1.Department,
+                pay_calculation_entity_1.PayCalculation,
             ]),
         ],
         controllers: [dashboard_controller_1.DashboardController],

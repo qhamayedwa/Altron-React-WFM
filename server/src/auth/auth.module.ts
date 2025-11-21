@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LocalStrategy } from './local.strategy';
 import { SessionSerializer } from './session.serializer';
+import { RolesGuard } from './guards/roles.guard';
 import { User } from '../entities/user.entity';
 
 @Module({
@@ -13,7 +14,7 @@ import { User } from '../entities/user.entity';
     TypeOrmModule.forFeature([User]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, SessionSerializer],
-  exports: [AuthService],
+  providers: [AuthService, LocalStrategy, SessionSerializer, RolesGuard],
+  exports: [AuthService, RolesGuard],
 })
 export class AuthModule {}

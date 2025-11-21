@@ -12,13 +12,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RolesGuard = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
-const auth_service_1 = require("../auth.service");
 let RolesGuard = class RolesGuard {
     reflector;
-    authService;
-    constructor(reflector, authService) {
+    constructor(reflector) {
         this.reflector = reflector;
-        this.authService = authService;
     }
     canActivate(context) {
         const requiredRoles = this.reflector.get('roles', context.getHandler());
@@ -30,7 +27,8 @@ let RolesGuard = class RolesGuard {
         if (!user) {
             throw new common_1.ForbiddenException('Access denied');
         }
-        const hasRole = requiredRoles.some((role) => this.authService.hasRole(user, role));
+        const userRoles = user.userRoles?.map((ur) => ur.role?.name || ur.roles?.name) || [];
+        const hasRole = requiredRoles.some((role) => userRoles.includes(role) || userRoles.includes('system_super_admin'));
         if (!hasRole) {
             throw new common_1.ForbiddenException('Insufficient permissions');
         }
@@ -40,7 +38,6 @@ let RolesGuard = class RolesGuard {
 exports.RolesGuard = RolesGuard;
 exports.RolesGuard = RolesGuard = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [core_1.Reflector,
-        auth_service_1.AuthService])
+    __metadata("design:paramtypes", [core_1.Reflector])
 ], RolesGuard);
 //# sourceMappingURL=roles.guard.js.map

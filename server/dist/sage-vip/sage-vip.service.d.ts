@@ -3,10 +3,12 @@ import { Repository } from 'typeorm';
 import { TimeEntry } from '../entities/time-entry.entity';
 import { LeaveApplication } from '../entities/leave-application.entity';
 import { User } from '../entities/user.entity';
+import { PayCode } from '../entities/pay-code.entity';
 export declare class SageVipService {
     private timeEntryRepo;
     private leaveApplicationRepo;
     private userRepo;
+    private payCodeRepo;
     private configService;
     private readonly logger;
     private readonly baseUrl;
@@ -14,7 +16,7 @@ export declare class SageVipService {
     private readonly username;
     private readonly password;
     private readonly companyDb;
-    constructor(timeEntryRepo: Repository<TimeEntry>, leaveApplicationRepo: Repository<LeaveApplication>, userRepo: Repository<User>, configService: ConfigService);
+    constructor(timeEntryRepo: Repository<TimeEntry>, leaveApplicationRepo: Repository<LeaveApplication>, userRepo: Repository<User>, payCodeRepo: Repository<PayCode>, configService: ConfigService);
     isConfigured(): boolean;
     testConnection(): Promise<{
         success: boolean;

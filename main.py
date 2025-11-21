@@ -9,4 +9,4 @@ import sys
 
 # Change to server directory and run NestJS
 os.chdir(os.path.join(os.path.dirname(__file__), 'server'))
-subprocess.run(['node', 'dist/src/main.js'])
+subprocess.run(['node', 'dist/main.js'])

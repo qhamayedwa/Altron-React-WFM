@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between, Not, IsNull } from 'typeorm';
 import { Schedule } from '../entities/schedule.entity';
 import { TimeEntry } from '../entities/time-entry.entity';
 import { User } from '../entities/user.entity';
@@ -33,22 +33,19 @@ export class AiFallbackService {
       startDate.setDate(startDate.getDate() - days);
 
       const where: any = {
-        start_time: {
-          gte: startDate,
-          lte: endDate,
-        },
+        startTime: Between(startDate, endDate),
       };
 
       if (departmentId) {
-        where.users_schedules_user_idTousers = {
-          department_id: departmentId,
+        where.user = {
+          departmentId: departmentId,
         };
       }
 
       const schedules = await this.scheduleRepo.find({
         where,
         relations: {
-          users_schedules_user_idTousers: true,
+          user: true,
         },
       });
 
@@ -71,7 +68,7 @@ export class AiFallbackService {
       const employeeWorkload: Record<number, number> = {};
 
       for (const schedule of schedules) {
-        const startTime = new Date(schedule.start_time);
+        const startTime = new Date(schedule.startTime);
         
         const weekday = startTime.toLocaleDateString('en-US', {
           weekday: 'long',
@@ -81,7 +78,7 @@ export class AiFallbackService {
         const hour = startTime.getHours();
         hourDistribution[hour] = (hourDistribution[hour] || 0) + 1;
 
-        const empId = schedule.user_id;
+        const empId = schedule.userId;
         employeeWorkload[empId] = (employeeWorkload[empId] || 0) + 1;
       }
 
@@ -172,11 +169,11 @@ export class AiFallbackService {
     try {
       const timeEntries = await this.timeEntryRepo.find({
         where: {
-          clock_in_time: {
-            gte: payPeriodStart,
-            lte: new Date(payPeriodEnd.getTime() + 24 * 60 * 60 * 1000),
-          },
-          clock_out_time: { not: null },
+          clockInTime: Between(
+            payPeriodStart,
+            new Date(payPeriodEnd.getTime() + 24 * 60 * 60 * 1000),
+          ),
+          clockOutTime: Not(IsNull()),
         },
       });
 
@@ -201,16 +198,16 @@ export class AiFallbackService {
       const dailyTotals: Record<string, number> = {};
 
       for (const entry of timeEntries) {
-        if (entry.clock_out_time) {
+        if (entry.clockOutTime) {
           const hours =
-            (new Date(entry.clock_out_time).getTime() -
-              new Date(entry.clock_in_time).getTime()) /
+            (new Date(entry.clockOutTime).getTime() -
+              new Date(entry.clockInTime).getTime()) /
             (1000 * 60 * 60);
 
-          employeeHours[entry.user_id] =
-            (employeeHours[entry.user_id] || 0) + hours;
+          employeeHours[entry.userId] =
+            (employeeHours[entry.userId] || 0) + hours;
 
-          const day = new Date(entry.clock_in_time)
+          const day = new Date(entry.clockInTime)
             .toISOString()
             .split('T')[0];
           dailyTotals[day] = (dailyTotals[day] || 0) + hours;
@@ -331,14 +328,11 @@ export class AiFallbackService {
       startDate.setDate(startDate.getDate() - days);
 
       const where: any = {
-        clock_in_time: {
-          gte: startDate,
-          lte: endDate,
-        },
+        clockInTime: Between(startDate, endDate),
       };
 
       if (employeeId) {
-        where.user_id = employeeId;
+        where.userId = employeeId;
       }
 
       const entries = await this.timeEntryRepo.find({
@@ -363,19 +357,19 @@ export class AiFallbackService {
       const employeeAttendance: Record<number, number> = {};
 
       for (const entry of entries) {
-        const day = new Date(entry.clock_in_time).toISOString().split('T')[0];
+        const day = new Date(entry.clockInTime).toISOString().split('T')[0];
         dailyAttendance[day] = (dailyAttendance[day] || 0) + 1;
 
-        const empId = entry.user_id;
+        const empId = entry.userId;
         employeeAttendance[empId] = (employeeAttendance[empId] || 0) + 1;
 
-        if (new Date(entry.clock_in_time).getHours() > 9) {
+        if (new Date(entry.clockInTime).getHours() > 9) {
           lateArrivals++;
         }
 
         if (
-          entry.clock_out_time &&
-          new Date(entry.clock_out_time).getHours() < 17
+          entry.clockOutTime &&
+          new Date(entry.clockOutTime).getHours() < 17
         ) {
           earlyDepartures++;
         }

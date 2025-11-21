@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { APP_GUARD } from '@nestjs/core';
 import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -14,9 +15,10 @@ import { AiModule } from './ai/ai.module';
 import { OrganizationModule } from './organization/organization.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SageVipModule } from './sage-vip/sage-vip.module';
-import { ReportsModule } from './reports/reports.module';
+import { ReportsModule} from './reports/reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { typeOrmConfig } from './config/typeorm.config';
+import { RolesGuard } from './auth/guards/roles.guard';
 
 @Module({
   imports: [
@@ -42,6 +44,12 @@ import { typeOrmConfig } from './config/typeorm.config';
     DashboardModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
 })
 export class AppModule {}

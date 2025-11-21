@@ -17,6 +17,7 @@ const pay_rule_entity_1 = require("../entities/pay-rule.entity");
 const time_entry_entity_1 = require("../entities/time-entry.entity");
 const user_entity_1 = require("../entities/user.entity");
 const user_role_entity_1 = require("../entities/user-role.entity");
+const auth_module_1 = require("../auth/auth.module");
 let PayrollModule = class PayrollModule {
 };
 exports.PayrollModule = PayrollModule;
@@ -31,6 +32,7 @@ exports.PayrollModule = PayrollModule = __decorate([
                 user_entity_1.User,
                 user_role_entity_1.UserRole,
             ]),
+            auth_module_1.AuthModule,
         ],
         controllers: [payroll_controller_1.PayrollController],
         providers: [payroll_service_1.PayrollService],

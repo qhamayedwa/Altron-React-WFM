@@ -14,12 +14,16 @@ const time_service_1 = require("./time.service");
 const time_entry_entity_1 = require("../entities/time-entry.entity");
 const department_entity_1 = require("../entities/department.entity");
 const user_entity_1 = require("../entities/user.entity");
+const auth_module_1 = require("../auth/auth.module");
 let TimeModule = class TimeModule {
 };
 exports.TimeModule = TimeModule;
 exports.TimeModule = TimeModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([time_entry_entity_1.TimeEntry, department_entity_1.Department, user_entity_1.User])],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([time_entry_entity_1.TimeEntry, department_entity_1.Department, user_entity_1.User]),
+            auth_module_1.AuthModule,
+        ],
         controllers: [time_controller_1.TimeController],
         providers: [time_service_1.TimeService],
         exports: [time_service_1.TimeService],

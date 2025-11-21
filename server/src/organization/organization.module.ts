@@ -8,6 +8,7 @@ import { Region } from '../entities/region.entity';
 import { Site } from '../entities/site.entity';
 import { Department } from '../entities/department.entity';
 import { User } from '../entities/user.entity';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Module({
   imports: [

@@ -109,6 +109,9 @@ let AuthService = class AuthService {
             lastName: data.last_name,
         });
         const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.UnauthorizedException('User not found');
+        }
         const { passwordHash, ...result } = user;
         return result;
     }

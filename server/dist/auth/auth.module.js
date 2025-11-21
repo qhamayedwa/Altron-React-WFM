@@ -14,6 +14,7 @@ const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 const local_strategy_1 = require("./local.strategy");
 const session_serializer_1 = require("./session.serializer");
+const roles_guard_1 = require("./guards/roles.guard");
 const user_entity_1 = require("../entities/user.entity");
 let AuthModule = class AuthModule {
 };
@@ -25,8 +26,8 @@ exports.AuthModule = AuthModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([user_entity_1.User]),
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, local_strategy_1.LocalStrategy, session_serializer_1.SessionSerializer],
-        exports: [auth_service_1.AuthService],
+        providers: [auth_service_1.AuthService, local_strategy_1.LocalStrategy, session_serializer_1.SessionSerializer, roles_guard_1.RolesGuard],
+        exports: [auth_service_1.AuthService, roles_guard_1.RolesGuard],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

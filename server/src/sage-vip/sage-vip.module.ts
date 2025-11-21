@@ -5,9 +5,10 @@ import { SageVipService } from './sage-vip.service';
 import { TimeEntry } from '../entities/time-entry.entity';
 import { LeaveApplication } from '../entities/leave-application.entity';
 import { User } from '../entities/user.entity';
+import { PayCode } from '../entities/pay-code.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TimeEntry, LeaveApplication, User])],
+  imports: [TypeOrmModule.forFeature([User, TimeEntry, LeaveApplication, PayCode])],
   controllers: [SageVipController],
   providers: [SageVipService],
   exports: [SageVipService],

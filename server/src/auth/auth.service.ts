@@ -73,6 +73,9 @@ export class AuthService {
     });
 
     const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
     const { passwordHash, ...result } = user;
     return result;
   }

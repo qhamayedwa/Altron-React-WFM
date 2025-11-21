@@ -1,13 +1,9 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthService } from '../auth.service';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(
-    private reflector: Reflector,
-    private authService: AuthService,
-  ) {}
+  constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles = this.reflector.get<string[]>('roles', context.getHandler());
@@ -22,7 +18,14 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    const hasRole = requiredRoles.some((role) => this.authService.hasRole(user, role));
+    // Get user roles from userRoles relation
+    const userRoles = user.userRoles?.map((ur: any) => ur.role?.name || ur.roles?.name) || [];
+    
+    // Check if user has any of the required roles or is a system_super_admin
+    const hasRole = requiredRoles.some((role) => 
+      userRoles.includes(role) || userRoles.includes('system_super_admin')
+    );
+    
     if (!hasRole) {
       throw new ForbiddenException('Insufficient permissions');
     }

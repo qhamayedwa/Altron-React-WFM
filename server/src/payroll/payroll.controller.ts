@@ -85,7 +85,7 @@ export class PayrollController {
     return {
       success: true,
       data: payCode,
-      message: `Pay code "${payCode.code}" updated successfully`,
+      message: `Pay code "${payCode?.code || 'N/A'}" updated successfully`,
     };
   }
 
@@ -163,7 +163,7 @@ export class PayrollController {
     return {
       success: true,
       data: payRule,
-      message: `Pay rule "${payRule.name}" created successfully`,
+      message: `Pay rule "${payRule?.name || 'N/A'}" created successfully`,
     };
   }
 
@@ -178,7 +178,7 @@ export class PayrollController {
     return {
       success: true,
       data: payRule,
-      message: `Pay rule "${payRule.name}" updated successfully`,
+      message: `Pay rule "${payRule?.name || 'N/A'}" updated successfully`,
     };
   }
 
