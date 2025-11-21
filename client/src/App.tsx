@@ -38,6 +38,7 @@ import AIPayrollInsightsPage from './pages/AIPayrollInsightsPage';
 import AIAttendanceAnalyzerPage from './pages/AIAttendanceAnalyzerPage';
 import OrganizationDashboardPage from './pages/OrganizationDashboardPage';
 import OrgHierarchyPage from './pages/OrgHierarchyPage';
+import CompanyManagementPage from './pages/CompanyManagementPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SageVipPage from './pages/SageVipPage';
 import ReportsPage from './pages/ReportsPage';
@@ -277,6 +278,14 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['HR', 'Admin', 'Super User', 'system_super_admin']}>
                     <DepartmentManagementPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization/companies"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Admin', 'Super User', 'system_super_admin']}>
+                    <CompanyManagementPage />
                   </RoleProtectedRoute>
                 }
               />
