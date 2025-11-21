@@ -37,8 +37,10 @@ export const ManualTimeEntryPage: React.FC = () => {
 
   const fetchRecentEntries = async () => {
     try {
-      const response = await apiClient.get('/time/entries?limit=10');
-      setRecentEntries(response.data.data || []);
+      const response = await apiClient.get('/time/entries', {
+        params: { per_page: 10 }
+      });
+      setRecentEntries(response.data.entries || []);
     } catch (err) {
       console.error('Failed to fetch recent entries:', err);
     }
@@ -56,9 +58,10 @@ export const ManualTimeEntryPage: React.FC = () => {
       const clockOutDateTime = new Date(`${entryDate}T${clockOutTime}:00`);
 
       await apiClient.post('/time/manual-entry', {
-        userId: parseInt(selectedUser),
-        clockInTime: clockInDateTime.toISOString(),
-        clockOutTime: clockOutDateTime.toISOString(),
+        user_id: parseInt(selectedUser),
+        clock_in_time: clockInDateTime.toISOString(),
+        clock_out_time: clockOutDateTime.toISOString(),
+        break_time: 30,
         notes: notes || undefined,
       });
 

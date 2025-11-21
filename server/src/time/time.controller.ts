@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { TimeService } from './time.service';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -7,6 +7,8 @@ import { ClockInDto } from './dto/clock-in.dto';
 import { ClockOutDto } from './dto/clock-out.dto';
 import { GetTimeEntriesDto } from './dto/get-time-entries.dto';
 import { ApproveTimeEntryDto } from './dto/approve-time-entry.dto';
+import { CreateManualEntryDto } from './dto/create-manual-entry.dto';
+import { UpdateTimeEntryDto } from './dto/update-time-entry.dto';
 
 @Controller('time')
 @UseGuards(AuthenticatedGuard, RolesGuard)
@@ -135,6 +137,55 @@ export class TimeController {
       success: true,
       data: result,
       message: 'Time entry rejected',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post('manual-entry')
+  @Roles('Manager', 'Admin', 'Super User', 'system_super_admin')
+  async createManualEntry(@Req() req: any, @Body() dto: CreateManualEntryDto) {
+    const isSuperUser = req.user.user_roles?.some(
+      (ur: any) => ur.roles?.name === 'Super User' || ur.roles?.name === 'system_super_admin' || ur.roles?.name === 'Admin'
+    );
+
+    const managedDepartmentIds = await this.timeService.getManagedDepartmentIds(req.user.id);
+
+    const result = await this.timeService.createManualEntry(
+      dto,
+      req.user.id,
+      isSuperUser,
+      managedDepartmentIds
+    );
+
+    return {
+      success: true,
+      data: result,
+      message: 'Manual time entry created successfully',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Patch('entries/:id')
+  @Roles('Manager', 'Admin', 'Super User', 'system_super_admin')
+  async updateTimeEntry(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateTimeEntryDto) {
+    const isSuperUser = req.user.user_roles?.some(
+      (ur: any) => ur.roles?.name === 'Super User' || ur.roles?.name === 'system_super_admin' || ur.roles?.name === 'Admin'
+    );
+
+    const managedDepartmentIds = await this.timeService.getManagedDepartmentIds(req.user.id);
+
+    const result = await this.timeService.updateTimeEntry(
+      parseInt(id),
+      dto,
+      req.user.id,
+      isSuperUser,
+      managedDepartmentIds
+    );
+
+    return {
+      success: true,
+      data: result,
+      message: 'Time entry updated successfully',
       timestamp: new Date().toISOString(),
     };
   }

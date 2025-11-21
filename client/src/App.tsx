@@ -12,6 +12,14 @@ import { TimeTrackingPage } from './pages/TimeTrackingPage';
 import { TimeEntriesPage } from './pages/TimeEntriesPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { ManualTimeEntryPage } from './pages/ManualTimeEntryPage';
+import { TeamTimecardPage } from './pages/TeamTimecardPage';
+import { EmployeeImportPage } from './pages/EmployeeImportPage';
+import { UserManagementPage } from './pages/UserManagementPage';
+import { QuickActionsPage } from './pages/QuickActionsPage';
+import { TeamCalendarPage } from './pages/TeamCalendarPage';
+import { DepartmentManagementPage } from './pages/DepartmentManagementPage';
+import { ShiftAssignmentPage } from './pages/ShiftAssignmentPage';
+import { TimeEntryCorrectionsPage } from './pages/TimeEntryCorrectionsPage';
 import LeaveBalancesPage from './pages/LeaveBalancesPage';
 import LeaveApplicationsPage from './pages/LeaveApplicationsPage';
 import LeaveApprovalsPage from './pages/LeaveApprovalsPage';
@@ -61,6 +69,7 @@ function App() {
             >
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/quick-actions" element={<QuickActionsPage />} />
               <Route path="/time" element={<TimeTrackingPage />} />
               <Route path="/time/entries" element={<TimeEntriesPage />} />
               <Route
@@ -68,6 +77,22 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Manager', 'Super User', 'system_super_admin', 'Admin']}>
                     <ManualTimeEntryPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/time/team-timecard"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Super User', 'system_super_admin', 'Admin']}>
+                    <TeamTimecardPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/time/corrections"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'Super User', 'system_super_admin']}>
+                    <TimeEntryCorrectionsPage />
                   </RoleProtectedRoute>
                 }
               />
@@ -113,6 +138,22 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Admin', 'Super User', 'system_super_admin']}>
                     <ShiftTypesPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/scheduling/calendar"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'Super User', 'system_super_admin']}>
+                    <TeamCalendarPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/scheduling/assign"
+                element={
+                  <RoleProtectedRoute allowedRoles={['Manager', 'Admin', 'Super User', 'system_super_admin']}>
+                    <ShiftAssignmentPage />
                   </RoleProtectedRoute>
                 }
               />
@@ -212,6 +253,30 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={['Manager', 'HR', 'Admin', 'Super User', 'system_super_admin']}>
                     <OrgHierarchyPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization/import"
+                element={
+                  <RoleProtectedRoute allowedRoles={['HR', 'Admin', 'Super User', 'system_super_admin']}>
+                    <EmployeeImportPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization/users"
+                element={
+                  <RoleProtectedRoute allowedRoles={['HR', 'Admin', 'Super User', 'system_super_admin']}>
+                    <UserManagementPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization/departments"
+                element={
+                  <RoleProtectedRoute allowedRoles={['HR', 'Admin', 'Super User', 'system_super_admin']}>
+                    <DepartmentManagementPage />
                   </RoleProtectedRoute>
                 }
               />

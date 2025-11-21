@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, MoreThanOrEqual, LessThanOrEqual, IsNull } from 'typeorm';
+import { Repository, In, MoreThanOrEqual, LessThanOrEqual, Between, IsNull } from 'typeorm';
 import { TimeEntry } from '../entities/time-entry.entity';
 import { Department } from '../entities/department.entity';
 import { User } from '../entities/user.entity';
@@ -170,12 +170,16 @@ export class TimeService {
     }
 
     if (start_date && end_date) {
+      const startDateTime = new Date(start_date);
+      startDateTime.setHours(0, 0, 0, 0);
       const endDateTime = new Date(end_date);
       endDateTime.setHours(23, 59, 59, 999);
-      where.clockInTime = MoreThanOrEqual(new Date(start_date));
-      where.clockInTime = LessThanOrEqual(endDateTime);
+      where.clockInTime = MoreThanOrEqual(startDateTime);
+      where.clockInTime = Between(startDateTime, endDateTime);
     } else if (start_date) {
-      where.clockInTime = MoreThanOrEqual(new Date(start_date));
+      const startDateTime = new Date(start_date);
+      startDateTime.setHours(0, 0, 0, 0);
+      where.clockInTime = MoreThanOrEqual(startDateTime);
     } else if (end_date) {
       const endDateTime = new Date(end_date);
       endDateTime.setHours(23, 59, 59, 999);
@@ -364,6 +368,105 @@ export class TimeService {
       entry_id: updatedEntry.id,
       status: updatedEntry.status,
       rejected_at: now,
+    };
+  }
+
+  async createManualEntry(dto: any, creatorId: number, isSuperUser: boolean, managedDepartmentIds: number[]) {
+    const targetUser = await this.userRepo.findOne({
+      where: { id: dto.user_id },
+      select: ['id', 'departmentId'],
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!isSuperUser) {
+      const userDeptId = targetUser.departmentId;
+      if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
+        throw new ForbiddenException('You do not have permission to create time entries for this user');
+      }
+    }
+
+    const clockInTime = new Date(dto.clock_in_time);
+    const clockOutTime = new Date(dto.clock_out_time);
+
+    if (clockOutTime <= clockInTime) {
+      throw new BadRequestException('Clock out time must be after clock in time');
+    }
+
+    const diffMs = clockOutTime.getTime() - clockInTime.getTime();
+    const breakMinutes = dto.break_time || 0;
+    const totalHours = (diffMs / (1000 * 60 * 60)) - (breakMinutes / 60);
+
+    const timeEntry = this.timeEntryRepo.create({
+      userId: dto.user_id,
+      clockInTime: clockInTime,
+      clockOutTime: clockOutTime,
+      totalBreakMinutes: breakMinutes,
+      status: 'Closed',
+      notes: dto.notes ? `[Manual Entry] ${dto.notes}` : '[Manual Entry]',
+      approvedByManagerId: creatorId,
+    });
+
+    const savedEntry = await this.timeEntryRepo.save(timeEntry);
+
+    return {
+      entry_id: savedEntry.id,
+      clock_in_time: savedEntry.clockInTime,
+      clock_out_time: savedEntry.clockOutTime,
+      total_hours: parseFloat(totalHours.toFixed(2)),
+      status: savedEntry.status,
+    };
+  }
+
+  async updateTimeEntry(entryId: number, dto: any, updaterId: number, isSuperUser: boolean, managedDepartmentIds: number[]) {
+    const entry = await this.timeEntryRepo.findOne({
+      where: { id: entryId },
+      relations: ['user'],
+    });
+
+    if (!entry) {
+      throw new NotFoundException('Time entry not found');
+    }
+
+    if (!isSuperUser) {
+      const userDeptId = entry.user?.departmentId;
+      if (!userDeptId || !managedDepartmentIds.includes(userDeptId)) {
+        throw new ForbiddenException('You do not have permission to update this time entry');
+      }
+    }
+
+    if (dto.clock_in_time) {
+      entry.clockInTime = new Date(dto.clock_in_time);
+    }
+    if (dto.clock_out_time) {
+      entry.clockOutTime = new Date(dto.clock_out_time);
+    }
+    if (dto.break_time !== undefined) {
+      entry.totalBreakMinutes = dto.break_time;
+    }
+    if (dto.notes) {
+      entry.notes = dto.notes;
+    }
+
+    let totalHours = 0;
+    if (entry.clockInTime && entry.clockOutTime) {
+      const diffMs = entry.clockOutTime.getTime() - entry.clockInTime.getTime();
+      const breakMinutes = entry.totalBreakMinutes || 0;
+      totalHours = parseFloat(((diffMs / (1000 * 60 * 60)) - (breakMinutes / 60)).toFixed(2));
+    }
+
+    entry.updatedAt = new Date();
+
+    const updatedEntry = await this.timeEntryRepo.save(entry);
+
+    return {
+      entry_id: updatedEntry.id,
+      clock_in_time: updatedEntry.clockInTime,
+      clock_out_time: updatedEntry.clockOutTime,
+      total_hours: totalHours,
+      status: updatedEntry.status,
     };
   }
 }
