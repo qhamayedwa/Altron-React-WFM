@@ -55,19 +55,26 @@ router.post(
         [new Date(), user.id]
       );
 
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        res.status(500).json({ error: 'Server configuration error' });
+        return;
+      }
+
       const token = jwt.sign(
         {
           userId: user.id,
           tenantId: user.tenant_id,
           username: user.username
         },
-        process.env.JWT_SECRET || 'default-secret',
+        jwtSecret,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
@@ -86,8 +93,7 @@ router.post(
             id: user.dept_id,
             name: user.dept_name
           } : null
-        },
-        token
+        }
       });
     } catch (error) {
       console.error('Login error:', error);

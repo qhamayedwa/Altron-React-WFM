@@ -25,7 +25,14 @@ export const authenticate = async (
       return;
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('CRITICAL: JWT_SECRET environment variable is not set');
+      res.status(500).json({ error: 'Server configuration error' });
+      return;
+    }
+
+    const decoded = jwt.verify(token, jwtSecret) as {
       userId: number;
       tenantId: number;
     };

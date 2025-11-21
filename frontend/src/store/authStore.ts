@@ -14,27 +14,23 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
-  setAuth: (user: User, token: string) => void;
+  setAuth: (user: User) => void;
   logout: () => void;
   hasRole: (role: string) => boolean;
   isSuperUser: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: localStorage.getItem('auth-user') ? JSON.parse(localStorage.getItem('auth-user')!) : null,
-  token: localStorage.getItem('auth-token'),
-  isAuthenticated: !!localStorage.getItem('auth-token'),
-  setAuth: (user, token) => {
-    localStorage.setItem('auth-user', JSON.stringify(user));
-    localStorage.setItem('auth-token', token);
-    set({ user, token, isAuthenticated: true });
+  user: sessionStorage.getItem('auth-user') ? JSON.parse(sessionStorage.getItem('auth-user')!) : null,
+  isAuthenticated: !!sessionStorage.getItem('auth-user'),
+  setAuth: (user) => {
+    sessionStorage.setItem('auth-user', JSON.stringify(user));
+    set({ user, isAuthenticated: true });
   },
   logout: () => {
-    localStorage.removeItem('auth-user');
-    localStorage.removeItem('auth-token');
-    set({ user: null, token: null, isAuthenticated: false });
+    sessionStorage.removeItem('auth-user');
+    set({ user: null, isAuthenticated: false });
   },
   hasRole: (role: string) => {
     const user = get().user;
