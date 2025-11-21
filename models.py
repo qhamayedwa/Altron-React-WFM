@@ -354,20 +354,21 @@ class User(UserMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True, index=True)  # Add index for active user queries
     
     # Additional fields for employee management
-    employee_id = db.Column(db.String(20), nullable=False, index=True)  # Employee ID - unique per tenant
-    department = db.Column(db.String(64), nullable=True, index=True)  # Legacy department field
-    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), nullable=True, index=True)  # New hierarchy
-    position = db.Column(db.String(64), nullable=True)
-    hire_date = db.Column(db.Date, nullable=True, index=True)  # Hire date with index
+    employee_number = db.Column(db.String(20), nullable=True, index=True)  # Employee number - matches database
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), nullable=True, index=True)  # Department hierarchy
+    job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'), nullable=True, index=True)
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    hire_date = db.Column(db.Date, nullable=True, index=True)
+    termination_date = db.Column(db.Date, nullable=True)
     
     # Employment details
-    employment_type = db.Column(db.String(20), default='full_time')  # full_time, part_time, contract, temporary
-    employment_status = db.Column(db.String(20), default='active')  # active, inactive, terminated, on_leave
-    line_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    employment_type = db.Column(db.String(20), default='full_time')
+    employment_status = db.Column(db.String(20), default='active')
+    work_schedule = db.Column(db.String(50), nullable=True)
+    standard_hours_per_week = db.Column(db.Float, nullable=True)
     
     # Contact details
-    phone_number = db.Column(db.String(20), nullable=True)
-    mobile_number = db.Column(db.String(20), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
     emergency_contact_name = db.Column(db.String(100), nullable=True)
     emergency_contact_phone = db.Column(db.String(20), nullable=True)
     emergency_contact_relationship = db.Column(db.String(50), nullable=True)
@@ -376,22 +377,28 @@ class User(UserMixin, db.Model):
     address_line1 = db.Column(db.String(100), nullable=True)
     address_line2 = db.Column(db.String(100), nullable=True)
     city = db.Column(db.String(50), nullable=True)
+    state_province = db.Column(db.String(50), nullable=True)
     postal_code = db.Column(db.String(20), nullable=True)
+    country = db.Column(db.String(50), nullable=True)
     
-    # Job details
-    job_title = db.Column(db.String(100), nullable=True)
-    job_grade = db.Column(db.String(10), nullable=True)
-    job_id = db.Column(db.Integer, db.ForeignKey('jobs.id'), nullable=True, index=True)
-    salary = db.Column(db.Float, nullable=True)
+    # Personal details
+    date_of_birth = db.Column(db.Date, nullable=True)
+    gender = db.Column(db.String(20), nullable=True)
+    nationality = db.Column(db.String(50), nullable=True)
+    id_number = db.Column(db.String(50), nullable=True)
+    passport_number = db.Column(db.String(50), nullable=True)
     
     # Payroll integration
-    pay_code = db.Column(db.String(20), nullable=True, index=True)  # Employee pay code for payroll system
     hourly_rate = db.Column(db.Float, nullable=True)
+    annual_salary = db.Column(db.Float, nullable=True)
+    pay_frequency = db.Column(db.String(20), nullable=True)
+    bank_name = db.Column(db.String(100), nullable=True)
+    bank_account_number = db.Column(db.String(50), nullable=True)
+    bank_branch_code = db.Column(db.String(20), nullable=True)
+    tax_id = db.Column(db.String(50), nullable=True)
     
-    # Professional information
-    education_level = db.Column(db.String(50), nullable=True)
-    skills = db.Column(db.Text, nullable=True)
-    notes = db.Column(db.Text, nullable=True)
+    # Other
+    profile_picture_url = db.Column(db.String(255), nullable=True)
     
     # Relationships
     tenant = db.relationship('Tenant', backref='users')
@@ -399,16 +406,14 @@ class User(UserMixin, db.Model):
     roles = db.relationship('Role', secondary=user_roles, lazy='subquery',
                            backref=db.backref('users', lazy=True))
     
-    # Line manager relationship (self-referential)
-    line_manager = db.relationship('User', remote_side=[id], backref='direct_reports')
+    # Manager relationship (self-referential)
+    manager = db.relationship('User', remote_side=[id], backref='direct_reports', foreign_keys=[manager_id])
     
     # Multi-tenant unique constraints and indexes
     __table_args__ = (
         db.UniqueConstraint('tenant_id', 'username', name='uq_tenant_username'),
         db.UniqueConstraint('tenant_id', 'email', name='uq_tenant_email'),
-        db.UniqueConstraint('tenant_id', 'employee_id', name='uq_tenant_employee_id'),
         db.Index('idx_users_full_name', 'first_name', 'last_name'),
-        db.Index('idx_users_dept_active', 'department', 'is_active'),
         db.Index('idx_users_hire_date_desc', 'hire_date'),
     )
     
