@@ -1,12 +1,11 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 import { body, validationResult } from 'express-validator';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { query } from '../db/database';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.post(
   '/login',
@@ -24,43 +23,42 @@ router.post(
 
       const { username, password } = req.body;
 
-      const user = await prisma.user.findFirst({
-        where: {
-          username: username,
-          isActive: true
-        },
-        include: {
-          roles: {
-            include: {
-              role: true
-            }
-          },
-          tenant: true,
-          department: true
-        }
-      });
+      const userResult = await query(
+        `SELECT u.*, t.name as tenant_name, d.id as dept_id, d.name as dept_name,
+                array_agg(r.name) FILTER (WHERE r.name IS NOT NULL) as roles
+         FROM users u
+         LEFT JOIN tenants t ON u.tenant_id = t.id
+         LEFT JOIN departments d ON u.department_id = d.id
+         LEFT JOIN user_roles ur ON u.id = ur.user_id
+         LEFT JOIN roles r ON ur.role_id = r.id
+         WHERE u.username = $1 AND u.is_active = true
+         GROUP BY u.id, t.name, d.id, d.name`,
+        [username]
+      );
 
-      if (!user) {
+      if (userResult.rows.length === 0) {
         res.status(401).json({ error: 'Invalid username or password' });
         return;
       }
 
-      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+      const user = userResult.rows[0];
+
+      const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
       if (!isPasswordValid) {
         res.status(401).json({ error: 'Invalid username or password' });
         return;
       }
 
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { lastLogin: new Date() }
-      });
+      await query(
+        'UPDATE users SET last_login = $1 WHERE id = $2',
+        [new Date(), user.id]
+      );
 
       const token = jwt.sign(
         {
           userId: user.id,
-          tenantId: user.tenantId,
+          tenantId: user.tenant_id,
           username: user.username
         },
         process.env.JWT_SECRET || 'default-secret',
@@ -79,14 +77,14 @@ router.post(
           id: user.id,
           username: user.username,
           email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          tenantId: user.tenantId,
-          tenantName: user.tenant.name,
-          roles: user.roles.map(ur => ur.role.name),
-          department: user.department ? {
-            id: user.department.id,
-            name: user.department.name
+          firstName: user.first_name,
+          lastName: user.last_name,
+          tenantId: user.tenant_id,
+          tenantName: user.tenant_name,
+          roles: user.roles || [],
+          department: user.dept_id ? {
+            id: user.dept_id,
+            name: user.dept_name
           } : null
         },
         token
@@ -110,40 +108,42 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      include: {
-        roles: {
-          include: {
-            role: true
-          }
-        },
-        tenant: true,
-        department: true
-      }
-    });
+    const userResult = await query(
+      `SELECT u.*, t.name as tenant_name, d.id as dept_id, d.name as dept_name,
+              array_agg(r.name) FILTER (WHERE r.name IS NOT NULL) as roles
+       FROM users u
+       LEFT JOIN tenants t ON u.tenant_id = t.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       LEFT JOIN roles r ON ur.role_id = r.id
+       WHERE u.id = $1
+       GROUP BY u.id, t.name, d.id, d.name`,
+      [req.user.id]
+    );
 
-    if (!user) {
+    if (userResult.rows.length === 0) {
       res.status(404).json({ error: 'User not found' });
       return;
     }
+
+    const user = userResult.rows[0];
 
     res.json({
       id: user.id,
       username: user.username,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      employeeNumber: user.employeeNumber,
-      tenantId: user.tenantId,
-      tenantName: user.tenant.name,
-      roles: user.roles.map(ur => ur.role.name),
-      department: user.department ? {
-        id: user.department.id,
-        name: user.department.name
+      firstName: user.first_name,
+      lastName: user.last_name,
+      employeeNumber: user.employee_number,
+      tenantId: user.tenant_id,
+      tenantName: user.tenant_name,
+      roles: user.roles || [],
+      department: user.dept_id ? {
+        id: user.dept_id,
+        name: user.dept_name
       } : null,
       phone: user.phone,
-      profilePictureUrl: user.profilePictureUrl
+      profilePictureUrl: user.profile_picture_url
     });
   } catch (error) {
     console.error('Get user error:', error);

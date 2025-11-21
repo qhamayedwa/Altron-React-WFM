@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { query } from '../db/database';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -32,28 +30,29 @@ export const authenticate = async (
       tenantId: number;
     };
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      include: {
-        roles: {
-          include: {
-            role: true
-          }
-        }
-      }
-    });
+    const userResult = await query(
+      `SELECT u.*, array_agg(r.name) as roles
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       LEFT JOIN roles r ON ur.role_id = r.id
+       WHERE u.id = $1 AND u.is_active = true
+       GROUP BY u.id`,
+      [decoded.userId]
+    );
 
-    if (!user || !user.isActive) {
+    if (userResult.rows.length === 0) {
       res.status(401).json({ error: 'Invalid or expired token' });
       return;
     }
 
+    const user = userResult.rows[0];
+
     req.user = {
       id: user.id,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       username: user.username,
       email: user.email,
-      roles: user.roles.map(ur => ur.role.name)
+      roles: user.roles || []
     };
 
     next();

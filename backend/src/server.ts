@@ -34,9 +34,21 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Import routes
 import authRoutes from './routes/auth.routes';
+import timeAttendanceRoutes from './routes/time-attendance.routes';
+import leaveRoutes from './routes/leave.routes';
+import schedulingRoutes from './routes/scheduling.routes';
+import usersRoutes from './routes/users.routes';
+import organizationRoutes from './routes/organization.routes';
+import notificationsRoutes from './routes/notifications.routes';
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/time-attendance', timeAttendanceRoutes);
+app.use('/api/leave', leaveRoutes);
+app.use('/api/scheduling', schedulingRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/organization', organizationRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 app.get('/api', (req: Request, res: Response) => {
   res.json({
