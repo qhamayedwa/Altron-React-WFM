@@ -41,7 +41,7 @@ exports.AppModule = AppModule = __decorate([
             typeorm_1.TypeOrmModule.forRoot(typeorm_config_1.typeOrmConfig),
             serve_static_1.ServeStaticModule.forRoot({
                 rootPath: (0, path_1.join)(__dirname, '..', '..', 'client', 'dist'),
-                exclude: ['/api*', '/auth*', '/time*', '/leave*', '/scheduling*', '/payroll*', '/ai*', '/organization*', '/notifications*', '/sage-vip*', '/reports*', '/dashboard*'],
+                exclude: ['/auth/(.*)', '/time/(.*)', '/leave/(.*)', '/scheduling/(.*)', '/payroll/(.*)', '/ai/(.*)', '/organization/(.*)', '/notifications/(.*)', '/sage-vip/(.*)', '/reports/(.*)', '/dashboard/(.*)'],
             }),
             auth_module_1.AuthModule,
             time_module_1.TimeModule,

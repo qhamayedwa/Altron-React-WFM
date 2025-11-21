@@ -28,6 +28,7 @@ export const Layout: React.FC = () => {
   const isManager = userRoles.includes('Manager') || userRoles.includes('system_super_admin');
   const isAdmin = userRoles.includes('Admin') || userRoles.includes('Super User') || userRoles.includes('system_super_admin');
   const isSuperUser = userRoles.includes('Super User') || userRoles.includes('system_super_admin');
+  const isHR = userRoles.includes('HR') || userRoles.includes('system_super_admin');
   const isPayrollRole = userRoles.includes('Payroll');
   const hasPayrollAccess = isSuperUser || isPayrollRole || userRoles.includes('Admin');
 

@@ -78,7 +78,7 @@ export default function SageVipPage() {
     }
   };
 
-  const transferLeave = async () {
+  const transferLeave = async () => {
     if (!startDate || !endDate) {
       setMessage('Please select start and end dates');
       return;

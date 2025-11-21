@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Container, Table, Badge, Button, Form, Row, Col, Card, Spinner, Alert } from 'react-bootstrap';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { useAuth } from '../contexts/AuthContext';
 
 interface TimeEntry {
   id: number;
@@ -20,7 +19,6 @@ interface TimeEntry {
 }
 
 export const TimeEntriesPage: React.FC = () => {
-  const { user } = useAuth();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState('');

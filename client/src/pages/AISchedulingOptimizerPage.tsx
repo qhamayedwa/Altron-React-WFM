@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, ArrowLeft, Zap, Check, Download, RefreshCw, Settings } from 'lucide-react';
+import { Cpu, ArrowLeft, Zap, Check, RefreshCw, Settings } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface OptimizationResult {

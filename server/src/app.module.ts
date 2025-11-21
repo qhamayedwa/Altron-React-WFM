@@ -29,7 +29,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     TypeOrmModule.forRoot(typeOrmConfig),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'client', 'dist'),
-      exclude: ['/api*', '/auth*', '/time*', '/leave*', '/scheduling*', '/payroll*', '/ai*', '/organization*', '/notifications*', '/sage-vip*', '/reports*', '/dashboard*'],
+      exclude: ['/auth/(.*)', '/time/(.*)', '/leave/(.*)', '/scheduling/(.*)', '/payroll/(.*)', '/ai/(.*)', '/organization/(.*)', '/notifications/(.*)', '/sage-vip/(.*)', '/reports/(.*)', '/dashboard/(.*)'],
     }),
     AuthModule,
     TimeModule,

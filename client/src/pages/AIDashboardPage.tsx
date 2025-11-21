@@ -1,23 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain, Cpu, MessageSquare, Calendar, Users, DollarSign, Zap } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
 
-interface SchedulingInsights {
-  patterns?: string[];
-  efficiency_score?: number;
-  recommendations?: string[];
-}
-
-interface AttendanceInsights {
-  patterns?: string[];
-  risk_factors?: string[];
-  recommendations?: string[];
-}
-
 export default function AIDashboardPage() {
-  const { user } = useAuthStore();
   const [schedulingData, setSchedulingData] = useState<any>(null);
   const [attendanceData, setAttendanceData] = useState<any>(null);
   const [payrollData, setPayrollData] = useState<any>(null);

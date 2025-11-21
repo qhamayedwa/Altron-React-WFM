@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import api from '../lib/api';
 
 interface User {
@@ -9,6 +9,8 @@ interface User {
   last_name: string | null;
   employee_id: string | null;
   department_id: number | null;
+  phone_number?: string | null;
+  mobile_number?: string | null;
   is_active: boolean | null;
   user_roles?: Array<{
     roles: {

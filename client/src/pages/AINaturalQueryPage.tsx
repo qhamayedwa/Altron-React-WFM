@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageSquare, ArrowLeft, Send, Plus, Download } from 'lucide-react';
+import { MessageSquare, ArrowLeft, Send, Plus } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface QueryResult {

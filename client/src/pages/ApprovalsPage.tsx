@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Container, Table, Badge, Button, Card, Spinner, Alert, Modal, Form } from 'react-bootstrap';
+import { Container, Table, Button, Card, Spinner, Alert, Modal, Form } from 'react-bootstrap';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 

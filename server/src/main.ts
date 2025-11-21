@@ -56,8 +56,8 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT || 5000;
-  await app.listen(port);
-  console.log(`🚀 WFM24/7 Server running on http://localhost:${port}`);
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 WFM24/7 Server running on http://0.0.0.0:${port}`);
 }
 bootstrap();
