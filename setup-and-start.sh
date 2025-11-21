@@ -2,7 +2,7 @@
 # Altron WFM24/7 - Setup and Start Script
 
 echo "=========================================="
-echo "🚀 Altron WFM24/7 - React + Node.js Stack"
+echo "🚀 Altron WFM24/7 Setup & Start"
 echo "=========================================="
 
 # Install backend dependencies if needed
@@ -14,7 +14,7 @@ if [ ! -d "backend/node_modules" ]; then
   cd ..
   echo "✅ Backend dependencies installed"
 else
-  echo "✅ Backend dependencies found"
+  echo "✅ Backend dependencies already installed"
 fi
 
 # Install frontend dependencies if needed
@@ -26,17 +26,13 @@ if [ ! -d "frontend/node_modules" ]; then
   cd ..
   echo "✅ Frontend dependencies installed"
 else
-  echo "✅ Frontend dependencies found"
+  echo "✅ Frontend dependencies already installed"
 fi
 
 echo ""
 echo "=========================================="
 echo "🚀 Starting servers..."
 echo "=========================================="
-echo "   Backend:  http://localhost:3001"
-echo "   Frontend: http://localhost:5000"
-echo "=========================================="
-echo ""
 
 # Start both servers using concurrently
 npx concurrently --kill-others --names "BACKEND,FRONTEND" \

@@ -26,9 +26,21 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app"
+args = "bash start-all.sh"
 waitForPort = 5000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
 
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 37691
+externalPort = 3000
+
+[[ports]]
+localPort = 43141
+externalPort = 3002

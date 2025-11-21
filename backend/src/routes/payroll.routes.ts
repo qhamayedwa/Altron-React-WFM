@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Response as ExpressResponse } from 'express';
 import pool from '../db/database';
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
@@ -142,14 +142,15 @@ router.post('/calculate', authenticate, requireRole('Payroll', 'Super User'), as
 });
 
 // Get user payslip
-router.get('/payslip/:userId', authenticate, async (req: AuthRequest, res) => {
+router.get('/payslip/:userId', authenticate, async (req: AuthRequest, res: ExpressResponse): Promise<void> => {
   try {
     const { userId } = req.params;
     const { startDate, endDate } = req.query;
 
     // Verify user can access this payslip
     if (req.user!.id !== parseInt(userId) && !req.user!.roles.includes('Payroll') && !req.user!.roles.includes('Super User')) {
-      return res.status(403).json({ error: 'Access denied' });
+      res.status(403).json({ error: 'Access denied' });
+      return;
     }
 
     const timeEntries = await pool.query(
@@ -169,7 +170,8 @@ router.get('/payslip/:userId', authenticate, async (req: AuthRequest, res) => {
     );
 
     if (user.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     let regularHours = 0;

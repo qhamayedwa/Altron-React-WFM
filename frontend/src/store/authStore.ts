@@ -38,6 +38,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   isSuperUser: () => {
     const user = get().user;
-    return user?.roles?.includes('Super User') || user?.roles?.includes('system_super_admin') ?? false;
+    return (user?.roles?.includes('Super User') || user?.roles?.includes('system_super_admin')) ?? false;
   }
 }));
