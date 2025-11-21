@@ -52,7 +52,7 @@ async function bootstrap() {
   app.use(passport.session());
 
   app.enableCors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: true,
     credentials: true,
   });
 

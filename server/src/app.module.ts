@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -19,6 +19,7 @@ import { ReportsModule} from './reports/reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { typeOrmConfig } from './config/typeorm.config';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { SpaFallbackFilter } from './spa-fallback.filter';
 
 @Module({
   imports: [
@@ -50,6 +51,10 @@ import { RolesGuard } from './auth/guards/roles.guard';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: SpaFallbackFilter,
     },
   ],
 })

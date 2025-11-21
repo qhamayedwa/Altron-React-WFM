@@ -28,6 +28,7 @@ const reports_module_1 = require("./reports/reports.module");
 const dashboard_module_1 = require("./dashboard/dashboard.module");
 const typeorm_config_1 = require("./config/typeorm.config");
 const roles_guard_1 = require("./auth/guards/roles.guard");
+const spa_fallback_filter_1 = require("./spa-fallback.filter");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -62,6 +63,10 @@ exports.AppModule = AppModule = __decorate([
             {
                 provide: core_1.APP_GUARD,
                 useClass: roles_guard_1.RolesGuard,
+            },
+            {
+                provide: core_1.APP_FILTER,
+                useClass: spa_fallback_filter_1.SpaFallbackFilter,
             },
         ],
     })
