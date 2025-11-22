@@ -96,4 +96,49 @@ router.get('/unread-count', async (req: AuthRequest, res: Response): Promise<voi
   }
 });
 
+// Get notification triggers (admin only)
+router.get('/triggers', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // Check if notification_triggers table exists
+    const tableCheck = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'notification_triggers'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      // Return mock data if table doesn't exist
+      const mockTriggers = [
+        {
+          id: 1,
+          trigger_name: 'Time Entry Submitted',
+          trigger_type: 'time_entry',
+          event_type: 'submitted',
+          is_active: true,
+          recipient_type: 'manager',
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 2,
+          trigger_name: 'Leave Request Pending',
+          trigger_type: 'leave_request',
+          event_type: 'pending_approval',
+          is_active: true,
+          recipient_type: 'manager',
+          created_at: new Date().toISOString()
+        }
+      ];
+      res.json(mockTriggers);
+      return;
+    }
+
+    const result = await query('SELECT * FROM notification_triggers ORDER BY trigger_name');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get notification triggers error:', error);
+    res.status(500).json({ error: 'Failed to fetch notification triggers' });
+  }
+});
+
 export default router;

@@ -43,6 +43,9 @@ import notificationsRoutes from './routes/notifications.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import reportsRoutes from './routes/reports.routes';
 import payrollRoutes from './routes/payroll.routes';
+import payRulesRoutes from './routes/pay-rules.routes';
+import payCodesRoutes from './routes/pay-codes.routes';
+import automationRoutes from './routes/automation.routes';
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -55,6 +58,10 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/pay-rules', payRulesRoutes);
+app.use('/api/pay-codes', payCodesRoutes);
+app.use('/api/pay-code-configurations', payCodesRoutes);
+app.use('/api/automation', automationRoutes);
 
 app.get('/api', (_req: Request, res: Response) => {
   res.json({
