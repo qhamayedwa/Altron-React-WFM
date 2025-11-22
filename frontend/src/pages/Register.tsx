@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, Form, Button, Row, Col, Alert } from 'react-bootstrap';
-import { UserPlus, ArrowLeft } from 'lucide-react';
+import { UserPlus, ArrowLeft, Briefcase, Shield, Info, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 
@@ -13,14 +13,33 @@ export default function Register() {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    employeeNumber: '',
-    phone: '',
+    employeeId: 'AUTO-' + Date.now(),
     departmentId: '',
-    role: 'Employee'
+    jobId: '',
+    position: '',
+    roles: [] as string[],
+    isActive: true
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const availableRoles = [
+    { id: 1, name: 'Employee', description: 'Basic employee access (recommended for regular employees)' },
+    { id: 2, name: 'Manager', description: 'Team management and approval permissions' },
+    { id: 3, name: 'Admin', description: 'System administration access' },
+    { id: 4, name: 'HR', description: 'Human resources management' },
+    { id: 5, name: 'Super User', description: 'Complete system control' }
+  ];
+
+  const handleRoleToggle = (roleName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      roles: prev.roles.includes(roleName)
+        ? prev.roles.filter(r => r !== roleName)
+        : [...prev.roles, roleName]
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +55,11 @@ export default function Register() {
       return;
     }
 
+    if (formData.roles.length === 0) {
+      setError('Please select at least one role');
+      return;
+    }
+
     try {
       setLoading(true);
       await api.post('/auth/register', {
@@ -44,10 +68,12 @@ export default function Register() {
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        employeeNumber: formData.employeeNumber,
-        phone: formData.phone,
+        employeeId: formData.employeeId,
         departmentId: formData.departmentId || null,
-        role: formData.role
+        jobId: formData.jobId || null,
+        position: formData.position,
+        roles: formData.roles,
+        isActive: formData.isActive
       });
 
       setSuccess(true);
@@ -60,20 +86,13 @@ export default function Register() {
   };
 
   return (
-    <div className="py-4">
-      <div className="mb-4">
-        <Button variant="outline-secondary" size="sm" onClick={() => navigate('/user-management')}>
-          <ArrowLeft size={16} className="me-2" />
-          Back to User Management
-        </Button>
-      </div>
-
+    <div className="container py-5">
       <Row className="justify-content-center">
-        <Col lg={8}>
+        <Col md={8} lg={6}>
           <Card>
             <Card.Header>
               <h4 className="mb-0">
-                <UserPlus size={24} className="me-2" />
+                <UserPlus size={20} className="me-2" />
                 Register New User
               </h4>
             </Card.Header>
@@ -171,74 +190,143 @@ export default function Register() {
                   </Col>
                 </Row>
 
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Employee Number</Form.Label>
-                      <Form.Control
-                        type="text"
-                        value={formData.employeeNumber}
-                        onChange={(e) => setFormData({ ...formData, employeeNumber: e.target.value })}
-                        disabled={loading || success}
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Phone</Form.Label>
-                      <Form.Control
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        disabled={loading || success}
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
+                {/* Employee Information Section */}
+                <Card className="mb-3">
+                  <Card.Header>
+                    <h6 className="mb-0">
+                      <Briefcase size={16} className="me-2" />
+                      Employee Information
+                    </h6>
+                  </Card.Header>
+                  <Card.Body>
+                    <Row>
+                      <Col md={4}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Employee ID *</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={formData.employeeId}
+                            className="bg-light"
+                            readOnly
+                            disabled
+                          />
+                          <small className="text-success">
+                            <CheckCircle size={14} className="me-1" />
+                            Automatically generated unique ID
+                          </small>
+                        </Form.Group>
+                      </Col>
+                      <Col md={4}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Department</Form.Label>
+                          <Form.Select
+                            value={formData.departmentId}
+                            onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                            disabled={loading || success}
+                          >
+                            <option value="">Select Department</option>
+                            <option value="1">Administration</option>
+                          </Form.Select>
+                          <small className="text-muted">Select the employee's department</small>
+                        </Form.Group>
+                      </Col>
+                      <Col md={4}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Job/Position</Form.Label>
+                          <Form.Select
+                            value={formData.jobId}
+                            onChange={(e) => setFormData({ ...formData, jobId: e.target.value })}
+                            disabled={loading || success}
+                          >
+                            <option value="">Select Job Position</option>
+                          </Form.Select>
+                          <small className="text-muted">Select the employee's job position</small>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Position/Job Title</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={formData.position}
+                            onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                            placeholder="Custom position title (optional)"
+                            disabled={loading || success}
+                          />
+                          <small className="text-muted">Override job title if needed</small>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
 
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Role *</Form.Label>
-                      <Form.Select
-                        value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                        required
-                        disabled={loading || success}
-                      >
-                        <option value="Employee">Employee</option>
-                        <option value="Manager">Manager</option>
-                        <option value="Admin">Admin</option>
-                        <option value="HR">HR</option>
-                        <option value="Super User">Super User</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Department</Form.Label>
-                      <Form.Select
-                        value={formData.departmentId}
-                        onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                        disabled={loading || success}
-                      >
-                        <option value="">Select Department</option>
-                        <option value="1">Administration</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                </Row>
+                {/* Role Assignment Section */}
+                <Card className="mb-3">
+                  <Card.Header>
+                    <h6 className="mb-0">
+                      <Shield size={16} className="me-2" />
+                      Role Assignment
+                    </h6>
+                  </Card.Header>
+                  <Card.Body>
+                    <Row>
+                      {availableRoles.map((role) => (
+                        <Col md={6} key={role.id} className="mb-2">
+                          <Form.Check
+                            type="checkbox"
+                            id={`role-${role.id}`}
+                            checked={formData.roles.includes(role.name)}
+                            onChange={() => handleRoleToggle(role.name)}
+                            disabled={loading || success}
+                            label={
+                              <>
+                                <strong>{role.name}</strong>
+                                <small className="text-muted d-block">{role.description}</small>
+                              </>
+                            }
+                          />
+                        </Col>
+                      ))}
+                    </Row>
+                    <Alert variant="info" className="mt-3 mb-0">
+                      <small>
+                        <Info size={14} className="me-1" />
+                        <strong>Tip:</strong> For regular employees, select only "Employee" role for restricted access to personal information only.
+                      </small>
+                    </Alert>
+                  </Card.Body>
+                </Card>
 
-                <div className="d-flex gap-2 mt-4">
-                  <Button variant="primary" type="submit" disabled={loading || success}>
-                    {loading ? 'Registering...' : 'Register User'}
-                  </Button>
+                {/* Account Status */}
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="checkbox"
+                    id="is-active"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    disabled={loading || success}
+                    label={
+                      <>
+                        Active User Account
+                        <small className="text-muted d-block">Uncheck to create inactive account</small>
+                      </>
+                    }
+                  />
+                </Form.Group>
+
+                <div className="d-flex justify-content-between">
                   <Button 
                     variant="outline-secondary" 
                     onClick={() => navigate('/user-management')}
                     disabled={loading || success}
                   >
-                    Cancel
+                    <ArrowLeft size={16} className="me-2" />
+                    Back to Users
+                  </Button>
+                  <Button variant="primary" type="submit" disabled={loading || success}>
+                    {loading ? 'Registering...' : 'Register'}
                   </Button>
                 </div>
               </Form>
