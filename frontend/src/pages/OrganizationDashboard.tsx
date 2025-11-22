@@ -1,7 +1,9 @@
 import { Card, Button, Row, Col } from 'react-bootstrap';
 import { Building2, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function OrganizationDashboard() {
+  const navigate = useNavigate();
   const stats = {
     totalCompanies: 1,
     totalRegions: 3,
@@ -21,7 +23,7 @@ export default function OrganizationDashboard() {
           <p className="text-muted">Manage your company structure across regions, sites, and departments</p>
         </div>
         <div>
-          <Button variant="primary">
+          <Button variant="primary" onClick={() => navigate('/create-company')}>
             <Plus size={18} className="me-2" />
             New Company
           </Button>

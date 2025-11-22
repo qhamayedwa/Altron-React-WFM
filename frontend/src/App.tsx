@@ -35,6 +35,13 @@ import ManualTimeEntry from './pages/ManualTimeEntry';
 import LeaveTypes from './pages/LeaveTypes';
 import LeaveBalances from './pages/LeaveBalances';
 
+import PayCodes from './pages/PayCodes';
+import PayRules from './pages/PayRules';
+import ApplyLeave from './pages/ApplyLeave';
+import MyApplications from './pages/MyApplications';
+import TeamApplications from './pages/TeamApplications';
+import Notifications from './pages/Notifications';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -59,14 +66,18 @@ function App() {
           <Route path="my-timecard" element={<MyTimecard />} />
           <Route path="my-schedule" element={<MySchedule />} />
           <Route path="my-leave" element={<MyLeave />} />
+          <Route path="apply-leave" element={<ApplyLeave />} />
+          <Route path="my-applications" element={<MyApplications />} />
           <Route path="team-communication" element={<TeamCommunication />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="notifications" element={<Notifications />} />
           
           {/* Management */}
           <Route path="team-timecard" element={<TeamTimecard />} />
           <Route path="employee-timecards" element={<EmployeeTimecards />} />
           <Route path="team-calendar" element={<TeamCalendar />} />
           <Route path="time-exceptions" element={<TimeExceptions />} />
+          <Route path="team-applications" element={<TeamApplications />} />
           <Route path="manage-schedules" element={<ManageSchedules />} />
           <Route path="shift-types" element={<ShiftTypes />} />
           <Route path="ai-scheduling" element={<AIScheduling />} />
@@ -83,6 +94,8 @@ function App() {
           <Route path="manual-time-entry" element={<ManualTimeEntry />} />
           <Route path="leave-types" element={<LeaveTypes />} />
           <Route path="leave-balances" element={<LeaveBalances />} />
+          <Route path="pay-codes" element={<PayCodes />} />
+          <Route path="pay-rules" element={<PayRules />} />
           
           {/* Legacy routes */}
           <Route path="time-attendance" element={<TimeAttendance />} />

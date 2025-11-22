@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Row, Col, Card, Button } from 'react-bootstrap';
 import { Clock, Calendar, Users, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 
@@ -13,6 +14,7 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     timeEntriesToday: 0,
     pendingLeaveRequests: 0,
@@ -104,15 +106,15 @@ export default function Dashboard() {
               <h5 className="mb-0">Quick Actions</h5>
             </Card.Header>
             <Card.Body className="d-flex flex-column gap-2">
-              <Button variant="primary" className="w-100">
+              <Button variant="primary" className="w-100" onClick={() => navigate('/my-timecard')}>
                 <Clock size={16} className="me-2" />
                 Clock In
               </Button>
-              <Button variant="outline-primary" className="w-100">
+              <Button variant="outline-primary" className="w-100" onClick={() => navigate('/apply-leave')}>
                 <Calendar size={16} className="me-2" />
                 Request Leave
               </Button>
-              <Button variant="outline-primary" className="w-100">
+              <Button variant="outline-primary" className="w-100" onClick={() => navigate('/my-schedule')}>
                 <TrendingUp size={16} className="me-2" />
                 View Schedule
               </Button>

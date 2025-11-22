@@ -1,7 +1,9 @@
 import { Card, Button, Row, Col } from 'react-bootstrap';
 import { Briefcase, Plus, List, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function MyLeave() {
+  const navigate = useNavigate();
   const leaveBalances = [
     { name: 'Annual Leave', balance: 15.0, used: 5.0, accrued: 20.0 },
     { name: 'Sick Leave', balance: 10.0, used: 2.0, accrued: 12.0 },
@@ -16,11 +18,11 @@ export default function MyLeave() {
           My Leave Dashboard
         </h2>
         <div className="d-flex gap-2">
-          <Button variant="primary">
+          <Button variant="primary" onClick={() => navigate('/apply-leave')}>
             <Plus size={18} className="me-2" />
             Apply for Leave
           </Button>
-          <Button variant="outline-secondary">
+          <Button variant="outline-secondary" onClick={() => navigate('/my-applications')}>
             <List size={18} className="me-2" />
             View Applications
           </Button>
@@ -68,7 +70,7 @@ export default function MyLeave() {
                 <Calendar size={48} className="text-muted mb-3" />
                 <h6>No Leave Applications</h6>
                 <p className="text-muted">You haven't submitted any leave applications yet.</p>
-                <Button variant="primary">
+                <Button variant="primary" onClick={() => navigate('/apply-leave')}>
                   Apply for Leave
                 </Button>
               </div>
@@ -84,11 +86,11 @@ export default function MyLeave() {
             </Card.Header>
             <Card.Body>
               <div className="d-grid gap-2">
-                <Button variant="outline-primary">
+                <Button variant="outline-primary" onClick={() => navigate('/apply-leave')}>
                   <Plus size={18} className="me-2" />
                   Apply for Leave
                 </Button>
-                <Button variant="outline-secondary">
+                <Button variant="outline-secondary" onClick={() => navigate('/my-applications')}>
                   <List size={18} className="me-2" />
                   View All Applications
                 </Button>

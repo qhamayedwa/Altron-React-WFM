@@ -14,7 +14,7 @@ export default function UserManagement() {
           <Users size={28} className="me-2" />
           User Management
         </h2>
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => alert('User registration form will open here')}>
           <UserPlus size={18} className="me-2" />
           Register New User
         </Button>

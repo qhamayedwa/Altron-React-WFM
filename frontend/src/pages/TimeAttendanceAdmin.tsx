@@ -1,7 +1,9 @@
 import { Card, Button, Row, Col } from 'react-bootstrap';
 import { Shield, Edit, Upload, Users, AlertTriangle, BarChart2, Calendar, Play, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function TimeAttendanceAdmin() {
+  const navigate = useNavigate();
   const stats = {
     totalEntriesToday: 24,
     openEntries: 12,
@@ -17,11 +19,11 @@ export default function TimeAttendanceAdmin() {
           Time Attendance Administration
         </h2>
         <div className="d-flex gap-2">
-          <Button variant="primary">
+          <Button variant="primary" onClick={() => navigate('/manual-time-entry')}>
             <Edit size={18} className="me-2" />
             Manual Entry
           </Button>
-          <Button variant="outline-secondary">
+          <Button variant="outline-secondary" onClick={() => alert('Import Data functionality')}>
             <Upload size={18} className="me-2" />
             Import Data
           </Button>
@@ -77,15 +79,15 @@ export default function TimeAttendanceAdmin() {
             </Card.Header>
             <Card.Body>
               <div className="d-grid gap-2">
-                <Button variant="outline-primary">
+                <Button variant="outline-primary" onClick={() => navigate('/employee-timecards')}>
                   <Users size={18} className="me-2" />
                   View All Timecards
                 </Button>
-                <Button variant="outline-warning">
+                <Button variant="outline-warning" onClick={() => navigate('/time-exceptions')}>
                   <AlertTriangle size={18} className="me-2" />
                   Review Exceptions
                 </Button>
-                <Button variant="outline-info">
+                <Button variant="outline-info" onClick={() => navigate('/reports')}>
                   <BarChart2 size={18} className="me-2" />
                   Generate Reports
                 </Button>
