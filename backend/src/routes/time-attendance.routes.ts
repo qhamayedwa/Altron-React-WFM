@@ -223,4 +223,73 @@ router.post('/approve/:id', requireRole('Manager', 'Super User'), async (req: Au
   }
 });
 
+// Manual Time Entry (Admin/Manager)
+router.post(
+  '/manual-entry',
+  [
+    body('userId').isInt().withMessage('User ID is required'),
+    body('clockInTime').notEmpty().withMessage('Clock in time is required'),
+    body('clockOutTime').optional(),
+    body('notes').optional(),
+    body('approveOvertime').optional().isBoolean()
+  ],
+  requireRole('Admin', 'Manager', 'Super User'),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { userId, clockInTime, clockOutTime, notes, approveOvertime } = req.body;
+
+      // Calculate total hours if clock out time is provided
+      let totalHours = null;
+      if (clockOutTime) {
+        const clockIn = new Date(clockInTime);
+        const clockOut = new Date(clockOutTime);
+        totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
+      }
+
+      // Get user's department
+      const userResult = await query(
+        'SELECT department_id FROM users WHERE id = $1',
+        [userId]
+      );
+
+      if (userResult.rows.length === 0) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      const departmentId = userResult.rows[0].department_id;
+
+      // Insert manual time entry
+      const result = await query(
+        `INSERT INTO time_entries (
+          user_id, department_id, clock_in_time, clock_out_time,
+          total_hours, status, notes, is_overtime_approved,
+          approved_by, approved_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        RETURNING *`,
+        [
+          userId,
+          departmentId,
+          clockInTime,
+          clockOutTime || null,
+          totalHours,
+          clockOutTime ? 'approved' : 'clocked_in',
+          notes || null,
+          approveOvertime || false,
+          req.user!.id
+        ]
+      );
+
+      res.status(201).json({
+        success: true,
+        message: 'Manual time entry created successfully',
+        timeEntry: result.rows[0]
+      });
+    } catch (error) {
+      console.error('Manual time entry error:', error);
+      res.status(500).json({ error: 'Failed to create manual time entry' });
+    }
+  }
+);
+
 export default router;
