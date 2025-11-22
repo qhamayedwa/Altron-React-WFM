@@ -19,8 +19,6 @@ export default function Dashboard() {
     upcomingShifts: 0,
     teamMembers: 0
   });
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -29,10 +27,8 @@ export default function Dashboard() {
     try {
       const response = await api.get('/dashboard/stats');
       setStats(response.data);
-      setLoading(false);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
-      setLoading(false);
     }
   };
 

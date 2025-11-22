@@ -1,5 +1,5 @@
 import { Card, Button, Row, Col } from 'react-bootstrap';
-import { Sitemap, Plus } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 
 export default function OrganizationDashboard() {
   const stats = {
@@ -15,7 +15,7 @@ export default function OrganizationDashboard() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2>
-            <Sitemap size={28} className="me-2" />
+            <Building2 size={28} className="me-2" />
             Organizational Hierarchy
           </h2>
           <p className="text-muted">Manage your company structure across regions, sites, and departments</p>
