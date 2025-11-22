@@ -20,9 +20,8 @@ router.post(
       const { latitude, longitude } = req.body;
       
       const result = await query(
-        `INSERT INTO time_entries (user_id, department_id, clock_in_time, clock_in_latitude, clock_in_longitude, status)
-         SELECT $1, department_id, NOW(), $2, $3, 'clocked_in'
-         FROM users WHERE id = $1
+        `INSERT INTO time_entries (user_id, clock_in_time, clock_in_latitude, clock_in_longitude, status)
+         VALUES ($1, NOW(), $2, $3, 'clocked_in')
          RETURNING *`,
         [req.user!.id, latitude, longitude]
       );
@@ -249,7 +248,7 @@ router.post(
         return;
       }
 
-      // Insert manual time entry
+      // Insert manual time entry (respects the clockInTime date for backdating)
       const result = await query(
         `INSERT INTO time_entries (
           user_id, clock_in_time, clock_out_time,
@@ -279,5 +278,47 @@ router.post(
     }
   }
 );
+
+// Get Recent Time Entries (Admin/Manager)
+router.get('/recent-entries', requireRole('Admin', 'Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await query(
+      `SELECT 
+        te.id,
+        te.user_id,
+        te.clock_in_time,
+        te.clock_out_time,
+        te.status,
+        te.notes,
+        te.is_overtime_approved,
+        u.username,
+        u.first_name,
+        u.last_name,
+        EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 as total_hours
+       FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       ORDER BY te.clock_in_time DESC
+       LIMIT 50`
+    );
+
+    const entries = result.rows.map(entry => ({
+      id: entry.id,
+      userId: entry.user_id,
+      username: entry.username,
+      employeeName: `${entry.first_name || ''} ${entry.last_name || ''}`.trim() || entry.username,
+      clockInTime: entry.clock_in_time,
+      clockOutTime: entry.clock_out_time,
+      totalHours: entry.total_hours ? parseFloat(entry.total_hours.toFixed(2)) : null,
+      status: entry.status,
+      notes: entry.notes,
+      isOvertimeApproved: entry.is_overtime_approved
+    }));
+
+    res.json(entries);
+  } catch (error) {
+    console.error('Get recent entries error:', error);
+    res.status(500).json({ error: 'Failed to retrieve recent entries' });
+  }
+});
 
 export default router;

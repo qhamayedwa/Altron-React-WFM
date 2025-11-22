@@ -1,14 +1,82 @@
-import { Card, Button, Row, Col } from 'react-bootstrap';
-import { Shield, Edit, Upload, Users, AlertTriangle, BarChart2, Calendar, Play, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Card, Button, Row, Col, Table, Badge } from 'react-bootstrap';
+import { Shield, Edit, Upload, Users, AlertTriangle, BarChart2, Calendar, Play, Clock, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/client';
+
+interface TimeEntry {
+  id: number;
+  username: string;
+  employeeName: string;
+  clockInTime: string;
+  clockOutTime: string | null;
+  totalHours: number | null;
+  status: string;
+  isOvertimeApproved: boolean;
+}
 
 export default function TimeAttendanceAdmin() {
   const navigate = useNavigate();
+  const [recentEntries, setRecentEntries] = useState<TimeEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const stats = {
     totalEntriesToday: 24,
     openEntries: 12,
     exceptionsCount: 3,
     weekTotalHours: 342.5
+  };
+
+  useEffect(() => {
+    loadRecentEntries();
+  }, []);
+
+  const loadRecentEntries = async () => {
+    try {
+      const response = await api.get('/time-attendance/recent-entries');
+      setRecentEntries(response.data);
+    } catch (err) {
+      console.error('Failed to load recent entries:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'approved': 'success',
+      'clocked_in': 'primary',
+      'clocked_out': 'info',
+      'exception': 'warning',
+      'Open': 'primary',
+      'Closed': 'success',
+      'Exception': 'warning'
+    };
+    return statusMap[status] || 'secondary';
+  };
+
+  const approveEntry = async (entryId: number) => {
+    try {
+      await api.post(`/time-attendance/approve/${entryId}`);
+      loadRecentEntries();
+    } catch (err) {
+      console.error('Failed to approve entry:', err);
+    }
   };
 
   return (
@@ -121,6 +189,82 @@ export default function TimeAttendanceAdmin() {
           </Card>
         </Col>
       </Row>
+
+      {/* Recent Time Entries */}
+      <Card>
+        <Card.Header>
+          <h5 className="mb-0">Recent Time Entries</h5>
+        </Card.Header>
+        <Card.Body>
+          {loading ? (
+            <p className="text-muted text-center">Loading...</p>
+          ) : recentEntries.length > 0 ? (
+            <div className="table-responsive">
+              <Table size="sm">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>Clock In</th>
+                    <th>Clock Out</th>
+                    <th>Hours</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentEntries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{entry.username}</td>
+                      <td>{formatDate(entry.clockInTime)}</td>
+                      <td>{formatTime(entry.clockInTime)}</td>
+                      <td>
+                        {entry.clockOutTime ? (
+                          formatTime(entry.clockOutTime)
+                        ) : (
+                          <Badge bg="success">Active</Badge>
+                        )}
+                      </td>
+                      <td>{entry.totalHours ? entry.totalHours.toFixed(2) : '-'}</td>
+                      <td>
+                        <Badge bg={getStatusBadge(entry.status)}>
+                          {entry.status}
+                        </Badge>
+                      </td>
+                      <td>
+                        <div className="btn-group btn-group-sm">
+                          {entry.status === 'exception' && (
+                            <Button
+                              variant="outline-success"
+                              size="sm"
+                              onClick={() => approveEntry(entry.id)}
+                              title="Approve Entry"
+                            >
+                              <Check size={14} />
+                            </Button>
+                          )}
+                          {entry.totalHours && entry.totalHours > 8 && !entry.isOvertimeApproved && (
+                            <Button
+                              variant="outline-warning"
+                              size="sm"
+                              onClick={() => alert('Approve overtime')}
+                              title="Approve Overtime"
+                            >
+                              <Clock size={14} />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-muted text-center">No recent entries found.</p>
+          )}
+        </Card.Body>
+      </Card>
     </div>
   );
 }
