@@ -157,4 +157,45 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
   }
 });
 
+router.get('/users', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const usersResult = await query(
+      `SELECT u.id, u.username, u.email, u.first_name, u.last_name, 
+              u.employee_number, u.department_id, u.is_active, u.created_at,
+              array_agg(r.name) FILTER (WHERE r.name IS NOT NULL) as roles,
+              d.name as department_name
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       LEFT JOIN roles r ON ur.role_id = r.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       GROUP BY u.id, d.name
+       ORDER BY u.created_at DESC`
+    );
+
+    const users = usersResult.rows.map(user => ({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      employee_number: user.employee_number,
+      department_id: user.department_id,
+      department_name: user.department_name,
+      is_active: user.is_active,
+      created_at: user.created_at,
+      roles: user.roles || []
+    }));
+
+    res.json(users);
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
