@@ -308,7 +308,7 @@ router.get('/recent-entries', requireRole('Admin', 'Manager', 'Super User'), asy
       employeeName: `${entry.first_name || ''} ${entry.last_name || ''}`.trim() || entry.username,
       clockInTime: entry.clock_in_time,
       clockOutTime: entry.clock_out_time,
-      totalHours: entry.total_hours ? parseFloat(entry.total_hours.toFixed(2)) : null,
+      totalHours: entry.total_hours ? parseFloat(parseFloat(entry.total_hours).toFixed(2)) : null,
       status: entry.status,
       notes: entry.notes,
       isOvertimeApproved: entry.is_overtime_approved
