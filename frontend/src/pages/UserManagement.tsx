@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Table, Form, Row, Col, InputGroup, Badge, Spinner } from 'react-bootstrap';
 import { Users, UserPlus, Search, X, Edit, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 
 interface User {
@@ -16,6 +17,7 @@ interface User {
 }
 
 export default function UserManagement() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -60,7 +62,7 @@ export default function UserManagement() {
           <Users size={28} className="me-2" />
           User Management
         </h2>
-        <Button variant="primary" onClick={() => alert('User registration form will open here')}>
+        <Button variant="primary" onClick={() => navigate('/register')}>
           <UserPlus size={18} className="me-2" />
           Register New User
         </Button>

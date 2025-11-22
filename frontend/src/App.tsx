@@ -41,6 +41,7 @@ import ApplyLeave from './pages/ApplyLeave';
 import MyApplications from './pages/MyApplications';
 import TeamApplications from './pages/TeamApplications';
 import Notifications from './pages/Notifications';
+import Register from './pages/Register';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -90,6 +91,7 @@ function App() {
           
           {/* Administration */}
           <Route path="user-management" element={<UserManagement />} />
+          <Route path="register" element={<Register />} />
           <Route path="time-attendance-admin" element={<TimeAttendanceAdmin />} />
           <Route path="manual-time-entry" element={<ManualTimeEntry />} />
           <Route path="leave-types" element={<LeaveTypes />} />
