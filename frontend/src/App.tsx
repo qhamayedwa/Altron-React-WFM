@@ -12,6 +12,29 @@ import Reports from './pages/Reports';
 import Payroll from './pages/Payroll';
 import Layout from './components/Layout';
 
+import MyTimecard from './pages/MyTimecard';
+import MySchedule from './pages/MySchedule';
+import MyLeave from './pages/MyLeave';
+import TeamCommunication from './pages/TeamCommunication';
+
+import TeamTimecard from './pages/TeamTimecard';
+import EmployeeTimecards from './pages/EmployeeTimecards';
+import TeamCalendar from './pages/TeamCalendar';
+import TimeExceptions from './pages/TimeExceptions';
+import ManageSchedules from './pages/ManageSchedules';
+import ShiftTypes from './pages/ShiftTypes';
+import AIScheduling from './pages/AIScheduling';
+
+import OrganizationDashboard from './pages/OrganizationDashboard';
+import CompanyManagement from './pages/CompanyManagement';
+import EmployeeImport from './pages/EmployeeImport';
+import CreateCompany from './pages/CreateCompany';
+
+import TimeAttendanceAdmin from './pages/TimeAttendanceAdmin';
+import ManualTimeEntry from './pages/ManualTimeEntry';
+import LeaveTypes from './pages/LeaveTypes';
+import LeaveBalances from './pages/LeaveBalances';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -31,13 +54,43 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
+          
+          {/* Personal */}
+          <Route path="my-timecard" element={<MyTimecard />} />
+          <Route path="my-schedule" element={<MySchedule />} />
+          <Route path="my-leave" element={<MyLeave />} />
+          <Route path="team-communication" element={<TeamCommunication />} />
+          <Route path="reports" element={<Reports />} />
+          
+          {/* Management */}
+          <Route path="team-timecard" element={<TeamTimecard />} />
+          <Route path="employee-timecards" element={<EmployeeTimecards />} />
+          <Route path="team-calendar" element={<TeamCalendar />} />
+          <Route path="time-exceptions" element={<TimeExceptions />} />
+          <Route path="manage-schedules" element={<ManageSchedules />} />
+          <Route path="shift-types" element={<ShiftTypes />} />
+          <Route path="ai-scheduling" element={<AIScheduling />} />
+          
+          {/* Organization */}
+          <Route path="organization-dashboard" element={<OrganizationDashboard />} />
+          <Route path="company-management" element={<CompanyManagement />} />
+          <Route path="employee-import" element={<EmployeeImport />} />
+          <Route path="create-company" element={<CreateCompany />} />
+          
+          {/* Administration */}
+          <Route path="user-management" element={<UserManagement />} />
+          <Route path="time-attendance-admin" element={<TimeAttendanceAdmin />} />
+          <Route path="manual-time-entry" element={<ManualTimeEntry />} />
+          <Route path="leave-types" element={<LeaveTypes />} />
+          <Route path="leave-balances" element={<LeaveBalances />} />
+          
+          {/* Legacy routes */}
           <Route path="time-attendance" element={<TimeAttendance />} />
           <Route path="leave" element={<LeaveManagement />} />
           <Route path="scheduling" element={<Scheduling />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="organization" element={<OrganizationManagement />} />
           <Route path="payroll" element={<Payroll />} />
-          <Route path="reports" element={<Reports />} />
           <Route path="profile" element={<Profile />} />
         </Route>
       </Routes>
