@@ -37,6 +37,9 @@ import LeaveBalances from './pages/LeaveBalances';
 
 import PayCodes from './pages/PayCodes';
 import PayRules from './pages/PayRules';
+import TestPayRules from './pages/TestPayRules';
+import CalculatePay from './pages/CalculatePay';
+import PayCalculations from './pages/PayCalculations';
 import PayCodeConfiguration from './pages/PayCodeConfiguration';
 import TimecardRollup from './pages/TimecardRollup';
 import AutomationWorkflows from './pages/AutomationWorkflows';
@@ -105,6 +108,9 @@ function App() {
           <Route path="leave-balances" element={<LeaveBalances />} />
           <Route path="pay-codes" element={<PayCodes />} />
           <Route path="pay-rules" element={<PayRules />} />
+          <Route path="pay-rules/test" element={<TestPayRules />} />
+          <Route path="pay-rules/calculate" element={<CalculatePay />} />
+          <Route path="pay-rules/calculations" element={<PayCalculations />} />
           <Route path="pay-code-configuration" element={<PayCodeConfiguration />} />
           <Route path="timecard-rollup" element={<TimecardRollup />} />
           <Route path="automation-workflows" element={<AutomationWorkflows />} />

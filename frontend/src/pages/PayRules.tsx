@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Edit, 
@@ -43,6 +44,7 @@ interface PayRuleFormData {
 }
 
 const PayRules: React.FC = () => {
+  const navigate = useNavigate();
   const [rules, setRules] = useState<PayRule[]>([]);
   const [filteredRules, setFilteredRules] = useState<PayRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -509,7 +511,12 @@ const PayRules: React.FC = () => {
               <CheckCircle className="text-info mb-2" width={32} height={32} />
               <h6>Test Rules</h6>
               <p className="text-muted small">Validate rule logic against sample data</p>
-              <button className="btn btn-outline-info btn-sm">Test Now</button>
+              <button 
+                className="btn btn-outline-info btn-sm"
+                onClick={() => navigate('/pay-rules/test')}
+              >
+                Test Now
+              </button>
             </div>
           </div>
         </div>
@@ -519,7 +526,12 @@ const PayRules: React.FC = () => {
               <Calculator className="text-success mb-2" width={32} height={32} />
               <h6>Calculate Pay</h6>
               <p className="text-muted small">Run payroll calculations for employees</p>
-              <button className="btn btn-outline-success btn-sm">Calculate</button>
+              <button 
+                className="btn btn-outline-success btn-sm"
+                onClick={() => navigate('/pay-rules/calculate')}
+              >
+                Calculate
+              </button>
             </div>
           </div>
         </div>
@@ -529,7 +541,12 @@ const PayRules: React.FC = () => {
               <FileText className="text-secondary mb-2" width={32} height={32} />
               <h6>View Calculations</h6>
               <p className="text-muted small">Review saved payroll calculations</p>
-              <button className="btn btn-outline-secondary btn-sm">View All</button>
+              <button 
+                className="btn btn-outline-secondary btn-sm"
+                onClick={() => navigate('/pay-rules/calculations')}
+              >
+                View All
+              </button>
             </div>
           </div>
         </div>
