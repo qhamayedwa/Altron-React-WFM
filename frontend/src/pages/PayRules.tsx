@@ -245,6 +245,46 @@ const PayRules: React.FC = () => {
     });
   };
 
+  const loadExample = (exampleType: string) => {
+    if (exampleType === 'weekend_overtime') {
+      setFormData({
+        name: 'Weekend Overtime',
+        priority: 150,
+        description: '1.5x pay for weekend work',
+        day_of_week: [5, 6], // Saturday and Sunday
+        start_hour: '',
+        end_hour: '',
+        overtime_threshold: '',
+        employee_ids: '',
+        roles: [],
+        pay_multiplier: '1.5',
+        component_name: 'weekend_ot',
+        flat_allowance: '',
+        allowance_name: '',
+        shift_differential: '',
+        differential_name: ''
+      });
+    } else if (exampleType === 'night_shift') {
+      setFormData({
+        name: 'Night Shift Differential',
+        priority: 200,
+        description: 'R2/hour for night shifts (18:00-06:00)',
+        day_of_week: [],
+        start_hour: '18',
+        end_hour: '6',
+        overtime_threshold: '',
+        employee_ids: '',
+        roles: [],
+        pay_multiplier: '',
+        component_name: '',
+        flat_allowance: '',
+        allowance_name: '',
+        shift_differential: '2.00',
+        differential_name: 'night_shift'
+      });
+    }
+  };
+
   const toggleDay = (day: number) => {
     setFormData(prev => ({
       ...prev,
@@ -809,7 +849,11 @@ const PayRules: React.FC = () => {
                             <div className="card-body p-3">
                               <h6 className="card-title">Weekend Overtime</h6>
                               <p className="card-text small">1.5x pay for weekend work</p>
-                              <button type="button" className="btn btn-outline-primary btn-sm">
+                              <button 
+                                type="button" 
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => loadExample('weekend_overtime')}
+                              >
                                 Use This Example
                               </button>
                             </div>
@@ -818,7 +862,11 @@ const PayRules: React.FC = () => {
                             <div className="card-body p-3">
                               <h6 className="card-title">Night Shift</h6>
                               <p className="card-text small">R2/hour for night shifts (18:00-06:00)</p>
-                              <button type="button" className="btn btn-outline-primary btn-sm">
+                              <button 
+                                type="button" 
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => loadExample('night_shift')}
+                              >
                                 Use This Example
                               </button>
                             </div>
