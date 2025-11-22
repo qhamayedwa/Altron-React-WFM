@@ -60,7 +60,6 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/pay-rules', payRulesRoutes);
 app.use('/api/pay-codes', payCodesRoutes);
-app.use('/api/pay-code-configurations', payCodesRoutes);
 app.use('/api/automation', automationRoutes);
 
 app.get('/api', (_req: Request, res: Response) => {

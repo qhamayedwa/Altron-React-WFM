@@ -52,7 +52,8 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
           updated_at: new Date().toISOString()
         }
       ];
-      return res.json(mockCodes);
+      res.json(mockCodes);
+      return;
     }
 
     const result = await pool.query(
@@ -122,7 +123,8 @@ router.put('/:id', authenticate, requireRole('Payroll', 'Super User'), async (re
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Pay code not found' });
+      res.status(404).json({ error: 'Pay code not found' });
+      return;
     }
 
     res.json(result.rows[0]);
@@ -145,7 +147,8 @@ router.get('/configurations', authenticate, async (req: AuthRequest, res) => {
 
     if (!tableCheck.rows[0].exists) {
       // Return empty array if table doesn't exist
-      return res.json([]);
+      res.json([]);
+      return;
     }
 
     const result = await pool.query(`

@@ -43,7 +43,8 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
           updated_at: new Date().toISOString()
         }
       ];
-      return res.json(mockRules);
+      res.json(mockRules);
+      return;
     }
 
     const result = await pool.query(
@@ -149,7 +150,8 @@ router.put('/:id', authenticate, requireRole('Payroll', 'Super User'), async (re
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Pay rule not found' });
+      res.status(404).json({ error: 'Pay rule not found' });
+      return;
     }
 
     res.json(result.rows[0]);
@@ -168,7 +170,8 @@ router.post('/:id/test', authenticate, async (req: AuthRequest, res) => {
     const ruleResult = await pool.query('SELECT * FROM pay_rules WHERE id = $1', [id]);
     
     if (ruleResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Pay rule not found' });
+      res.status(404).json({ error: 'Pay rule not found' });
+      return;
     }
 
     const rule = ruleResult.rows[0];

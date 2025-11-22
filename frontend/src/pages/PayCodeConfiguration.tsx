@@ -28,7 +28,7 @@ const PayCodeConfiguration: React.FC = () => {
   const fetchConfigurations = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/pay-code-configurations', {
+      const response = await fetch('/api/pay-codes/configurations', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

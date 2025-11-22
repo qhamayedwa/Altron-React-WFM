@@ -39,7 +39,8 @@ router.get('/workflows', authenticate, async (req: AuthRequest, res) => {
           next_run: null
         }
       ];
-      return res.json(mockWorkflows);
+      res.json(mockWorkflows);
+      return;
     }
 
     const result = await pool.query(
@@ -65,7 +66,8 @@ router.patch('/workflows/:id', authenticate, requireRole('Admin', 'Super User'),
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Workflow not found' });
+      res.status(404).json({ error: 'Workflow not found' });
+      return;
     }
 
     res.json(result.rows[0]);
