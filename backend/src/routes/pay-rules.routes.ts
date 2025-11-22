@@ -20,27 +20,27 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
       const mockRules = [
         {
           id: 1,
-          rule_name: 'Standard Overtime',
-          rule_category: 'overtime',
-          rule_type: 'percentage',
-          calculation_method: 'hours_worked',
-          priority: 1,
-          is_active: true,
+          name: 'Standard Overtime',
           description: 'Applies 1.5x rate for hours over 8 per day',
+          conditions: JSON.stringify({ overtime_threshold: 8 }),
+          actions: JSON.stringify({ pay_multiplier: 1.5, component_name: 'overtime_1_5' }),
+          priority: 100,
+          is_active: true,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          created_by_id: 1
         },
         {
           id: 2,
-          rule_name: 'Double Time',
-          rule_category: 'overtime',
-          rule_type: 'percentage',
-          calculation_method: 'hours_worked',
-          priority: 0,
-          is_active: true,
+          name: 'Double Time',
           description: 'Applies 2.0x rate for hours over 12 per day',
+          conditions: JSON.stringify({ overtime_threshold: 12 }),
+          actions: JSON.stringify({ pay_multiplier: 2.0, component_name: 'double_time' }),
+          priority: 200,
+          is_active: true,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          created_by_id: 1
         }
       ];
       res.json(mockRules);
@@ -62,36 +62,32 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 router.post('/', authenticate, requireRole('Payroll', 'Super User'), async (req: AuthRequest, res) => {
   try {
     const {
-      rule_name,
-      rule_category,
-      rule_type,
-      calculation_method,
-      base_rate,
-      multiplier,
-      cap_amount,
+      name,
+      description,
+      conditions,
+      actions,
       priority,
-      is_active,
-      description
+      is_active
     } = req.body;
+
+    // Convert conditions and actions objects to JSON strings
+    const conditionsJson = conditions ? JSON.stringify(conditions) : '{}';
+    const actionsJson = actions ? JSON.stringify(actions) : '{}';
 
     const result = await pool.query(
       `INSERT INTO pay_rules (
-        rule_name, rule_category, rule_type, calculation_method,
-        base_rate, multiplier, cap_amount, priority, is_active, description,
-        created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        name, description, conditions, actions, priority, is_active,
+        created_at, updated_at, created_by_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), $7)
       RETURNING *`,
       [
-        rule_name,
-        rule_category,
-        rule_type,
-        calculation_method,
-        base_rate,
-        multiplier,
-        cap_amount,
-        priority,
-        is_active,
-        description
+        name,
+        description,
+        conditionsJson,
+        actionsJson,
+        priority || 100,
+        is_active !== false,
+        req.user!.id
       ]
     );
 
@@ -107,44 +103,36 @@ router.put('/:id', authenticate, requireRole('Payroll', 'Super User'), async (re
   try {
     const { id } = req.params;
     const {
-      rule_name,
-      rule_category,
-      rule_type,
-      calculation_method,
-      base_rate,
-      multiplier,
-      cap_amount,
+      name,
+      description,
+      conditions,
+      actions,
       priority,
-      is_active,
-      description
+      is_active
     } = req.body;
+
+    // Convert conditions and actions objects to JSON strings
+    const conditionsJson = conditions ? JSON.stringify(conditions) : '{}';
+    const actionsJson = actions ? JSON.stringify(actions) : '{}';
 
     const result = await pool.query(
       `UPDATE pay_rules SET
-        rule_name = $1,
-        rule_category = $2,
-        rule_type = $3,
-        calculation_method = $4,
-        base_rate = $5,
-        multiplier = $6,
-        cap_amount = $7,
-        priority = $8,
-        is_active = $9,
-        description = $10,
+        name = $1,
+        description = $2,
+        conditions = $3,
+        actions = $4,
+        priority = $5,
+        is_active = $6,
         updated_at = NOW()
-      WHERE id = $11
+      WHERE id = $7
       RETURNING *`,
       [
-        rule_name,
-        rule_category,
-        rule_type,
-        calculation_method,
-        base_rate,
-        multiplier,
-        cap_amount,
+        name,
+        description,
+        conditionsJson,
+        actionsJson,
         priority,
         is_active,
-        description,
         id
       ]
     );
