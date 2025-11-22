@@ -37,6 +37,11 @@ import LeaveBalances from './pages/LeaveBalances';
 
 import PayCodes from './pages/PayCodes';
 import PayRules from './pages/PayRules';
+import PayCodeConfiguration from './pages/PayCodeConfiguration';
+import TimecardRollup from './pages/TimecardRollup';
+import AutomationWorkflows from './pages/AutomationWorkflows';
+import DashboardConfiguration from './pages/DashboardConfiguration';
+import NotificationManagement from './pages/NotificationManagement';
 import ApplyLeave from './pages/ApplyLeave';
 import MyApplications from './pages/MyApplications';
 import TeamApplications from './pages/TeamApplications';
@@ -100,6 +105,11 @@ function App() {
           <Route path="leave-balances" element={<LeaveBalances />} />
           <Route path="pay-codes" element={<PayCodes />} />
           <Route path="pay-rules" element={<PayRules />} />
+          <Route path="pay-code-configuration" element={<PayCodeConfiguration />} />
+          <Route path="timecard-rollup" element={<TimecardRollup />} />
+          <Route path="automation-workflows" element={<AutomationWorkflows />} />
+          <Route path="dashboard-configuration" element={<DashboardConfiguration />} />
+          <Route path="notification-management" element={<NotificationManagement />} />
           
           {/* Legacy routes */}
           <Route path="time-attendance" element={<TimeAttendance />} />

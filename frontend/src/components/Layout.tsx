@@ -5,7 +5,8 @@ import {
   LogOut, Bell, Menu, FileText, ChevronDown, ChevronRight,
   ClipboardList, CalendarCheck, Briefcase, MessageSquare, BarChart3,
   UserCheck, FileSpreadsheet, AlertCircle, CalendarClock, Shield,
-  UserCog, Settings, FilePlus, ClipboardEdit
+  UserCog, Settings, FilePlus, ClipboardEdit, DollarSign, GitBranch,
+  Workflow, LayoutDashboard, BellRing, Upload
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useState } from 'react';
@@ -190,6 +191,10 @@ export default function Layout() {
                       <ClipboardEdit size={16} />
                       <span>Manual Time Entry</span>
                     </Link>
+                    <Link to="/import-time-data" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <Upload size={16} />
+                      <span>Import Time Data</span>
+                    </Link>
                     <Link to="/leave-types" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
                       <FileText size={16} />
                       <span>Leave Types</span>
@@ -197,6 +202,34 @@ export default function Layout() {
                     <Link to="/leave-balances" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
                       <BarChart3 size={16} />
                       <span>Leave Balances</span>
+                    </Link>
+                    <Link to="/pay-codes" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <DollarSign size={16} />
+                      <span>Pay Codes</span>
+                    </Link>
+                    <Link to="/pay-rules" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <GitBranch size={16} />
+                      <span>Pay Rules</span>
+                    </Link>
+                    <Link to="/pay-code-configuration" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <Settings size={16} />
+                      <span>Pay Code Configuration</span>
+                    </Link>
+                    <Link to="/timecard-rollup" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <FileSpreadsheet size={16} />
+                      <span>Timecard Rollup</span>
+                    </Link>
+                    <Link to="/automation-workflows" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <Workflow size={16} />
+                      <span>Automation & Workflows</span>
+                    </Link>
+                    <Link to="/dashboard-configuration" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <LayoutDashboard size={16} />
+                      <span>Dashboard Configuration</span>
+                    </Link>
+                    <Link to="/notification-management" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <BellRing size={16} />
+                      <span>Notification Management</span>
                     </Link>
                   </div>
                 )}
