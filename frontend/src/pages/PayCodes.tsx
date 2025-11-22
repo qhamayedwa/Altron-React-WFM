@@ -5,10 +5,9 @@ interface PayCode {
   id: number;
   code: string;
   description: string;
-  pay_type: string;
-  rate_type: string;
-  rate_value?: number;
+  is_absence_code: boolean;
   is_active: boolean;
+  configuration?: string;
   created_at: string;
   updated_at: string;
 }
@@ -16,10 +15,9 @@ interface PayCode {
 interface PayCodeFormData {
   code: string;
   description: string;
-  pay_type: string;
-  rate_type: string;
-  rate_value?: number;
+  is_absence_code: boolean;
   is_active: boolean;
+  configuration?: string;
 }
 
 const PayCodes: React.FC = () => {
@@ -38,8 +36,7 @@ const PayCodes: React.FC = () => {
   const [formData, setFormData] = useState<PayCodeFormData>({
     code: '',
     description: '',
-    pay_type: 'earning',
-    rate_type: 'hourly',
+    is_absence_code: false,
     is_active: true
   });
 
@@ -74,8 +71,10 @@ const PayCodes: React.FC = () => {
   const applyFilters = () => {
     let filtered = [...payCodes];
 
-    if (filterType !== 'all') {
-      filtered = filtered.filter(code => code.pay_type === filterType);
+    if (filterType === 'earning') {
+      filtered = filtered.filter(code => !code.is_absence_code);
+    } else if (filterType === 'absence') {
+      filtered = filtered.filter(code => code.is_absence_code);
     }
 
     if (filterStatus === 'active') {
@@ -140,8 +139,7 @@ const PayCodes: React.FC = () => {
     setFormData({
       code: '',
       description: '',
-      pay_type: 'earning',
-      rate_type: 'hourly',
+      is_absence_code: false,
       is_active: true
     });
   };
@@ -151,9 +149,7 @@ const PayCodes: React.FC = () => {
     setFormData({
       code: code.code,
       description: code.description,
-      pay_type: code.pay_type,
-      rate_type: code.rate_type,
-      rate_value: code.rate_value,
+      is_absence_code: code.is_absence_code,
       is_active: code.is_active
     });
     setShowEditModal(true);
@@ -202,16 +198,15 @@ const PayCodes: React.FC = () => {
             <div className="card-body">
               <div className="row g-3">
                 <div className="col-md-6">
-                  <label className="form-label">Pay Type</label>
+                  <label className="form-label">Code Type</label>
                   <select 
                     className="form-select"
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
                   >
                     <option value="all">All Types</option>
-                    <option value="earning">Earnings</option>
-                    <option value="deduction">Deductions</option>
-                    <option value="benefit">Benefits</option>
+                    <option value="earning">Earning Codes</option>
+                    <option value="absence">Absence Codes</option>
                   </select>
                 </div>
                 <div className="col-md-6">
@@ -258,9 +253,7 @@ const PayCodes: React.FC = () => {
                       <tr>
                         <th>Code</th>
                         <th>Description</th>
-                        <th>Pay Type</th>
-                        <th>Rate Type</th>
-                        <th>Rate Value</th>
+                        <th>Type</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
@@ -272,16 +265,11 @@ const PayCodes: React.FC = () => {
                           <td>{code.description}</td>
                           <td>
                             <span className="badge" style={{
-                              backgroundColor: 
-                                code.pay_type === 'earning' ? '#28468D' :
-                                code.pay_type === 'deduction' ? '#dc3545' :
-                                '#54B8DF'
+                              backgroundColor: code.is_absence_code ? '#dc3545' : '#28468D'
                             }}>
-                              {code.pay_type}
+                              {code.is_absence_code ? 'Absence' : 'Earning'}
                             </span>
                           </td>
-                          <td>{code.rate_type}</td>
-                          <td>{code.rate_value ? `R ${code.rate_value.toFixed(2)}` : '-'}</td>
                           <td>
                             {code.is_active ? (
                               <span className="badge bg-success">Active</span>
@@ -353,16 +341,14 @@ const PayCodes: React.FC = () => {
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Pay Type *</label>
+                      <label className="form-label">Status</label>
                       <select
                         className="form-select"
-                        value={formData.pay_type}
-                        onChange={(e) => setFormData({...formData, pay_type: e.target.value})}
-                        required
+                        value={formData.is_active ? 'active' : 'inactive'}
+                        onChange={(e) => setFormData({...formData, is_active: e.target.value === 'active'})}
                       >
-                        <option value="earning">Earning</option>
-                        <option value="deduction">Deduction</option>
-                        <option value="benefit">Benefit</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
                       </select>
                     </div>
                     <div className="col-12">
@@ -375,39 +361,22 @@ const PayCodes: React.FC = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Rate Type *</label>
-                      <select
-                        className="form-select"
-                        value={formData.rate_type}
-                        onChange={(e) => setFormData({...formData, rate_type: e.target.value})}
-                        required
-                      >
-                        <option value="hourly">Hourly</option>
-                        <option value="fixed">Fixed</option>
-                        <option value="percentage">Percentage</option>
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Rate Value</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        value={formData.rate_value || ''}
-                        onChange={(e) => setFormData({...formData, rate_value: parseFloat(e.target.value)})}
-                      />
-                    </div>
                     <div className="col-12">
-                      <label className="form-label">Status</label>
-                      <select
-                        className="form-select"
-                        value={formData.is_active ? 'active' : 'inactive'}
-                        onChange={(e) => setFormData({...formData, is_active: e.target.value === 'active'})}
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="isAbsenceCodeCreate"
+                          checked={formData.is_absence_code}
+                          onChange={(e) => setFormData({...formData, is_absence_code: e.target.checked})}
+                        />
+                        <label className="form-check-label" htmlFor="isAbsenceCodeCreate">
+                          Is Absence Code
+                        </label>
+                        <div className="form-text">
+                          Check this if the code represents an absence (e.g., sick leave, vacation). Leave unchecked for earning codes.
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -461,16 +430,14 @@ const PayCodes: React.FC = () => {
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Pay Type *</label>
+                      <label className="form-label">Status</label>
                       <select
                         className="form-select"
-                        value={formData.pay_type}
-                        onChange={(e) => setFormData({...formData, pay_type: e.target.value})}
-                        required
+                        value={formData.is_active ? 'active' : 'inactive'}
+                        onChange={(e) => setFormData({...formData, is_active: e.target.value === 'active'})}
                       >
-                        <option value="earning">Earning</option>
-                        <option value="deduction">Deduction</option>
-                        <option value="benefit">Benefit</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
                       </select>
                     </div>
                     <div className="col-12">
@@ -483,39 +450,22 @@ const PayCodes: React.FC = () => {
                         required
                       />
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Rate Type *</label>
-                      <select
-                        className="form-select"
-                        value={formData.rate_type}
-                        onChange={(e) => setFormData({...formData, rate_type: e.target.value})}
-                        required
-                      >
-                        <option value="hourly">Hourly</option>
-                        <option value="fixed">Fixed</option>
-                        <option value="percentage">Percentage</option>
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Rate Value</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        value={formData.rate_value || ''}
-                        onChange={(e) => setFormData({...formData, rate_value: parseFloat(e.target.value)})}
-                      />
-                    </div>
                     <div className="col-12">
-                      <label className="form-label">Status</label>
-                      <select
-                        className="form-select"
-                        value={formData.is_active ? 'active' : 'inactive'}
-                        onChange={(e) => setFormData({...formData, is_active: e.target.value === 'active'})}
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="isAbsenceCodeEdit"
+                          checked={formData.is_absence_code}
+                          onChange={(e) => setFormData({...formData, is_absence_code: e.target.checked})}
+                        />
+                        <label className="form-check-label" htmlFor="isAbsenceCodeEdit">
+                          Is Absence Code
+                        </label>
+                        <div className="form-text">
+                          Check this if the code represents an absence (e.g., sick leave, vacation). Leave unchecked for earning codes.
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -565,25 +515,14 @@ const PayCodes: React.FC = () => {
                     <p>{selectedCode.description}</p>
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label text-muted">Pay Type</label>
+                    <label className="form-label text-muted">Type</label>
                     <p>
                       <span className="badge" style={{
-                        backgroundColor: 
-                          selectedCode.pay_type === 'earning' ? '#28468D' :
-                          selectedCode.pay_type === 'deduction' ? '#dc3545' :
-                          '#54B8DF'
+                        backgroundColor: selectedCode.is_absence_code ? '#dc3545' : '#28468D'
                       }}>
-                        {selectedCode.pay_type}
+                        {selectedCode.is_absence_code ? 'Absence' : 'Earning'}
                       </span>
                     </p>
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label text-muted">Rate Type</label>
-                    <p>{selectedCode.rate_type}</p>
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label text-muted">Rate Value</label>
-                    <p>{selectedCode.rate_value ? `R ${selectedCode.rate_value.toFixed(2)}` : 'Not set'}</p>
                   </div>
                   <div className="col-md-6">
                     <label className="form-label text-muted">Status</label>

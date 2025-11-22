@@ -22,9 +22,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
           id: 1,
           code: 'REG',
           description: 'Regular Hours',
-          pay_type: 'earning',
-          rate_type: 'hourly',
-          rate_value: null,
+          is_absence_code: false,
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -33,9 +31,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
           id: 2,
           code: 'OT',
           description: 'Overtime',
-          pay_type: 'earning',
-          rate_type: 'hourly',
-          rate_value: null,
+          is_absence_code: false,
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -44,9 +40,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
           id: 3,
           code: 'DOT',
           description: 'Double Time',
-          pay_type: 'earning',
-          rate_type: 'hourly',
-          rate_value: null,
+          is_absence_code: false,
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -73,19 +67,18 @@ router.post('/', authenticate, requireRole('Payroll', 'Super User'), async (req:
     const {
       code,
       description,
-      pay_type,
-      rate_type,
-      rate_value,
-      is_active
+      is_absence_code,
+      is_active,
+      configuration
     } = req.body;
 
     const result = await pool.query(
       `INSERT INTO pay_codes (
-        code, description, pay_type, rate_type, rate_value, is_active,
-        created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+        code, description, is_absence_code, is_active, configuration,
+        created_at, updated_at, created_by_id
+      ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)
       RETURNING *`,
-      [code, description, pay_type, rate_type, rate_value, is_active]
+      [code, description, is_absence_code || false, is_active !== false, configuration || null, req.user!.id]
     );
 
     res.status(201).json(result.rows[0]);
@@ -102,24 +95,22 @@ router.put('/:id', authenticate, requireRole('Payroll', 'Super User'), async (re
     const {
       code,
       description,
-      pay_type,
-      rate_type,
-      rate_value,
-      is_active
+      is_absence_code,
+      is_active,
+      configuration
     } = req.body;
 
     const result = await pool.query(
       `UPDATE pay_codes SET
         code = $1,
         description = $2,
-        pay_type = $3,
-        rate_type = $4,
-        rate_value = $5,
-        is_active = $6,
+        is_absence_code = $3,
+        is_active = $4,
+        configuration = $5,
         updated_at = NOW()
-      WHERE id = $7
+      WHERE id = $6
       RETURNING *`,
-      [code, description, pay_type, rate_type, rate_value, is_active, id]
+      [code, description, is_absence_code, is_active, configuration, id]
     );
 
     if (result.rows.length === 0) {
