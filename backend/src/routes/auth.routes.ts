@@ -198,4 +198,119 @@ router.get('/users', authenticate, async (req: AuthRequest, res: Response): Prom
   }
 });
 
+router.post(
+  '/register',
+  [
+    body('username').trim().notEmpty().withMessage('Username is required'),
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('firstName').trim().notEmpty().withMessage('First name is required'),
+    body('lastName').trim().notEmpty().withMessage('Last name is required')
+  ],
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const {
+        username,
+        email,
+        password,
+        firstName,
+        lastName,
+        employeeId,
+        departmentId,
+        jobId,
+        position,
+        roles,
+        isActive
+      } = req.body;
+
+      // Check if username already exists
+      const existingUser = await query(
+        'SELECT id FROM users WHERE username = $1',
+        [username]
+      );
+
+      if (existingUser.rows.length > 0) {
+        res.status(400).json({ error: 'Username already exists' });
+        return;
+      }
+
+      // Check if email already exists
+      const existingEmail = await query(
+        'SELECT id FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (existingEmail.rows.length > 0) {
+        res.status(400).json({ error: 'Email already exists' });
+        return;
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Insert user
+      const userResult = await query(
+        `INSERT INTO users (
+          username, email, password_hash, first_name, last_name,
+          employee_number, department_id, job_id, is_active, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        RETURNING id, username, email, first_name, last_name`,
+        [
+          username,
+          email,
+          hashedPassword,
+          firstName,
+          lastName,
+          employeeId || null,
+          departmentId || null,
+          jobId || null,
+          isActive !== false
+        ]
+      );
+
+      const newUser = userResult.rows[0];
+
+      // Assign roles
+      if (roles && Array.isArray(roles) && roles.length > 0) {
+        for (const roleName of roles) {
+          // Get role ID
+          const roleResult = await query(
+            'SELECT id FROM roles WHERE name = $1',
+            [roleName]
+          );
+
+          if (roleResult.rows.length > 0) {
+            const roleId = roleResult.rows[0].id;
+            await query(
+              'INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [newUser.id, roleId]
+            );
+          }
+        }
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully',
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          firstName: newUser.first_name,
+          lastName: newUser.last_name
+        }
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
 export default router;
