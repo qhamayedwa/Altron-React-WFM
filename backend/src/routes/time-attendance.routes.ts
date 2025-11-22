@@ -238,17 +238,9 @@ router.post(
     try {
       const { userId, clockInTime, clockOutTime, notes, approveOvertime } = req.body;
 
-      // Calculate total hours if clock out time is provided
-      let totalHours = null;
-      if (clockOutTime) {
-        const clockIn = new Date(clockInTime);
-        const clockOut = new Date(clockOutTime);
-        totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
-      }
-
-      // Get user's department
+      // Check if user exists
       const userResult = await query(
-        'SELECT department_id FROM users WHERE id = $1',
+        'SELECT id FROM users WHERE id = $1',
         [userId]
       );
 
@@ -257,22 +249,18 @@ router.post(
         return;
       }
 
-      const departmentId = userResult.rows[0].department_id;
-
       // Insert manual time entry
       const result = await query(
         `INSERT INTO time_entries (
-          user_id, department_id, clock_in_time, clock_out_time,
-          total_hours, status, notes, is_overtime_approved,
-          approved_by, approved_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+          user_id, clock_in_time, clock_out_time,
+          status, notes, is_overtime_approved,
+          approved_by_manager_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *`,
         [
           userId,
-          departmentId,
           clockInTime,
           clockOutTime || null,
-          totalHours,
           clockOutTime ? 'approved' : 'clocked_in',
           notes || null,
           approveOvertime || false,
