@@ -42,6 +42,7 @@ import MyApplications from './pages/MyApplications';
 import TeamApplications from './pages/TeamApplications';
 import Notifications from './pages/Notifications';
 import Register from './pages/Register';
+import ImportTimeData from './pages/ImportTimeData';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -94,6 +95,7 @@ function App() {
           <Route path="register" element={<Register />} />
           <Route path="time-attendance-admin" element={<TimeAttendanceAdmin />} />
           <Route path="manual-time-entry" element={<ManualTimeEntry />} />
+          <Route path="import-time-data" element={<ImportTimeData />} />
           <Route path="leave-types" element={<LeaveTypes />} />
           <Route path="leave-balances" element={<LeaveBalances />} />
           <Route path="pay-codes" element={<PayCodes />} />

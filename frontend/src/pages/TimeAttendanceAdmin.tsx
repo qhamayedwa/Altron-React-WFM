@@ -91,7 +91,7 @@ export default function TimeAttendanceAdmin() {
             <Edit size={18} className="me-2" />
             Manual Entry
           </Button>
-          <Button variant="outline-secondary" onClick={() => alert('Import Data functionality')}>
+          <Button variant="outline-secondary" onClick={() => navigate('/import-time-data')}>
             <Upload size={18} className="me-2" />
             Import Data
           </Button>
