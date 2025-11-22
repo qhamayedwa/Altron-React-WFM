@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, Edit, Eye, Filter, AlertCircle, Users } from 'lucide-react';
+import { CreditCard, Plus, Edit, AlertCircle, Users, BarChart, CheckCircle, UserCheck, AlertTriangle, Trash2, List, Clock } from 'lucide-react';
 
 interface PayCode {
   id: number;
   code: string;
+  name: string;
   description: string;
+  hourly_rate: number | null;
+  is_overtime: boolean;
+  overtime_multiplier: number | null;
+  usage_count: number;
   is_absence_code: boolean;
   is_active: boolean;
   configuration?: string;
@@ -20,18 +25,26 @@ interface PayCodeFormData {
   configuration?: string;
 }
 
+interface Statistics {
+  total_pay_codes: number;
+  active_pay_codes: number;
+  pay_codes_in_use: number;
+  unassigned_employees: number;
+}
+
 const PayCodes: React.FC = () => {
   const [payCodes, setPayCodes] = useState<PayCode[]>([]);
-  const [filteredCodes, setFilteredCodes] = useState<PayCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedCode, setSelectedCode] = useState<PayCode | null>(null);
   
-  const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [statistics, setStatistics] = useState<Statistics>({
+    total_pay_codes: 0,
+    active_pay_codes: 0,
+    pay_codes_in_use: 0,
+    unassigned_employees: 0
+  });
 
   const [formData, setFormData] = useState<PayCodeFormData>({
     code: '',
@@ -42,11 +55,8 @@ const PayCodes: React.FC = () => {
 
   useEffect(() => {
     fetchPayCodes();
+    fetchStatistics();
   }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [payCodes, filterType, filterStatus]);
 
   const fetchPayCodes = async () => {
     try {
@@ -68,22 +78,21 @@ const PayCodes: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
-    let filtered = [...payCodes];
-
-    if (filterType === 'earning') {
-      filtered = filtered.filter(code => !code.is_absence_code);
-    } else if (filterType === 'absence') {
-      filtered = filtered.filter(code => code.is_absence_code);
+  const fetchStatistics = async () => {
+    try {
+      const response = await fetch('/api/pay-codes/statistics', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setStatistics(data);
+      }
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
     }
-
-    if (filterStatus === 'active') {
-      filtered = filtered.filter(code => code.is_active);
-    } else if (filterStatus === 'inactive') {
-      filtered = filtered.filter(code => !code.is_active);
-    }
-
-    setFilteredCodes(filtered);
   };
 
   const handleCreateCode = async (e: React.FormEvent) => {
@@ -103,6 +112,7 @@ const PayCodes: React.FC = () => {
         setShowCreateModal(false);
         resetForm();
         fetchPayCodes();
+        fetchStatistics();
       }
     } catch (error) {
       console.error('Error creating pay code:', error);
@@ -129,10 +139,46 @@ const PayCodes: React.FC = () => {
         setSelectedCode(null);
         resetForm();
         fetchPayCodes();
+        fetchStatistics();
       }
     } catch (error) {
       console.error('Error updating pay code:', error);
     }
+  };
+
+  const handleDeleteCode = async (code: PayCode) => {
+    if (code.usage_count > 0) {
+      alert('Cannot delete pay code that is assigned to employees.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete pay code "${code.code}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/pay-codes/${code.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        fetchPayCodes();
+        fetchStatistics();
+      }
+    } catch (error) {
+      console.error('Error deleting pay code:', error);
+    }
+  };
+
+  const formatCurrency = (amount: number | null): string => {
+    if (amount === null) return 'Not set';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
   };
 
   const resetForm = () => {
@@ -155,72 +201,94 @@ const PayCodes: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const openViewModal = (code: PayCode) => {
-    setSelectedCode(code);
-    setShowViewModal(true);
-  };
-
-  const openAssignModal = (code: PayCode) => {
-    setSelectedCode(code);
-    setShowAssignModal(true);
-  };
-
   return (
     <div className="container-fluid py-4">
       {/* Page Header */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <div className="d-flex justify-content-between align-items-center">
-            <div className="d-flex align-items-center">
-              <DollarSign className="me-2" size={32} style={{ color: '#28468D' }} />
-              <h2 className="mb-0">Pay Codes Dashboard</h2>
-            </div>
-            <button 
-              className="btn btn-primary"
-              onClick={() => setShowCreateModal(true)}
-              style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
-            >
-              <Plus size={18} className="me-2" />
-              Create Pay Code
-            </button>
-          </div>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+          <CreditCard className="me-2" size={32} style={{ color: '#28468D', display: 'inline-block', verticalAlign: 'middle' }} />
+          Pay Code Administration
+        </h2>
+        <div className="btn-group">
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowCreateModal(true)}
+            style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
+          >
+            <Plus size={18} className="me-2" />
+            Create Pay Code
+          </button>
+          <button 
+            className="btn btn-outline-primary"
+            onClick={() => {
+              alert('Pay Code Assignment page is not yet implemented. This feature will allow you to assign pay codes to employees.');
+            }}
+          >
+            <Users size={18} className="me-2" />
+            Assign to Employees
+          </button>
+          <button 
+            className="btn btn-outline-secondary"
+            onClick={() => {
+              alert('Pay Code Reports page is not yet implemented. This feature will show detailed analytics and reports for pay codes.');
+            }}
+          >
+            <BarChart size={18} className="me-2" />
+            Reports
+          </button>
         </div>
       </div>
 
-      {/* Filters Card */}
+      {/* Statistics Overview */}
       <div className="row mb-4">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-header d-flex align-items-center" style={{ backgroundColor: '#f8f9fa' }}>
-              <Filter size={20} className="me-2" style={{ color: '#28468D' }} />
-              <strong>Filter Pay Codes</strong>
-            </div>
+        <div className="col-md-3">
+          <div className="card bg-primary text-white">
             <div className="card-body">
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label">Code Type</label>
-                  <select 
-                    className="form-select"
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                  >
-                    <option value="all">All Types</option>
-                    <option value="earning">Earning Codes</option>
-                    <option value="absence">Absence Codes</option>
-                  </select>
+              <div className="d-flex align-items-center">
+                <div className="flex-grow-1">
+                  <h4 className="mb-0">{statistics.total_pay_codes}</h4>
+                  <small>Total Pay Codes</small>
                 </div>
-                <div className="col-md-6">
-                  <label className="form-label">Status</label>
-                  <select 
-                    className="form-select"
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active Only</option>
-                    <option value="inactive">Inactive Only</option>
-                  </select>
+                <CreditCard size={32} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card bg-success text-white">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="flex-grow-1">
+                  <h4 className="mb-0">{statistics.active_pay_codes}</h4>
+                  <small>Active Pay Codes</small>
                 </div>
+                <CheckCircle size={32} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card bg-info text-white">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="flex-grow-1">
+                  <h4 className="mb-0">{statistics.pay_codes_in_use}</h4>
+                  <small>Pay Codes in Use</small>
+                </div>
+                <UserCheck size={32} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card bg-warning text-white">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="flex-grow-1">
+                  <h4 className="mb-0">{statistics.unassigned_employees}</h4>
+                  <small>Unassigned Employees</small>
+                </div>
+                <AlertTriangle size={32} />
               </div>
             </div>
           </div>
@@ -228,88 +296,107 @@ const PayCodes: React.FC = () => {
       </div>
 
       {/* Pay Codes Table */}
-      <div className="row">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-header" style={{ backgroundColor: '#f8f9fa' }}>
-              <strong>Pay Codes ({filteredCodes.length})</strong>
+      <div className="card">
+        <div className="card-header">
+          <h5 className="mb-0">
+            <List className="me-2" size={20} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+            Pay Code Management
+          </h5>
+        </div>
+        <div className="card-body">
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border" role="status" style={{ color: '#28468D' }}>
+                <span className="visually-hidden">Loading...</span>
+              </div>
             </div>
-            <div className="card-body">
-              {loading ? (
-                <div className="text-center py-5">
-                  <div className="spinner-border" role="status" style={{ color: '#28468D' }}>
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
-              ) : filteredCodes.length === 0 ? (
-                <div className="text-center py-5 text-muted">
-                  <AlertCircle size={48} className="mb-3" />
-                  <p>No pay codes found matching your filters.</p>
-                </div>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead style={{ backgroundColor: '#f8f9fa' }}>
-                      <tr>
-                        <th>Code</th>
-                        <th>Description</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredCodes.map((code) => (
-                        <tr key={code.id}>
-                          <td><strong>{code.code}</strong></td>
-                          <td>{code.description}</td>
-                          <td>
-                            <span className="badge" style={{
-                              backgroundColor: code.is_absence_code ? '#dc3545' : '#28468D'
-                            }}>
-                              {code.is_absence_code ? 'Absence' : 'Earning'}
-                            </span>
-                          </td>
-                          <td>
-                            {code.is_active ? (
-                              <span className="badge bg-success">Active</span>
-                            ) : (
-                              <span className="badge bg-secondary">Inactive</span>
-                            )}
-                          </td>
-                          <td>
-                            <div className="btn-group btn-group-sm">
-                              <button
-                                className="btn btn-outline-primary"
-                                onClick={() => openViewModal(code)}
-                                title="View Details"
-                              >
-                                <Eye size={16} />
-                              </button>
-                              <button
-                                className="btn btn-outline-secondary"
-                                onClick={() => openEditModal(code)}
-                                title="Edit Code"
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button
-                                className="btn btn-outline-info"
-                                onClick={() => openAssignModal(code)}
-                                title="Assign to Users"
-                              >
-                                <Users size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+          ) : payCodes.length === 0 ? (
+            <div className="text-center py-5 text-muted">
+              <AlertCircle size={48} className="mb-3" />
+              <p>No pay codes found.</p>
             </div>
-          </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-striped table-hover">
+                <thead className="table-dark">
+                  <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Hourly Rate</th>
+                    <th>Overtime</th>
+                    <th>Employees Assigned</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payCodes.map((code) => (
+                    <tr key={code.id} className={!code.is_active ? 'table-secondary' : ''}>
+                      <td>
+                        <strong><span className="badge bg-secondary">{code.code}</span></strong>
+                      </td>
+                      <td>{code.name || code.code}</td>
+                      <td>
+                        <small className="text-muted">{code.description || '-'}</small>
+                      </td>
+                      <td>
+                        {code.hourly_rate !== null ? (
+                          <span className="text-success">{formatCurrency(code.hourly_rate)}</span>
+                        ) : (
+                          <span className="text-muted">Not set</span>
+                        )}
+                      </td>
+                      <td>
+                        {code.is_overtime ? (
+                          <span className="badge bg-warning">
+                            <Clock size={12} className="me-1" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+                            {code.overtime_multiplier}x
+                          </span>
+                        ) : (
+                          <span className="text-muted">Regular</span>
+                        )}
+                      </td>
+                      <td>
+                        {code.usage_count > 0 ? (
+                          <span className="badge bg-info">{code.usage_count} employees</span>
+                        ) : (
+                          <span className="text-muted">Not assigned</span>
+                        )}
+                      </td>
+                      <td>
+                        {code.is_active ? (
+                          <span className="badge bg-success">Active</span>
+                        ) : (
+                          <span className="badge bg-secondary">Inactive</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="btn-group btn-group-sm">
+                          <button
+                            className="btn btn-outline-primary"
+                            onClick={() => openEditModal(code)}
+                            title="Edit"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          {code.usage_count === 0 && (
+                            <button
+                              className="btn btn-outline-danger"
+                              onClick={() => handleDeleteCode(code)}
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
@@ -527,105 +614,6 @@ const PayCodes: React.FC = () => {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Code Modal */}
-      {showViewModal && selectedCode && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header" style={{ backgroundColor: '#28468D', color: 'white' }}>
-                <h5 className="modal-title">Pay Code Details</h5>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
-                  onClick={() => { setShowViewModal(false); setSelectedCode(null); }}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <div className="row g-3">
-                  <div className="col-12">
-                    <label className="form-label text-muted">Code</label>
-                    <p className="fw-bold">{selectedCode.code}</p>
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label text-muted">Description</label>
-                    <p>{selectedCode.description}</p>
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label text-muted">Type</label>
-                    <p>
-                      <span className="badge" style={{
-                        backgroundColor: selectedCode.is_absence_code ? '#dc3545' : '#28468D'
-                      }}>
-                        {selectedCode.is_absence_code ? 'Absence' : 'Earning'}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label text-muted">Status</label>
-                    <p>
-                      {selectedCode.is_active ? (
-                        <span className="badge bg-success">Active</span>
-                      ) : (
-                        <span className="badge bg-secondary">Inactive</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => { setShowViewModal(false); setSelectedCode(null); }}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assign Pay Code Modal */}
-      {showAssignModal && selectedCode && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header" style={{ backgroundColor: '#28468D', color: 'white' }}>
-                <h5 className="modal-title">Assign Pay Code: {selectedCode.code}</h5>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
-                  onClick={() => { setShowAssignModal(false); setSelectedCode(null); }}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>Select users or departments to assign this pay code to:</p>
-                <div className="alert alert-info">
-                  <small>This feature allows bulk assignment of pay codes to employees for automated payroll processing.</small>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => { setShowAssignModal(false); setSelectedCode(null); }}
-                >
-                  Close
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-primary"
-                  style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
-                >
-                  Assign
-                </button>
-              </div>
             </div>
           </div>
         </div>
