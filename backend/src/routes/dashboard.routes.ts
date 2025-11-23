@@ -18,7 +18,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res) => {
 
     // Get pending leave requests
     const pendingLeaveRequests = await pool.query(
-      `SELECT COUNT(*) as count FROM leave_requests 
+      `SELECT COUNT(*) as count FROM leave_applications 
        WHERE user_id = $1 AND status = 'pending'`,
       [userId]
     );

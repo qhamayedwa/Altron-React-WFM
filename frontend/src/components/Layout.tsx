@@ -30,8 +30,12 @@ export default function Layout() {
     <div className="d-flex" style={{ minHeight: '100vh' }}>
       {/* Sidebar */}
       <div 
-        className={`sidebar ${sidebarOpen ? '' : 'd-none d-md-block'}`}
-        style={{ width: sidebarOpen ? '250px' : '0', transition: 'width 0.3s' }}
+        className={`sidebar ${!sidebarOpen && 'd-none'}`}
+        style={{ 
+          width: '250px',
+          transition: 'all 0.3s ease',
+          overflow: 'hidden'
+        }}
       >
         <div className="p-3">
           <h4 className="text-white mb-4">Altron WFM24/7</h4>
