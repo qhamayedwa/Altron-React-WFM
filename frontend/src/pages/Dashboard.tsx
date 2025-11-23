@@ -4,6 +4,7 @@ import { Clock, Calendar, Users, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
+import SuperAdminDashboard from './SuperAdminDashboard';
 
 interface DashboardStats {
   timeEntriesToday: number;
@@ -13,8 +14,13 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-  const { user } = useAuthStore();
+  const { user, isSuperUser } = useAuthStore();
   const navigate = useNavigate();
+
+  // Show Super Admin Dashboard for super users
+  if (isSuperUser()) {
+    return <SuperAdminDashboard />;
+  }
   const [stats, setStats] = useState<DashboardStats>({
     timeEntriesToday: 0,
     pendingLeaveRequests: 0,
