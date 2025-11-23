@@ -6,7 +6,7 @@ import {
   ClipboardList, CalendarCheck, Briefcase, MessageSquare, BarChart3,
   UserCheck, FileSpreadsheet, AlertCircle, CalendarClock, Shield,
   UserCog, Settings, FilePlus, ClipboardEdit, DollarSign, GitBranch,
-  Workflow, LayoutDashboard, BellRing, Upload
+  Workflow, LayoutDashboard, BellRing, Upload, Globe, Link2
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useState } from 'react';
@@ -236,13 +236,97 @@ export default function Layout() {
               </div>
             )}
 
-            {/* 6. My Profile */}
+            {/* 6. Pulse Survey */}
+            {(isSuperUser() || hasRole('Manager')) && (
+              <div className="mb-1">
+                <button 
+                  className="nav-link d-flex align-items-center justify-content-between w-100 p-2 rounded border-0 bg-transparent text-start"
+                  onClick={() => toggleDropdown('pulse-survey')}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <MessageSquare size={20} />
+                    <span>Pulse Survey</span>
+                  </div>
+                  {openDropdown === 'pulse-survey' ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+                {openDropdown === 'pulse-survey' && (
+                  <div className="ms-4 mt-1">
+                    <Link to="/pulse-survey/dashboard" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <BarChart3 size={16} />
+                      <span>Survey Dashboard</span>
+                    </Link>
+                    <Link to="/pulse-survey/create" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <FilePlus size={16} />
+                      <span>Create Survey</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 7. Tenant Management (Super Admin only) */}
+            {isSuperUser() && (
+              <div className="mb-1">
+                <button 
+                  className="nav-link d-flex align-items-center justify-content-between w-100 p-2 rounded border-0 bg-transparent text-start"
+                  onClick={() => toggleDropdown('tenant')}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <Globe size={20} />
+                    <span>Multi-Tenant</span>
+                  </div>
+                  {openDropdown === 'tenant' ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+                {openDropdown === 'tenant' && (
+                  <div className="ms-4 mt-1">
+                    <Link to="/tenant/organizations" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <Building2 size={16} />
+                      <span>Organizations</span>
+                    </Link>
+                    <Link to="/tenant/organizations/create" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <FilePlus size={16} />
+                      <span>Create Organization</span>
+                    </Link>
+                    <Link to="/tenant/dashboard" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <LayoutDashboard size={16} />
+                      <span>Tenant Dashboard</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 8. Integrations */}
+            {(isSuperUser() || hasRole('Admin')) && (
+              <div className="mb-1">
+                <button 
+                  className="nav-link d-flex align-items-center justify-content-between w-100 p-2 rounded border-0 bg-transparent text-start"
+                  onClick={() => toggleDropdown('integrations')}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <Link2 size={20} />
+                    <span>Integrations</span>
+                  </div>
+                  {openDropdown === 'integrations' ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+                {openDropdown === 'integrations' && (
+                  <div className="ms-4 mt-1">
+                    <Link to="/integrations/sage-vip" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                      <Link2 size={16} />
+                      <span>SAGE VIP Payroll</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 9. My Profile */}
             <Link to="/profile" className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1">
               <User size={20} />
               <span>My Profile</span>
             </Link>
 
-            {/* 7. Sign Out */}
+            {/* 10. Sign Out */}
             <button 
               onClick={handleLogout}
               className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1 border-0 bg-transparent text-start w-100"

@@ -179,6 +179,35 @@ router.put('/:id', authenticate, requireRole('Payroll', 'Super User'), async (re
   }
 });
 
+// Get single pay code by ID
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT 
+        pc.*,
+        pc.description as name,
+        NULL::numeric as hourly_rate,
+        false as is_overtime,
+        NULL::numeric as overtime_multiplier
+      FROM pay_codes pc
+      WHERE pc.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Pay code not found' });
+      return;
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Get pay code error:', error);
+    res.status(500).json({ error: 'Failed to fetch pay code' });
+  }
+});
+
 // Get pay code statistics
 router.get('/statistics', authenticate, async (req: AuthRequest, res) => {
   try {

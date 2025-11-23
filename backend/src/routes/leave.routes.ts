@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(authenticate);
 
-// Get leave types
+// Get all leave types
 router.get('/types', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     // Check if leave_types table exists
@@ -26,17 +26,23 @@ router.get('/types', async (req: AuthRequest, res: Response): Promise<void> => {
       const types = result.rows.map(row => ({
         id: row.id,
         name: row.name,
-        code: row.code,
-        description: row.description
+        code: row.name ? row.name.substring(0, 2).toUpperCase() : 'LT',
+        description: row.description,
+        default_accrual_rate: row.default_accrual_rate,
+        max_consecutive_days: row.max_consecutive_days,
+        requires_approval: row.requires_approval,
+        is_active: row.is_active,
+        created_at: row.created_at,
+        updated_at: row.created_at
       }));
 
       res.json(types);
     } else {
       // Return mock data if table doesn't exist
       const mockTypes = [
-        { id: 1, name: 'Annual Leave', code: 'AL', description: 'Regular paid time off' },
-        { id: 2, name: 'Sick Leave', code: 'SL', description: 'Medical leave' },
-        { id: 3, name: 'Personal Leave', code: 'PL', description: 'Personal days' }
+        { id: 1, name: 'Annual Leave', code: 'AL', description: 'Regular paid time off', default_accrual_rate: 160, requires_approval: true, is_active: true },
+        { id: 2, name: 'Sick Leave', code: 'SL', description: 'Medical leave', default_accrual_rate: 80, requires_approval: false, is_active: true },
+        { id: 3, name: 'Personal Leave', code: 'PL', description: 'Personal days', default_accrual_rate: 40, requires_approval: true, is_active: true }
       ];
       res.json(mockTypes);
     }
@@ -46,13 +52,256 @@ router.get('/types', async (req: AuthRequest, res: Response): Promise<void> => {
   }
 });
 
+// Get single leave type
+router.get('/types/:id', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    const tableCheck = await query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'leave_types'
+      )`
+    );
+
+    if (tableCheck.rows[0].exists) {
+      const result = await query('SELECT * FROM leave_types WHERE id = $1', [id]);
+      
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: 'Leave type not found' });
+        return;
+      }
+
+      const row = result.rows[0];
+      
+      // Generate code from name if not exists in schema
+      const code = row.name ? row.name.substring(0, 2).toUpperCase() : 'LT';
+      
+      // Check if leave_applications table exists for statistics
+      const appTableCheck = await query(
+        `SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'leave_applications'
+        )`
+      );
+      
+      let total_applications = 0;
+      let pending_applications = 0;
+      let approved_applications = 0;
+      let recent_applications: any[] = [];
+      
+      if (appTableCheck.rows[0].exists) {
+        // Get statistics from leave_applications
+        const statsResult = await query(
+          `SELECT 
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE status = 'pending') as pending,
+            COUNT(*) FILTER (WHERE status = 'approved') as approved
+           FROM leave_applications 
+           WHERE leave_type_id = $1`,
+          [id]
+        );
+        
+        if (statsResult.rows.length > 0) {
+          total_applications = parseInt(statsResult.rows[0].total) || 0;
+          pending_applications = parseInt(statsResult.rows[0].pending) || 0;
+          approved_applications = parseInt(statsResult.rows[0].approved) || 0;
+        }
+        
+        // Get recent applications
+        const recentResult = await query(
+          `SELECT la.id, la.start_date, la.end_date, la.status, la.created_at,
+                  u.first_name, u.last_name, u.employee_number
+           FROM leave_applications la
+           JOIN users u ON la.user_id = u.id
+           WHERE la.leave_type_id = $1
+           ORDER BY la.created_at DESC
+           LIMIT 10`,
+          [id]
+        );
+        
+        recent_applications = recentResult.rows.map(app => ({
+          id: app.id,
+          employeeName: `${app.first_name || ''} ${app.last_name || ''}`.trim() || 'Unknown',
+          employeeNumber: app.employee_number,
+          startDate: app.start_date,
+          endDate: app.end_date,
+          status: app.status,
+          createdAt: app.created_at
+        }));
+      }
+
+      res.json({
+        id: row.id,
+        name: row.name,
+        code: code,
+        description: row.description,
+        default_accrual_rate: row.default_accrual_rate,
+        max_consecutive_days: row.max_consecutive_days,
+        requires_approval: row.requires_approval,
+        is_active: row.is_active,
+        created_at: row.created_at,
+        updated_at: row.created_at, // Use created_at as updated_at doesn't exist
+        total_applications,
+        pending_applications,
+        approved_applications,
+        recent_applications
+      });
+    } else {
+      res.json({
+        id: parseInt(id),
+        name: 'Annual Leave',
+        code: 'AL',
+        description: 'Regular paid time off',
+        default_accrual_rate: 160,
+        requires_approval: true,
+        is_active: true,
+        total_applications: 0,
+        pending_applications: 0,
+        approved_applications: 0,
+        recent_applications: []
+      });
+    }
+  } catch (error) {
+    console.error('Get leave type error:', error);
+    res.status(500).json({ error: 'Failed to retrieve leave type' });
+  }
+});
+
+// Create leave type
+router.post(
+  '/types',
+  [
+    body('name').trim().notEmpty().withMessage('Name is required')
+  ],
+  requireRole('Admin', 'HR', 'Super User'),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, code, description, default_accrual_rate, max_consecutive_days, requires_approval } = req.body;
+
+      const tableCheck = await query(
+        `SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'leave_types'
+        )`
+      );
+
+      if (tableCheck.rows[0].exists) {
+        const result = await query(
+          `INSERT INTO leave_types (name, description, default_accrual_rate, max_consecutive_days, requires_approval, is_active)
+           VALUES ($1, $2, $3, $4, $5, true)
+           RETURNING *`,
+          [name, description, default_accrual_rate, max_consecutive_days, requires_approval || false]
+        );
+
+        res.json({
+          success: true,
+          leaveType: result.rows[0]
+        });
+      } else {
+        res.status(503).json({ error: 'Leave types table not available' });
+      }
+    } catch (error) {
+      console.error('Create leave type error:', error);
+      res.status(500).json({ error: 'Failed to create leave type' });
+    }
+  }
+);
+
+// Update leave type
+router.put(
+  '/types/:id',
+  [
+    body('name').trim().notEmpty().withMessage('Name is required')
+  ],
+  requireRole('Admin', 'HR', 'Super User'),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { name, code, description, default_accrual_rate, max_consecutive_days, requires_approval, is_active } = req.body;
+
+      const tableCheck = await query(
+        `SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'leave_types'
+        )`
+      );
+
+      if (tableCheck.rows[0].exists) {
+        const result = await query(
+          `UPDATE leave_types
+           SET name = $1, description = $2, default_accrual_rate = $3, 
+               max_consecutive_days = $4, requires_approval = $5, is_active = $6
+           WHERE id = $7
+           RETURNING *`,
+          [name, description, default_accrual_rate, max_consecutive_days, requires_approval, is_active, id]
+        );
+
+        if (result.rows.length === 0) {
+          res.status(404).json({ error: 'Leave type not found' });
+          return;
+        }
+
+        res.json({
+          success: true,
+          leaveType: result.rows[0]
+        });
+      } else {
+        res.status(503).json({ error: 'Leave types table not available' });
+      }
+    } catch (error) {
+      console.error('Update leave type error:', error);
+      res.status(500).json({ error: 'Failed to update leave type' });
+    }
+  }
+);
+
+// Toggle leave type active status
+router.post('/types/:id/toggle', requireRole('Admin', 'HR', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const tableCheck = await query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'leave_types'
+      )`
+    );
+
+    if (tableCheck.rows[0].exists) {
+      const result = await query(
+        `UPDATE leave_types
+         SET is_active = NOT is_active
+         WHERE id = $1
+         RETURNING *`,
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: 'Leave type not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        leaveType: result.rows[0]
+      });
+    } else {
+      res.status(503).json({ error: 'Leave types table not available' });
+    }
+  } catch (error) {
+    console.error('Toggle leave type error:', error);
+    res.status(500).json({ error: 'Failed to toggle leave type status' });
+  }
+});
+
 // Get user's leave balance
 router.get('/balance', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const year = req.query.year || new Date().getFullYear();
     
     const result = await query(
-      `SELECT lb.*, lt.name, lt.code
+      `SELECT lb.*, lt.name
        FROM leave_balances lb
        JOIN leave_types lt ON lb.leave_type_id = lt.id
        WHERE lb.user_id = $1 AND lb.year = $2
@@ -63,7 +312,7 @@ router.get('/balance', async (req: AuthRequest, res: Response): Promise<void> =>
     res.json({
       balances: result.rows.map(row => ({
         leaveType: row.name,
-        leaveTypeCode: row.code,
+        leaveTypeCode: row.name ? row.name.substring(0, 2).toUpperCase() : 'LT',
         totalDays: row.total_days,
         usedDays: row.used_days,
         remainingDays: row.remaining_days,
@@ -131,7 +380,7 @@ router.get('/requests', async (req: AuthRequest, res: Response): Promise<void> =
     const { status, year } = req.query;
     
     let sql = `
-      SELECT lr.*, lt.name as leave_type_name, lt.code as leave_type_code
+      SELECT lr.*, lt.name as leave_type_name
       FROM leave_requests lr
       JOIN leave_types lt ON lr.leave_type_id = lt.id
       WHERE lr.user_id = $1
@@ -156,7 +405,7 @@ router.get('/requests', async (req: AuthRequest, res: Response): Promise<void> =
       leaveRequests: result.rows.map(row => ({
         id: row.id,
         leaveType: row.leave_type_name,
-        leaveTypeCode: row.leave_type_code,
+        leaveTypeCode: row.leave_type_name ? row.leave_type_name.substring(0, 2).toUpperCase() : 'LT',
         startDate: row.start_date,
         endDate: row.end_date,
         days: row.days,
@@ -386,5 +635,48 @@ router.post(
     }
   }
 );
+
+// Manager: Apply leave for employee
+router.post('/apply-for-employee', requireRole('Manager', 'HR', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userId, leaveTypeId, startDate, endDate, isHourly, hoursRequested, autoApprove, reason } = req.body;
+
+    const result = await query(
+      `INSERT INTO leave_applications 
+       (user_id, leave_type_id, start_date, end_date, is_hourly, hours_requested, reason, status, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [userId, leaveTypeId, startDate, endDate, isHourly || false, hoursRequested || null, reason, autoApprove ? 'approved' : 'pending', req.user!.id]
+    );
+
+    res.status(201).json({
+      success: true,
+      application: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Apply leave for employee error:', error);
+    res.status(500).json({ error: 'Failed to apply leave for employee' });
+  }
+});
+
+// Get leave balance for user and leave type
+router.get('/balance/:userId/:leaveTypeId', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userId, leaveTypeId } = req.params;
+
+    const result = await query(
+      `SELECT balance FROM leave_balances 
+       WHERE user_id = $1 AND leave_type_id = $2`,
+      [userId, leaveTypeId]
+    );
+
+    res.json({
+      balance: result.rows.length > 0 ? result.rows[0].balance : 0
+    });
+  } catch (error) {
+    console.error('Get leave balance error:', error);
+    res.status(500).json({ error: 'Failed to retrieve leave balance' });
+  }
+});
 
 export default router;

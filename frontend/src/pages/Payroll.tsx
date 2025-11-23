@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Card, Form, Button, Row, Col, Table } from 'react-bootstrap';
-import { Calculator, Download } from 'lucide-react';
+import { Calculator, Download, Settings, FileText, DollarSign } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
 
 export default function Payroll() {
+  const navigate = useNavigate();
   const { hasRole, isSuperUser } = useAuthStore();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -45,6 +47,69 @@ export default function Payroll() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Payroll Management</h2>
       </div>
+
+      <Row className="mb-4">
+        <Col md={4}>
+          <Card className="h-100">
+            <Card.Header>
+              <h5 className="mb-0">
+                <Settings size={20} className="me-2" />
+                Configuration
+              </h5>
+            </Card.Header>
+            <Card.Body>
+              <p className="text-muted">Configure payroll settings, rates, and rules</p>
+              <Button
+                variant="primary"
+                onClick={() => navigate('/payroll/configuration')}
+              >
+                <Settings size={18} className="me-2" />
+                Open Configuration
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="h-100">
+            <Card.Header>
+              <h5 className="mb-0">
+                <FileText size={20} className="me-2" />
+                Preparation
+              </h5>
+            </Card.Header>
+            <Card.Body>
+              <p className="text-muted">Prepare and validate payroll for processing</p>
+              <Button
+                variant="primary"
+                onClick={() => navigate('/payroll/preparation')}
+              >
+                <FileText size={18} className="me-2" />
+                Start Preparation
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="h-100">
+            <Card.Header>
+              <h5 className="mb-0">
+                <DollarSign size={20} className="me-2" />
+                Processing
+              </h5>
+            </Card.Header>
+            <Card.Body>
+              <p className="text-muted">Process payroll and generate reports</p>
+              <Button
+                variant="primary"
+                onClick={() => navigate('/payroll/processing')}
+              >
+                <DollarSign size={18} className="me-2" />
+                Process Payroll
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
 
       <Card className="mb-4">
         <Card.Header>

@@ -29,14 +29,28 @@ import OrganizationDashboard from './pages/OrganizationDashboard';
 import CompanyManagement from './pages/CompanyManagement';
 import EmployeeImport from './pages/EmployeeImport';
 import CreateCompany from './pages/CreateCompany';
+import ViewCompany from './pages/ViewCompany';
+import EditCompany from './pages/EditCompany';
 
 import TimeAttendanceAdmin from './pages/TimeAttendanceAdmin';
 import ManualTimeEntry from './pages/ManualTimeEntry';
 import LeaveTypes from './pages/LeaveTypes';
 import LeaveBalances from './pages/LeaveBalances';
+import CreateLeaveType from './pages/CreateLeaveType';
+import EditLeaveType from './pages/EditLeaveType';
+import ViewLeaveType from './pages/ViewLeaveType';
+import CreateDepartment from './pages/CreateDepartment';
+import ViewDepartment from './pages/ViewDepartment';
+import MyDepartment from './pages/MyDepartment';
 
 import PayCodes from './pages/PayCodes';
+import CreatePayCode from './pages/CreatePayCode';
+import EditPayCode from './pages/EditPayCode';
+import ViewPayCode from './pages/ViewPayCode';
 import PayRules from './pages/PayRules';
+import CreatePayRule from './pages/CreatePayRule';
+import EditPayRule from './pages/EditPayRule';
+import ViewPayRule from './pages/ViewPayRule';
 import TestPayRules from './pages/TestPayRules';
 import CalculatePay from './pages/CalculatePay';
 import PayCalculations from './pages/PayCalculations';
@@ -51,6 +65,42 @@ import TeamApplications from './pages/TeamApplications';
 import Notifications from './pages/Notifications';
 import Register from './pages/Register';
 import ImportTimeData from './pages/ImportTimeData';
+import CreateSchedule from './pages/CreateSchedule';
+import EditSchedule from './pages/EditSchedule';
+import CreateShiftType from './pages/CreateShiftType';
+import EditShiftType from './pages/EditShiftType';
+import CreateRegion from './pages/CreateRegion';
+import EditRegion from './pages/EditRegion';
+import ViewRegion from './pages/ViewRegion';
+import CreateSite from './pages/CreateSite';
+import ViewSite from './pages/ViewSite';
+import EditSite from './pages/EditSite';
+import AssignEmployee from './pages/AssignEmployee';
+import PayrollConfiguration from './pages/PayrollConfiguration';
+import PayrollPreparation from './pages/PayrollPreparation';
+import PayrollProcessing from './pages/PayrollProcessing';
+import ApplyLeaveForEmployee from './pages/ApplyLeaveForEmployee';
+import ManagerScheduleTool from './pages/ManagerScheduleTool';
+import EmployeeScheduleView from './pages/EmployeeScheduleView';
+import LeaveSummaryReport from './pages/LeaveSummaryReport';
+import OvertimeSummaryReport from './pages/OvertimeSummaryReport';
+import TimeSummaryReport from './pages/TimeSummaryReport';
+import CustomReportBuilder from './pages/CustomReportBuilder';
+import EditBatchSchedules from './pages/EditBatchSchedules';
+import AIDashboard from './pages/AIDashboard';
+import AIQuery from './pages/AIQuery';
+import AISchedulingHistory from './pages/AISchedulingHistory';
+import AISchedulingResults from './pages/AISchedulingResults';
+import NotificationTriggerDetail from './pages/NotificationTriggerDetail';
+import AutomationDashboard from './pages/AutomationDashboard';
+import CreatePulseSurvey from './pages/CreatePulseSurvey';
+import PulseSurveyDashboard from './pages/PulseSurveyDashboard';
+import RespondPulseSurvey from './pages/RespondPulseSurvey';
+import ViewPulseSurvey from './pages/ViewPulseSurvey';
+import CreateOrganization from './pages/CreateOrganization';
+import OrganizationList from './pages/OrganizationList';
+import TenantDashboard from './pages/TenantDashboard';
+import SageVIPDashboard from './pages/SageVIPDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -89,8 +139,26 @@ function App() {
           <Route path="time-exceptions" element={<TimeExceptions />} />
           <Route path="team-applications" element={<TeamApplications />} />
           <Route path="manage-schedules" element={<ManageSchedules />} />
+          <Route path="scheduling/create" element={<CreateSchedule />} />
+          <Route path="scheduling/edit/:id" element={<EditSchedule />} />
           <Route path="shift-types" element={<ShiftTypes />} />
+          <Route path="shift-types/create" element={<CreateShiftType />} />
+          <Route path="shift-types/edit/:id" element={<EditShiftType />} />
           <Route path="ai-scheduling" element={<AIScheduling />} />
+          
+          {/* AI & Advanced Features - Priority 3 */}
+          <Route path="ai/dashboard" element={<AIDashboard />} />
+          <Route path="ai/query" element={<AIQuery />} />
+          <Route path="ai-scheduling/history" element={<AISchedulingHistory />} />
+          <Route path="ai-scheduling/results/:id" element={<AISchedulingResults />} />
+          <Route path="notifications/triggers/:id" element={<NotificationTriggerDetail />} />
+          <Route path="automation/dashboard" element={<AutomationDashboard />} />
+          
+          {/* Manager Tools - Priority 2 */}
+          <Route path="leave/apply-for-employee" element={<ApplyLeaveForEmployee />} />
+          <Route path="scheduling/manager-tool" element={<ManagerScheduleTool />} />
+          <Route path="scheduling/employee/:id" element={<EmployeeScheduleView />} />
+          <Route path="scheduling/edit-batch" element={<EditBatchSchedules />} />
           
           {/* Organization */}
           <Route path="organization-dashboard" element={<OrganizationDashboard />} />
@@ -105,9 +173,53 @@ function App() {
           <Route path="manual-time-entry" element={<ManualTimeEntry />} />
           <Route path="import-time-data" element={<ImportTimeData />} />
           <Route path="leave-types" element={<LeaveTypes />} />
+          <Route path="leave-types/create" element={<CreateLeaveType />} />
+          <Route path="leave-types/edit/:id" element={<EditLeaveType />} />
+          <Route path="leave-types/view/:id" element={<ViewLeaveType />} />
           <Route path="leave-balances" element={<LeaveBalances />} />
+          
+          {/* Organization Department Routes */}
+          <Route path="organization/my-department" element={<MyDepartment />} />
+          <Route path="organization/departments/create" element={<CreateDepartment />} />
+          <Route path="organization/departments/view/:id" element={<ViewDepartment />} />
+          
+          {/* Organization Region Routes */}
+          <Route path="organization/regions/create" element={<CreateRegion />} />
+          <Route path="organization/regions/edit/:id" element={<EditRegion />} />
+          <Route path="organization/regions/view/:id" element={<ViewRegion />} />
+          
+          {/* Organization Site Routes */}
+          <Route path="organization/sites/create" element={<CreateSite />} />
+          <Route path="organization/sites/view/:id" element={<ViewSite />} />
+          <Route path="organization/sites/edit/:id" element={<EditSite />} />
+          
+          {/* Organization Company Routes */}
+          <Route path="organization/companies" element={<CompanyManagement />} />
+          <Route path="organization/companies/view/:id" element={<ViewCompany />} />
+          <Route path="organization/companies/edit/:id" element={<EditCompany />} />
+          
+          {/* Organization Employee Assignment */}
+          <Route path="organization/assign-employee" element={<AssignEmployee />} />
+          
+          {/* Payroll Routes */}
+          <Route path="payroll/configuration" element={<PayrollConfiguration />} />
+          <Route path="payroll/preparation" element={<PayrollPreparation />} />
+          <Route path="payroll/processing" element={<PayrollProcessing />} />
+          
+          {/* Specialized Reports - Priority 2 */}
+          <Route path="payroll/reports/leave-summary" element={<LeaveSummaryReport />} />
+          <Route path="payroll/reports/overtime-summary" element={<OvertimeSummaryReport />} />
+          <Route path="payroll/reports/time-summary" element={<TimeSummaryReport />} />
+          <Route path="payroll/reports/custom-builder" element={<CustomReportBuilder />} />
+          
           <Route path="pay-codes" element={<PayCodes />} />
+          <Route path="pay-codes/create" element={<CreatePayCode />} />
+          <Route path="pay-codes/edit/:id" element={<EditPayCode />} />
+          <Route path="pay-codes/view/:id" element={<ViewPayCode />} />
           <Route path="pay-rules" element={<PayRules />} />
+          <Route path="pay-rules/create" element={<CreatePayRule />} />
+          <Route path="pay-rules/edit/:id" element={<EditPayRule />} />
+          <Route path="pay-rules/view/:id" element={<ViewPayRule />} />
           <Route path="pay-rules/test" element={<TestPayRules />} />
           <Route path="pay-rules/calculate" element={<CalculatePay />} />
           <Route path="pay-rules/calculations" element={<PayCalculations />} />
@@ -116,6 +228,20 @@ function App() {
           <Route path="automation-workflows" element={<AutomationWorkflows />} />
           <Route path="dashboard-configuration" element={<DashboardConfiguration />} />
           <Route path="notification-management" element={<NotificationManagement />} />
+          
+          {/* Priority 4: Pulse Survey Module */}
+          <Route path="pulse-survey/create" element={<CreatePulseSurvey />} />
+          <Route path="pulse-survey/dashboard" element={<PulseSurveyDashboard />} />
+          <Route path="pulse-survey/respond/:id" element={<RespondPulseSurvey />} />
+          <Route path="pulse-survey/view/:id" element={<ViewPulseSurvey />} />
+          
+          {/* Priority 4: Tenant Management Module */}
+          <Route path="tenant/organizations" element={<OrganizationList />} />
+          <Route path="tenant/organizations/create" element={<CreateOrganization />} />
+          <Route path="tenant/dashboard" element={<TenantDashboard />} />
+          
+          {/* Priority 4: Sage VIP Integration */}
+          <Route path="integrations/sage-vip" element={<SageVIPDashboard />} />
           
           {/* Legacy routes */}
           <Route path="time-attendance" element={<TimeAttendance />} />

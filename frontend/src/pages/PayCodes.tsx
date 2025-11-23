@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Plus, Edit, AlertCircle, Users, BarChart, CheckCircle, UserCheck, AlertTriangle, Trash2, List, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CreditCard, Plus, Edit, AlertCircle, Users, BarChart, CheckCircle, UserCheck, AlertTriangle, Trash2, List, Clock, Eye } from 'lucide-react';
 
 interface PayCode {
   id: number;
@@ -17,14 +18,6 @@ interface PayCode {
   updated_at: string;
 }
 
-interface PayCodeFormData {
-  code: string;
-  description: string;
-  is_absence_code: boolean;
-  is_active: boolean;
-  configuration?: string;
-}
-
 interface Statistics {
   total_pay_codes: number;
   active_pay_codes: number;
@@ -33,24 +26,15 @@ interface Statistics {
 }
 
 const PayCodes: React.FC = () => {
+  const navigate = useNavigate();
   const [payCodes, setPayCodes] = useState<PayCode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedCode, setSelectedCode] = useState<PayCode | null>(null);
   
   const [statistics, setStatistics] = useState<Statistics>({
     total_pay_codes: 0,
     active_pay_codes: 0,
     pay_codes_in_use: 0,
     unassigned_employees: 0
-  });
-
-  const [formData, setFormData] = useState<PayCodeFormData>({
-    code: '',
-    description: '',
-    is_absence_code: false,
-    is_active: true
   });
 
   useEffect(() => {
@@ -95,57 +79,6 @@ const PayCodes: React.FC = () => {
     }
   };
 
-  const handleCreateCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const response = await fetch('/api/pay-codes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        setShowCreateModal(false);
-        resetForm();
-        fetchPayCodes();
-        fetchStatistics();
-      }
-    } catch (error) {
-      console.error('Error creating pay code:', error);
-    }
-  };
-
-  const handleEditCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedCode) return;
-
-    try {
-      const response = await fetch(`/api/pay-codes/${selectedCode.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        setShowEditModal(false);
-        setSelectedCode(null);
-        resetForm();
-        fetchPayCodes();
-        fetchStatistics();
-      }
-    } catch (error) {
-      console.error('Error updating pay code:', error);
-    }
-  };
-
   const handleDeleteCode = async (code: PayCode) => {
     if (code.usage_count > 0) {
       alert('Cannot delete pay code that is assigned to employees.');
@@ -181,26 +114,6 @@ const PayCodes: React.FC = () => {
     }).format(amount);
   };
 
-  const resetForm = () => {
-    setFormData({
-      code: '',
-      description: '',
-      is_absence_code: false,
-      is_active: true
-    });
-  };
-
-  const openEditModal = (code: PayCode) => {
-    setSelectedCode(code);
-    setFormData({
-      code: code.code,
-      description: code.description,
-      is_absence_code: code.is_absence_code,
-      is_active: code.is_active
-    });
-    setShowEditModal(true);
-  };
-
   return (
     <div className="container-fluid py-4">
       {/* Page Header */}
@@ -212,7 +125,7 @@ const PayCodes: React.FC = () => {
         <div className="btn-group">
           <button 
             className="btn btn-primary"
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => navigate('/pay-codes/create')}
             style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
           >
             <Plus size={18} className="me-2" />
@@ -374,8 +287,15 @@ const PayCodes: React.FC = () => {
                       <td>
                         <div className="btn-group btn-group-sm">
                           <button
+                            className="btn btn-outline-info"
+                            onClick={() => navigate(`/pay-codes/view/${code.id}`)}
+                            title="View"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
                             className="btn btn-outline-primary"
-                            onClick={() => openEditModal(code)}
+                            onClick={() => navigate(`/pay-codes/edit/${code.id}`)}
                             title="Edit"
                           >
                             <Edit size={14} />
@@ -399,225 +319,6 @@ const PayCodes: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Create Code Modal */}
-      {showCreateModal && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header" style={{ backgroundColor: '#28468D', color: 'white' }}>
-                <h5 className="modal-title">Create New Pay Code</h5>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
-                  onClick={() => { setShowCreateModal(false); resetForm(); }}
-                ></button>
-              </div>
-              <form onSubmit={handleCreateCode}>
-                <div className="modal-body">
-                  <div className="row">
-                    <div className="col-md-8">
-                      <div className="row g-3">
-                        <div className="col-md-6">
-                          <label className="form-label">Code *</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={formData.code}
-                            onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})}
-                            required
-                            maxLength={10}
-                            placeholder="e.g., SICK, VAC, OT"
-                          />
-                          <div className="form-text">Short code identifier (uppercase)</div>
-                        </div>
-                        <div className="col-md-6">
-                          <label className="form-label">Status</label>
-                          <select
-                            className="form-select"
-                            value={formData.is_active ? 'active' : 'inactive'}
-                            onChange={(e) => setFormData({...formData, is_active: e.target.value === 'active'})}
-                          >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                          </select>
-                        </div>
-                        <div className="col-12">
-                          <label className="form-label">Description *</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={formData.description}
-                            onChange={(e) => setFormData({...formData, description: e.target.value})}
-                            required
-                            placeholder="e.g., Sick Leave"
-                          />
-                        </div>
-                        <div className="col-12">
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              id="isAbsenceCodeCreate"
-                              checked={formData.is_absence_code}
-                              onChange={(e) => setFormData({...formData, is_absence_code: e.target.checked})}
-                            />
-                            <label className="form-check-label" htmlFor="isAbsenceCodeCreate">
-                              Is Absence Code
-                            </label>
-                            <div className="form-text">
-                              Check this if the code represents an absence (e.g., sick leave, vacation)
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Pay Code Examples Sidebar */}
-                    <div className="col-md-4">
-                      <div className="card" style={{ backgroundColor: '#f8f9fa' }}>
-                        <div className="card-header" style={{ backgroundColor: '#28468D', color: 'white', padding: '0.5rem 1rem' }}>
-                          <h6 className="mb-0">Pay Code Examples</h6>
-                        </div>
-                        <div className="card-body" style={{ padding: '1rem', fontSize: '0.9rem' }}>
-                          <div className="mb-3">
-                            <strong>Common Absence Codes:</strong>
-                            <ul className="list-unstyled mt-2" style={{ fontSize: '0.85rem' }}>
-                              <li><code>SICK</code> - Sick Leave</li>
-                              <li><code>VAC</code> - Vacation</li>
-                              <li><code>PTO</code> - Paid Time Off</li>
-                              <li><code>UNPD</code> - Unpaid Leave</li>
-                            </ul>
-                          </div>
-                          
-                          <div className="mb-3">
-                            <strong>Common Payroll Codes:</strong>
-                            <ul className="list-unstyled mt-2" style={{ fontSize: '0.85rem' }}>
-                              <li><code>OT</code> - Overtime (1.5x)</li>
-                              <li><code>DT</code> - Double Time (2.0x)</li>
-                              <li><code>HOL</code> - Holiday Pay (1.5x)</li>
-                              <li><code>CALL</code> - Call-out Pay</li>
-                            </ul>
-                          </div>
-
-                          <div className="alert alert-info" style={{ padding: '0.5rem', margin: 0, fontSize: '0.8rem' }}>
-                            <strong>Tip:</strong> Use short, descriptive codes that are easy to remember and type.
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
-                    onClick={() => { setShowCreateModal(false); resetForm(); }}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary"
-                    style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
-                  >
-                    Create Pay Code
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Code Modal */}
-      {showEditModal && selectedCode && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header" style={{ backgroundColor: '#28468D', color: 'white' }}>
-                <h5 className="modal-title">Edit Pay Code</h5>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
-                  onClick={() => { setShowEditModal(false); setSelectedCode(null); resetForm(); }}
-                ></button>
-              </div>
-              <form onSubmit={handleEditCode}>
-                <div className="modal-body">
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Code *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={formData.code}
-                        onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})}
-                        required
-                        maxLength={10}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Status</label>
-                      <select
-                        className="form-select"
-                        value={formData.is_active ? 'active' : 'inactive'}
-                        onChange={(e) => setFormData({...formData, is_active: e.target.value === 'active'})}
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label">Description *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div className="col-12">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="isAbsenceCodeEdit"
-                          checked={formData.is_absence_code}
-                          onChange={(e) => setFormData({...formData, is_absence_code: e.target.checked})}
-                        />
-                        <label className="form-check-label" htmlFor="isAbsenceCodeEdit">
-                          Is Absence Code
-                        </label>
-                        <div className="form-text">
-                          Check this if the code represents an absence (e.g., sick leave, vacation). Leave unchecked for earning codes.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
-                    onClick={() => { setShowEditModal(false); setSelectedCode(null); resetForm(); }}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary"
-                    style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

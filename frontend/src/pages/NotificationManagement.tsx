@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Bell, Plus, Edit, Eye, Filter, AlertCircle } from 'lucide-react';
 
 interface NotificationTrigger {
@@ -166,12 +167,13 @@ const NotificationManagement: React.FC = () => {
                           </td>
                           <td>
                             <div className="btn-group btn-group-sm">
-                              <button
+                              <Link
+                                to={`/notifications/triggers/${trigger.trigger_name.toLowerCase().replace(/\s+/g, '-')}`}
                                 className="btn btn-outline-primary"
                                 title="View Details"
                               >
                                 <Eye size={16} />
-                              </button>
+                              </Link>
                               <button
                                 className="btn btn-outline-secondary"
                                 title="Edit"

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Plus, Edit, Play, Pause, Filter, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Zap, Plus, Edit, Play, Pause, Filter, AlertCircle, BarChart } from 'lucide-react';
 
 interface Workflow {
   id: number;
@@ -74,13 +75,23 @@ const AutomationWorkflows: React.FC = () => {
               <Zap className="me-2" size={32} style={{ color: '#28468D' }} />
               <h2 className="mb-0">Automation & Workflows</h2>
             </div>
-            <button 
-              className="btn btn-primary"
-              style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
-            >
-              <Plus size={18} className="me-2" />
-              Create Workflow
-            </button>
+            <div className="d-flex gap-2">
+              <Link 
+                to="/automation/dashboard"
+                className="btn btn-info"
+                style={{ backgroundColor: '#54B8DF', borderColor: '#54B8DF' }}
+              >
+                <BarChart size={18} className="me-2" />
+                Dashboard
+              </Link>
+              <button 
+                className="btn btn-primary"
+                style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
+              >
+                <Plus size={18} className="me-2" />
+                Create Workflow
+              </button>
+            </div>
           </div>
         </div>
       </div>

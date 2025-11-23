@@ -46,14 +46,20 @@ import payrollRoutes from './routes/payroll.routes';
 import payRulesRoutes from './routes/pay-rules.routes';
 import payCodesRoutes from './routes/pay-codes.routes';
 import automationRoutes from './routes/automation.routes';
+import aiRoutes from './routes/ai.routes';
+import pulseSurveyRoutes from './routes/pulse-survey.routes';
+import tenantRoutes from './routes/tenant.routes';
+import integrationsRoutes from './routes/integrations.routes';
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/time-attendance', timeAttendanceRoutes);
 app.use('/api/leave', leaveRoutes);
+app.use('/api/v1/leave', leaveRoutes); // Support v1 prefix for frontend compatibility
 app.use('/api/scheduling', schedulingRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/organization', organizationRoutes);
+app.use('/api/v1/organization', organizationRoutes); // Support v1 prefix for frontend compatibility
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportsRoutes);
@@ -61,6 +67,10 @@ app.use('/api/payroll', payrollRoutes);
 app.use('/api/pay-rules', payRulesRoutes);
 app.use('/api/pay-codes', payCodesRoutes);
 app.use('/api/automation', automationRoutes);
+app.use('/ai', aiRoutes);
+app.use('/api/pulse-survey', pulseSurveyRoutes);
+app.use('/api/tenant', tenantRoutes);
+app.use('/api/integrations', integrationsRoutes);
 
 app.get('/api', (_req: Request, res: Response) => {
   res.json({

@@ -58,6 +58,54 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Get single pay rule by ID
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if pay_rules table exists
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pay_rules'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      // Return mock data if table doesn't exist
+      const mockRule = {
+        id: parseInt(id),
+        name: 'Standard Overtime',
+        description: 'Applies 1.5x rate for hours over 8 per day',
+        conditions: JSON.stringify({ overtime_threshold: 8 }),
+        actions: JSON.stringify({ pay_multiplier: 1.5, component_name: 'overtime_1_5' }),
+        priority: 100,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        created_by_id: 1
+      };
+      res.json(mockRule);
+      return;
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM pay_rules WHERE id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Pay rule not found' });
+      return;
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Get pay rule error:', error);
+    res.status(500).json({ error: 'Failed to fetch pay rule' });
+  }
+});
+
 // Create pay rule
 router.post('/', authenticate, requireRole('Payroll', 'Super User'), async (req: AuthRequest, res) => {
   try {
@@ -146,6 +194,54 @@ router.put('/:id', authenticate, requireRole('Payroll', 'Super User'), async (re
   } catch (error) {
     console.error('Update pay rule error:', error);
     res.status(500).json({ error: 'Failed to update pay rule' });
+  }
+});
+
+// Toggle pay rule active status
+router.post('/:id/toggle', authenticate, requireRole('Payroll', 'Super User'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `UPDATE pay_rules SET
+        is_active = NOT is_active,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING *`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Pay rule not found' });
+      return;
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Toggle pay rule error:', error);
+    res.status(500).json({ error: 'Failed to toggle pay rule' });
+  }
+});
+
+// Delete pay rule
+router.delete('/:id', authenticate, requireRole('Payroll', 'Super User'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `DELETE FROM pay_rules WHERE id = $1 RETURNING *`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Pay rule not found' });
+      return;
+    }
+
+    res.json({ message: 'Pay rule deleted successfully' });
+  } catch (error) {
+    console.error('Delete pay rule error:', error);
+    res.status(500).json({ error: 'Failed to delete pay rule' });
   }
 });
 
