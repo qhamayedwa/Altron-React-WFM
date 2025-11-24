@@ -35,6 +35,7 @@ app.get('/health', (_req: Request, res: Response) => {
 // Import routes
 import authRoutes from './routes/auth.routes';
 import timeAttendanceRoutes from './routes/time-attendance.routes';
+import timeRoutes from './routes/time.routes';
 import leaveRoutes from './routes/leave.routes';
 import schedulingRoutes from './routes/scheduling.routes';
 import usersRoutes from './routes/users.routes';
@@ -54,6 +55,7 @@ import integrationsRoutes from './routes/integrations.routes';
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/time-attendance', timeAttendanceRoutes);
+app.use('/api/time', timeRoutes);
 app.use('/api/leave', leaveRoutes);
 app.use('/api/v1/leave', leaveRoutes); // Support v1 prefix for frontend compatibility
 app.use('/api/scheduling', schedulingRoutes);
