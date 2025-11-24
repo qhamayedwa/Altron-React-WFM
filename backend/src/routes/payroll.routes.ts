@@ -321,6 +321,88 @@ router.post('/process', authenticate, requireRole('Payroll', 'Super User'), asyn
   }
 });
 
+// Get employee payroll details
+router.get('/employee-details/:employeeId', authenticate, requireRole('Payroll', 'Super User'), async (req: AuthRequest, res: ExpressResponse): Promise<void> => {
+  try {
+    const { employeeId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      res.status(400).json({ error: 'Start date and end date are required' });
+      return;
+    }
+
+    // Get employee information
+    const employeeResult = await pool.query(`
+      SELECT 
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.username,
+        u.email,
+        u.payroll_base_rate as base_rate,
+        d.name as department
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = $1
+    `, [employeeId]);
+
+    if (employeeResult.rows.length === 0) {
+      res.status(404).json({ error: 'Employee not found' });
+      return;
+    }
+
+    const employee = employeeResult.rows[0];
+    const baseRate = parseFloat(employee.base_rate) || 150;
+
+    // Get time entries
+    const entriesResult = await pool.query(`
+      SELECT 
+        te.id,
+        te.clock_in_time,
+        te.clock_out_time,
+        te.total_hours,
+        pc.name as pay_code,
+        pc.code as pay_code_code
+      FROM time_entries te
+      LEFT JOIN pay_codes pc ON te.pay_code_id = pc.id
+      WHERE te.user_id = $1
+      AND te.clock_in_time >= $2
+      AND te.clock_in_time <= $3
+      AND te.status = 'approved'
+      ORDER BY te.clock_in_time DESC
+    `, [employeeId, startDate, endDate]);
+
+    const timeEntries = entriesResult.rows.map((entry: any) => ({
+      date: new Date(entry.clock_in_time).toLocaleDateString('en-ZA'),
+      clock_in: new Date(entry.clock_in_time).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }),
+      clock_out: entry.clock_out_time ? new Date(entry.clock_out_time).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      hours: parseFloat(entry.total_hours || 0).toFixed(2),
+      pay_code: entry.pay_code || 'Regular'
+    }));
+
+    const totalHours = entriesResult.rows.reduce((sum: number, entry: any) => sum + parseFloat(entry.total_hours || 0), 0);
+    const regularHours = Math.min(totalHours, 40);
+    const overtimeHours = Math.max(0, totalHours - 40);
+    const grossPay = (regularHours * baseRate) + (overtimeHours * baseRate * 1.5);
+
+    res.json({
+      id: employee.id,
+      name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.username,
+      department: employee.department || 'N/A',
+      base_rate: baseRate.toFixed(2),
+      regular_hours: regularHours.toFixed(2),
+      overtime_hours: overtimeHours.toFixed(2),
+      total_hours: totalHours.toFixed(2),
+      gross_pay: grossPay.toFixed(2),
+      time_entries: timeEntries
+    });
+  } catch (error) {
+    console.error('Employee details error:', error);
+    res.status(500).json({ error: 'Failed to fetch employee details' });
+  }
+});
+
 // Export payroll data
 router.get('/export', authenticate, requireRole('Payroll', 'Super User'), async (req: AuthRequest, res: ExpressResponse): Promise<void> => {
   try {
