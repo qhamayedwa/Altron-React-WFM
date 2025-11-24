@@ -344,16 +344,11 @@ router.post(
 
       const { leaveTypeId, startDate, endDate, reason } = req.body;
 
-      // Calculate days
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
       const result = await query(
-        `INSERT INTO leave_requests (user_id, leave_type_id, start_date, end_date, days, reason, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+        `INSERT INTO leave_applications (user_id, leave_type_id, start_date, end_date, reason, status, is_hourly)
+         VALUES ($1, $2, $3, $4, $5, 'pending', false)
          RETURNING *`,
-        [req.user!.id, leaveTypeId, startDate, endDate, days, reason]
+        [req.user!.id, leaveTypeId, startDate, endDate, reason || '']
       );
 
       res.json({
@@ -363,7 +358,6 @@ router.post(
           leaveTypeId: result.rows[0].leave_type_id,
           startDate: result.rows[0].start_date,
           endDate: result.rows[0].end_date,
-          days: result.rows[0].days,
           status: result.rows[0].status
         }
       });
@@ -380,24 +374,24 @@ router.get('/requests', async (req: AuthRequest, res: Response): Promise<void> =
     const { status, year } = req.query;
     
     let sql = `
-      SELECT lr.*, lt.name as leave_type_name
-      FROM leave_requests lr
-      JOIN leave_types lt ON lr.leave_type_id = lt.id
-      WHERE lr.user_id = $1
+      SELECT la.*, lt.name as leave_type_name
+      FROM leave_applications la
+      JOIN leave_types lt ON la.leave_type_id = lt.id
+      WHERE la.user_id = $1
     `;
     const params: any[] = [req.user!.id];
     
     if (status) {
       params.push(status);
-      sql += ` AND lr.status = $${params.length}`;
+      sql += ` AND la.status = $${params.length}`;
     }
     
     if (year) {
       params.push(year);
-      sql += ` AND EXTRACT(YEAR FROM lr.start_date) = $${params.length}`;
+      sql += ` AND EXTRACT(YEAR FROM la.start_date) = $${params.length}`;
     }
     
-    sql += ' ORDER BY lr.created_at DESC';
+    sql += ' ORDER BY la.created_at DESC';
     
     const result = await query(sql, params);
 
@@ -408,12 +402,11 @@ router.get('/requests', async (req: AuthRequest, res: Response): Promise<void> =
         leaveTypeCode: row.leave_type_name ? row.leave_type_name.substring(0, 2).toUpperCase() : 'LT',
         startDate: row.start_date,
         endDate: row.end_date,
-        days: row.days,
         reason: row.reason,
         status: row.status,
-        approvedBy: row.approved_by,
+        approvedBy: row.manager_approved_id,
         approvedAt: row.approved_at,
-        rejectionReason: row.rejection_reason,
+        rejectionReason: row.manager_comments,
         createdAt: row.created_at
       }))
     });
@@ -427,13 +420,13 @@ router.get('/requests', async (req: AuthRequest, res: Response): Promise<void> =
 router.get('/pending', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await query(
-      `SELECT lr.*, lt.name as leave_type_name, u.first_name, u.last_name, u.employee_number, d.name as department_name
-       FROM leave_requests lr
-       JOIN leave_types lt ON lr.leave_type_id = lt.id
-       JOIN users u ON lr.user_id = u.id
+      `SELECT la.*, lt.name as leave_type_name, u.first_name, u.last_name, u.employee_number, d.name as department_name
+       FROM leave_applications la
+       JOIN leave_types lt ON la.leave_type_id = lt.id
+       JOIN users u ON la.user_id = u.id
        LEFT JOIN departments d ON u.department_id = d.id
-       WHERE lr.status = 'pending' AND u.tenant_id = $1
-       ORDER BY lr.created_at ASC`,
+       WHERE la.status = 'pending' AND u.tenant_id = $1
+       ORDER BY la.created_at ASC`,
       [req.user!.tenantId]
     );
 
@@ -446,7 +439,6 @@ router.get('/pending', requireRole('Manager', 'Super User'), async (req: AuthReq
         leaveType: row.leave_type_name,
         startDate: row.start_date,
         endDate: row.end_date,
-        days: row.days,
         reason: row.reason,
         createdAt: row.created_at
       }))
@@ -463,8 +455,8 @@ router.post('/approve/:id', requireRole('Manager', 'Super User'), async (req: Au
     const { id } = req.params;
     
     await query(
-      `UPDATE leave_requests
-       SET status = 'approved', approved_by = $1, approved_at = NOW()
+      `UPDATE leave_applications
+       SET status = 'approved', manager_approved_id = $1, approved_at = NOW()
        WHERE id = $2`,
       [req.user!.id, id]
     );
@@ -490,8 +482,8 @@ router.post(
       const { reason } = req.body;
       
       await query(
-        `UPDATE leave_requests
-         SET status = 'rejected', approved_by = $1, approved_at = NOW(), rejection_reason = $2
+        `UPDATE leave_applications
+         SET status = 'rejected', manager_approved_id = $1, approved_at = NOW(), manager_comments = $2
          WHERE id = $3`,
         [req.user!.id, reason, id]
       );
