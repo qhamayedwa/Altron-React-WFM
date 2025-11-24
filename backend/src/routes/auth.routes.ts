@@ -198,6 +198,178 @@ router.get('/users', authenticate, async (req: AuthRequest, res: Response): Prom
   }
 });
 
+router.get('/users/:id', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const userId = parseInt(req.params.id);
+
+    const userResult = await query(
+      `SELECT u.id, u.username, u.email, u.first_name, u.last_name, 
+              u.employee_number, u.department_id, u.job_id, u.is_active, u.created_at,
+              array_agg(r.name) FILTER (WHERE r.name IS NOT NULL) as roles,
+              d.name as department_name
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       LEFT JOIN roles r ON ur.role_id = r.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       WHERE u.id = $1
+       GROUP BY u.id, d.name`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const user = userResult.rows[0];
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      employee_number: user.employee_number,
+      department_id: user.department_id,
+      department_name: user.department_name,
+      job_id: user.job_id,
+      is_active: user.is_active,
+      created_at: user.created_at,
+      roles: user.roles || []
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/users/:id', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const userId = parseInt(req.params.id);
+    const {
+      email,
+      first_name,
+      last_name,
+      employee_number,
+      department_id,
+      job_id,
+      is_active,
+      roles,
+      password
+    } = req.body;
+
+    // Update user basic info
+    let updateQuery = `UPDATE users SET 
+      email = $1, 
+      first_name = $2, 
+      last_name = $3, 
+      employee_number = $4, 
+      department_id = $5, 
+      job_id = $6, 
+      is_active = $7`;
+    
+    let updateParams: any[] = [
+      email,
+      first_name,
+      last_name,
+      employee_number || null,
+      department_id || null,
+      job_id || null,
+      is_active !== false
+    ];
+
+    // If password is provided, update it too
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateQuery += `, password_hash = $${updateParams.length + 1}`;
+      updateParams.push(hashedPassword);
+    }
+
+    updateQuery += ` WHERE id = $${updateParams.length + 1} RETURNING id`;
+    updateParams.push(userId);
+
+    const updateResult = await query(updateQuery, updateParams);
+
+    if (updateResult.rows.length === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Update roles if provided
+    if (roles && Array.isArray(roles)) {
+      // Delete existing roles
+      await query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
+
+      // Add new roles
+      for (const roleName of roles) {
+        const roleResult = await query(
+          'SELECT id FROM roles WHERE name = $1',
+          [roleName]
+        );
+
+        if (roleResult.rows.length > 0) {
+          const roleId = roleResult.rows[0].id;
+          await query(
+            'INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [userId, roleId]
+          );
+        }
+      }
+    }
+
+    res.json({ success: true, message: 'User updated successfully' });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/users/:id', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const userId = parseInt(req.params.id);
+
+    // Check if user exists
+    const userCheck = await query('SELECT id FROM users WHERE id = $1', [userId]);
+    
+    if (userCheck.rows.length === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Prevent deleting yourself
+    if (userId === req.user.id) {
+      res.status(400).json({ error: 'Cannot delete your own account' });
+      return;
+    }
+
+    // Delete user roles first (foreign key constraint)
+    await query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
+
+    // Delete user
+    await query('DELETE FROM users WHERE id = $1', [userId]);
+
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post(
   '/register',
   [

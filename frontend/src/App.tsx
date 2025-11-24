@@ -101,6 +101,7 @@ import CreateOrganization from './pages/CreateOrganization';
 import OrganizationList from './pages/OrganizationList';
 import TenantDashboard from './pages/TenantDashboard';
 import SageVIPDashboard from './pages/SageVIPDashboard';
+import UserEdit from './pages/UserEdit';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -169,6 +170,7 @@ function App() {
           
           {/* Administration */}
           <Route path="user-management" element={<UserManagement />} />
+          <Route path="users/edit/:id" element={<UserEdit />} />
           <Route path="register" element={<Register />} />
           <Route path="time-attendance-admin" element={<TimeAttendanceAdmin />} />
           <Route path="manual-time-entry" element={<ManualTimeEntry />} />
