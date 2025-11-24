@@ -64,7 +64,7 @@ export default function MyTimecard() {
       setLoading(true);
       
       // Load current status
-      const statusRes = await api.get('/api/time/current-status');
+      const statusRes = await api.get('/time/current-status');
       setCurrentStatus(statusRes.data);
 
       // Load time entries
@@ -72,7 +72,7 @@ export default function MyTimecard() {
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
       
-      const entriesRes = await api.get('/api/time/entries', { params });
+      const entriesRes = await api.get('/time/entries', { params });
       setTimeEntries(entriesRes.data.entries || []);
       setTotalPages(entriesRes.data.pagination?.total_pages || 1);
 
@@ -81,7 +81,7 @@ export default function MyTimecard() {
       if (startDate) summaryParams.start_date = startDate;
       if (endDate) summaryParams.end_date = endDate;
       
-      const summaryRes = await api.get('/api/time/summary', { params: summaryParams });
+      const summaryRes = await api.get('/time/summary', { params: summaryParams });
       setSummary(summaryRes.data);
     } catch (error) {
       console.error('Error loading timecard data:', error);
@@ -109,7 +109,7 @@ export default function MyTimecard() {
         });
       }
 
-      await api.post('/api/time/clock-in', { latitude, longitude });
+      await api.post('/time/clock-in', { latitude, longitude });
       await loadData();
       alert('Successfully clocked in!');
     } catch (error: any) {
@@ -139,7 +139,7 @@ export default function MyTimecard() {
         });
       }
 
-      await api.post('/api/time/clock-out', { latitude, longitude });
+      await api.post('/time/clock-out', { latitude, longitude });
       await loadData();
       alert('Successfully clocked out!');
     } catch (error: any) {
@@ -153,7 +153,7 @@ export default function MyTimecard() {
   const handleBreak = async (action: 'start' | 'end') => {
     try {
       setActionLoading(true);
-      await api.post(`/api/time/break/${action}`);
+      await api.post(`/time/break/${action}`);
       await loadData();
       alert(action === 'start' ? 'Break started' : 'Break ended');
     } catch (error: any) {
