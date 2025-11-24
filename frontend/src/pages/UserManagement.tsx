@@ -43,6 +43,37 @@ export default function UserManagement() {
     }
   };
 
+  const handleEditUser = (userId: number) => {
+    navigate(`/users/edit/${userId}`);
+  };
+
+  const handleDeleteUser = async (userId: number, username: string) => {
+    if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/auth/users/${userId}`);
+      alert('User deleted successfully');
+      loadUsers();
+    } catch (err: any) {
+      console.error('Failed to delete user:', err);
+      alert(err.response?.data?.error || 'Failed to delete user');
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: number, currentStatus: boolean) => {
+    try {
+      await api.patch(`/auth/users/${userId}/status`, {
+        is_active: !currentStatus
+      });
+      loadUsers();
+    } catch (err: any) {
+      console.error('Failed to toggle user status:', err);
+      alert(err.response?.data?.error || 'Failed to update user status');
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = !searchQuery || 
       user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -181,10 +212,20 @@ export default function UserManagement() {
                         <td>{new Date(user.created_at).toLocaleDateString()}</td>
                         <td>
                           <div className="btn-group btn-group-sm">
-                            <Button variant="outline-primary" size="sm" title="Edit">
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm" 
+                              title="Edit User"
+                              onClick={() => handleEditUser(user.id)}
+                            >
                               <Edit size={14} />
                             </Button>
-                            <Button variant="outline-danger" size="sm" title="Delete">
+                            <Button 
+                              variant="outline-danger" 
+                              size="sm" 
+                              title="Delete User"
+                              onClick={() => handleDeleteUser(user.id, user.username)}
+                            >
                               <Trash2 size={14} />
                             </Button>
                           </div>
