@@ -121,6 +121,7 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
           
           {/* Personal */}
           <Route path="my-timecard" element={<MyTimecard />} />
