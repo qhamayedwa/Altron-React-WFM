@@ -111,7 +111,7 @@ router.get('/types/:id', async (req: AuthRequest, res: Response): Promise<void> 
         // Get recent applications
         const recentResult = await query(
           `SELECT la.id, la.start_date, la.end_date, la.status, la.created_at,
-                  u.first_name, u.last_name, u.employee_number
+                  u.first_name, u.last_name, u.employee_number, u.username
            FROM leave_applications la
            JOIN users u ON la.user_id = u.id
            WHERE la.leave_type_id = $1
@@ -122,8 +122,11 @@ router.get('/types/:id', async (req: AuthRequest, res: Response): Promise<void> 
         
         recent_applications = recentResult.rows.map(app => ({
           id: app.id,
-          employeeName: `${app.first_name || ''} ${app.last_name || ''}`.trim() || 'Unknown',
-          employeeNumber: app.employee_number,
+          employee: {
+            first_name: app.first_name || '',
+            last_name: app.last_name || '',
+            username: app.username || app.employee_number || 'Unknown'
+          },
           startDate: app.start_date,
           endDate: app.end_date,
           status: app.status,
