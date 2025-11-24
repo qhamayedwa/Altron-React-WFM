@@ -55,11 +55,14 @@ import TestPayRules from './pages/TestPayRules';
 import CalculatePay from './pages/CalculatePay';
 import PayCalculations from './pages/PayCalculations';
 import PayCodeConfiguration from './pages/PayCodeConfiguration';
+import BulkPayCodeAssignment from './pages/BulkPayCodeAssignment';
+import AbsenceManagement from './pages/AbsenceManagement';
 import TimecardRollup from './pages/TimecardRollup';
 import TimecardRollupDashboard from './pages/TimecardRollupDashboard';
 import TimecardRollupConfig from './pages/TimecardRollupConfig';
 import SageVIPTimecardConfig from './pages/SageVIPTimecardConfig';
 import AutomationWorkflows from './pages/AutomationWorkflows';
+import ErrorPage from './pages/ErrorPage';
 import DashboardConfiguration from './pages/DashboardConfiguration';
 import NotificationManagement from './pages/NotificationManagement';
 import ApplyLeave from './pages/ApplyLeave';
@@ -230,6 +233,8 @@ function App() {
           <Route path="pay-rules/calculate" element={<CalculatePay />} />
           <Route path="pay-rules/calculations" element={<PayCalculations />} />
           <Route path="pay-code-configuration" element={<PayCodeConfiguration />} />
+          <Route path="pay-codes/bulk-assign" element={<BulkPayCodeAssignment />} />
+          <Route path="pay-codes/absences" element={<AbsenceManagement />} />
           <Route path="timecard-rollup" element={<TimecardRollupDashboard />} />
           <Route path="timecard-rollup/configure" element={<TimecardRollupConfig />} />
           <Route path="timecard-rollup/sage-config" element={<SageVIPTimecardConfig />} />
