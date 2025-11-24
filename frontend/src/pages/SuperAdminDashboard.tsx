@@ -370,7 +370,7 @@ export default function SuperAdminDashboard() {
                 </Col>
               </Row>
               <div className="d-grid">
-                <Button variant="outline-success" onClick={() => navigate('/payroll-processing')}>
+                <Button variant="outline-success" onClick={() => navigate('/payroll/processing')}>
                   <Calculator size={16} className="me-2" />
                   View Payroll
                 </Button>
