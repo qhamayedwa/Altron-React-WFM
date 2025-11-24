@@ -62,7 +62,6 @@ import TimecardRollupDashboard from './pages/TimecardRollupDashboard';
 import TimecardRollupConfig from './pages/TimecardRollupConfig';
 import SageVIPTimecardConfig from './pages/SageVIPTimecardConfig';
 import AutomationWorkflows from './pages/AutomationWorkflows';
-import ErrorPage from './pages/ErrorPage';
 import DashboardConfiguration from './pages/DashboardConfiguration';
 import NotificationManagement from './pages/NotificationManagement';
 import ApplyLeave from './pages/ApplyLeave';
@@ -108,6 +107,7 @@ import OrganizationList from './pages/OrganizationList';
 import TenantDashboard from './pages/TenantDashboard';
 import SageVIPDashboard from './pages/SageVIPDashboard';
 import UserEdit from './pages/UserEdit';
+import QuickActions from './pages/QuickActions';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -139,6 +139,7 @@ function App() {
           <Route path="team-communication" element={<TeamCommunication />} />
           <Route path="reports" element={<Reports />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="quick-actions" element={<QuickActions />} />
           
           {/* Management */}
           <Route path="team-timecard" element={<TeamTimecard />} />

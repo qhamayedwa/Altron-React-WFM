@@ -6,7 +6,7 @@ import {
   ClipboardList, CalendarCheck, Briefcase, MessageSquare, BarChart3,
   UserCheck, FileSpreadsheet, AlertCircle, CalendarClock, Shield,
   UserCog, Settings, FilePlus, ClipboardEdit, DollarSign, GitBranch,
-  Workflow, LayoutDashboard, BellRing, Upload, Globe, Link2
+  Workflow, LayoutDashboard, BellRing, Upload, Globe, Link2, Zap
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useState } from 'react';
@@ -44,6 +44,12 @@ export default function Layout() {
             <Link to="/" className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1">
               <Home size={20} />
               <span>Dashboard</span>
+            </Link>
+
+            {/* Quick Actions */}
+            <Link to="/quick-actions" className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1">
+              <Zap size={20} />
+              <span>Quick Actions</span>
             </Link>
 
             {/* 2. Personal */}
