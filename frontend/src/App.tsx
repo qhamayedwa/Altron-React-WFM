@@ -56,6 +56,9 @@ import CalculatePay from './pages/CalculatePay';
 import PayCalculations from './pages/PayCalculations';
 import PayCodeConfiguration from './pages/PayCodeConfiguration';
 import TimecardRollup from './pages/TimecardRollup';
+import TimecardRollupDashboard from './pages/TimecardRollupDashboard';
+import TimecardRollupConfig from './pages/TimecardRollupConfig';
+import SageVIPTimecardConfig from './pages/SageVIPTimecardConfig';
 import AutomationWorkflows from './pages/AutomationWorkflows';
 import DashboardConfiguration from './pages/DashboardConfiguration';
 import NotificationManagement from './pages/NotificationManagement';
@@ -227,7 +230,10 @@ function App() {
           <Route path="pay-rules/calculate" element={<CalculatePay />} />
           <Route path="pay-rules/calculations" element={<PayCalculations />} />
           <Route path="pay-code-configuration" element={<PayCodeConfiguration />} />
-          <Route path="timecard-rollup" element={<TimecardRollup />} />
+          <Route path="timecard-rollup" element={<TimecardRollupDashboard />} />
+          <Route path="timecard-rollup/configure" element={<TimecardRollupConfig />} />
+          <Route path="timecard-rollup/sage-config" element={<SageVIPTimecardConfig />} />
+          <Route path="timecard-rollup/history" element={<TimecardRollup />} />
           <Route path="automation-workflows" element={<AutomationWorkflows />} />
           <Route path="dashboard-configuration" element={<DashboardConfiguration />} />
           <Route path="notification-management" element={<NotificationManagement />} />

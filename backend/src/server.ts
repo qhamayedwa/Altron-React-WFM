@@ -51,6 +51,7 @@ import aiRoutes from './routes/ai.routes';
 import pulseSurveyRoutes from './routes/pulse-survey.routes';
 import tenantRoutes from './routes/tenant.routes';
 import integrationsRoutes from './routes/integrations.routes';
+import timecardRollupRoutes from './routes/timecard-rollup.routes';
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -73,6 +74,7 @@ app.use('/ai', aiRoutes);
 app.use('/api/pulse-survey', pulseSurveyRoutes);
 app.use('/api/tenant', tenantRoutes);
 app.use('/api/integrations', integrationsRoutes);
+app.use('/api/timecard-rollup', timecardRollupRoutes);
 
 app.get('/api', (_req: Request, res: Response) => {
   res.json({
