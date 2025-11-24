@@ -1,9 +1,11 @@
 import { Card, Row, Col, Button, Badge } from 'react-bootstrap';
 import { User, Home, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 export default function Profile() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
 
   return (
     <div className="py-4">
@@ -55,12 +57,12 @@ export default function Profile() {
           </Card>
           
           <div className="mt-4 text-center">
-            <Button variant="outline-secondary" className="me-2">
+            <Button variant="outline-secondary" className="me-2" onClick={() => navigate('/')}>
               <Home size={18} className="me-2" />
               Back to Home
             </Button>
             {user?.roles.includes('Super User') && (
-              <Button variant="primary">
+              <Button variant="primary" onClick={() => navigate('/user-management')}>
                 <Users size={18} className="me-2" />
                 Manage Users
               </Button>
