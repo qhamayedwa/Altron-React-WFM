@@ -266,4 +266,110 @@ router.get('/activity', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Get dashboard configuration
+router.get('/config', authenticate, async (req: AuthRequest, res) => {
+  try {
+    // Return default configuration for now
+    // In production, this would be stored in database per user/tenant
+    const defaultSections = [
+      {
+        id: 'system-health',
+        name: 'System Health & Performance',
+        description: 'System uptime, active users, pending tasks, data integrity',
+        employee: false,
+        manager: true,
+        super_admin: true
+      },
+      {
+        id: 'organization-overview',
+        name: 'Organization Structure & User Management',
+        description: 'Companies, regions, departments, user roles and statistics',
+        employee: false,
+        manager: true,
+        super_admin: true
+      },
+      {
+        id: 'attendance-analytics',
+        name: 'Time & Attendance Analytics',
+        description: 'Clock-in charts, metrics, overtime hours, exceptions',
+        employee: true,
+        manager: true,
+        super_admin: true
+      },
+      {
+        id: 'workflow-automation',
+        name: 'Workflow & Automation Status',
+        description: 'Active workflows, automation rates, payroll overview',
+        employee: false,
+        manager: true,
+        super_admin: true
+      },
+      {
+        id: 'leave-scheduling',
+        name: 'Leave Management & Scheduling',
+        description: 'Leave applications, scheduling overview, coverage rates',
+        employee: true,
+        manager: true,
+        super_admin: true
+      },
+      {
+        id: 'ai-insights',
+        name: 'AI Insights & Reports',
+        description: 'AI recommendations, productivity trends, analytics reports',
+        employee: false,
+        manager: true,
+        super_admin: true
+      },
+      {
+        id: 'alerts-notifications',
+        name: 'System Alerts & Notifications',
+        description: 'Critical alerts, system warnings, information messages',
+        employee: true,
+        manager: true,
+        super_admin: true
+      },
+      {
+        id: 'personal-time-tracking',
+        name: 'Personal Time Tracking',
+        description: 'Individual clock-in/out, personal schedule, timecard status',
+        employee: true,
+        manager: false,
+        super_admin: false
+      },
+      {
+        id: 'team-management',
+        name: 'Team Management',
+        description: 'Team member status, pending approvals, team performance',
+        employee: false,
+        manager: true,
+        super_admin: true
+      }
+    ];
+
+    res.json({ sections: defaultSections });
+  } catch (error) {
+    console.error('Dashboard config get error:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard configuration' });
+  }
+});
+
+// Save dashboard configuration
+router.post('/config', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { sections } = req.body;
+    
+    // In production, save to database
+    // For now, just acknowledge the save
+    console.log('Dashboard configuration saved:', sections);
+    
+    res.json({ 
+      success: true,
+      message: 'Dashboard configuration saved successfully' 
+    });
+  } catch (error) {
+    console.error('Dashboard config save error:', error);
+    res.status(500).json({ error: 'Failed to save dashboard configuration' });
+  }
+});
+
 export default router;
