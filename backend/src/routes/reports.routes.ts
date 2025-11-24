@@ -76,7 +76,7 @@ router.get('/attendance', authenticate, async (req: AuthRequest, res) => {
     }));
 
     // Mock pay period summary (can be implemented with actual payroll data later)
-    const payPeriodSummary = [];
+    const payPeriodSummary: any[] = [];
 
     res.json({
       total_hours: totalHours,
