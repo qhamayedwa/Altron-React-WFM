@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Zap, Plus, Edit, Play, Pause, Filter, AlertCircle, BarChart } from 'lucide-react';
+import { Modal, Button, Form } from 'react-bootstrap';
 
 interface Workflow {
   id: number;
@@ -18,6 +19,15 @@ const AutomationWorkflows: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    workflow_type: 'leave_accrual',
+    trigger: 'scheduled',
+    schedule: '',
+    description: '',
+    is_active: true
+  });
 
   useEffect(() => {
     fetchWorkflows();
@@ -66,6 +76,35 @@ const AutomationWorkflows: React.FC = () => {
     }
   };
 
+  const handleCreateWorkflow = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/automation/workflows', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        setShowCreateModal(false);
+        setFormData({
+          name: '',
+          workflow_type: 'leave_accrual',
+          trigger: 'scheduled',
+          schedule: '',
+          description: '',
+          is_active: true
+        });
+        fetchWorkflows();
+      }
+    } catch (error) {
+      console.error('Error creating workflow:', error);
+    }
+  };
+
   return (
     <div className="container-fluid py-4">
       <div className="row mb-4">
@@ -87,6 +126,7 @@ const AutomationWorkflows: React.FC = () => {
               <button 
                 className="btn btn-primary"
                 style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
+                onClick={() => setShowCreateModal(true)}
               >
                 <Plus size={18} className="me-2" />
                 Create Workflow
@@ -243,6 +283,105 @@ const AutomationWorkflows: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Create Workflow Modal */}
+      <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
+        <Modal.Header closeButton style={{ backgroundColor: '#f8f9fa' }}>
+          <Modal.Title>
+            <Plus size={24} className="me-2" style={{ color: '#28468D' }} />
+            Create New Workflow
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleCreateWorkflow}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Workflow Name *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter workflow name"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Workflow Type *</Form.Label>
+              <Form.Select
+                required
+                value={formData.workflow_type}
+                onChange={(e) => setFormData({ ...formData, workflow_type: e.target.value })}
+              >
+                <option value="leave_accrual">Leave Accrual</option>
+                <option value="payroll">Payroll Processing</option>
+                <option value="notification">Notifications</option>
+                <option value="time_tracking">Time Tracking</option>
+                <option value="custom">Custom</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Trigger Type *</Form.Label>
+              <Form.Select
+                required
+                value={formData.trigger}
+                onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
+              >
+                <option value="scheduled">Scheduled (Cron)</option>
+                <option value="event">Event-Based</option>
+                <option value="manual">Manual</option>
+              </Form.Select>
+            </Form.Group>
+
+            {formData.trigger === 'scheduled' && (
+              <Form.Group className="mb-3">
+                <Form.Label>Schedule (Cron Expression)</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={formData.schedule}
+                  onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
+                  placeholder="e.g., 0 0 1 * * (Monthly at midnight)"
+                />
+                <Form.Text className="text-muted">
+                  Examples: 0 0 * * * (Daily), 0 0 1 * * (Monthly), 0 9 * * 1 (Weekly Monday 9am)
+                </Form.Text>
+              </Form.Group>
+            )}
+
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Describe what this workflow does"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="checkbox"
+                label="Activate workflow immediately"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
+            >
+              <Plus size={18} className="me-2" />
+              Create Workflow
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };
