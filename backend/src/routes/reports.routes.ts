@@ -4,6 +4,222 @@ import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
+// Summary report - employee totals
+router.get('/summary', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const currentUser = req.user!;
+
+    const query = `
+      SELECT 
+        u.username,
+        COUNT(te.id) as total_entries,
+        COALESCE(SUM(te.total_hours), 0) as total_hours,
+        COALESCE(SUM(CASE WHEN te.is_overtime THEN te.total_hours ELSE 0 END), 0) as overtime_hours
+      FROM users u
+      LEFT JOIN time_entries te ON u.id = te.user_id 
+        AND te.status IN ('approved', 'pending', 'clocked_out')
+        ${start_date ? `AND te.clock_in_time >= $2` : ''}
+        ${end_date ? `AND te.clock_in_time <= $${start_date ? '3' : '2'}` : ''}
+      WHERE u.tenant_id = $1 AND u.is_active = true
+      GROUP BY u.id, u.username
+      HAVING COUNT(te.id) > 0
+      ORDER BY total_hours DESC
+    `;
+
+    const params: any[] = [currentUser.tenantId];
+    if (start_date) params.push(start_date);
+    if (end_date) params.push(end_date);
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      entries: result.rows.map(row => ({
+        username: row.username,
+        total_entries: parseInt(row.total_entries),
+        total_hours: parseFloat(row.total_hours),
+        overtime_hours: parseFloat(row.overtime_hours)
+      })),
+      summary: {
+        total_hours: result.rows.reduce((sum, r) => sum + parseFloat(r.total_hours), 0),
+        overtime_hours: result.rows.reduce((sum, r) => sum + parseFloat(r.overtime_hours), 0),
+        total_entries: result.rows.reduce((sum, r) => sum + parseInt(r.total_entries), 0),
+        avg_hours: result.rows.length > 0 ? result.rows.reduce((sum, r) => sum + parseFloat(r.total_hours), 0) / result.rows.length : 0
+      }
+    });
+  } catch (error) {
+    console.error('Summary report error:', error);
+    res.status(500).json({ error: 'Failed to generate summary report' });
+  }
+});
+
+// Detailed report - all time entries
+router.get('/detailed', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const currentUser = req.user!;
+
+    const query = `
+      SELECT 
+        te.id,
+        te.clock_in_time,
+        te.clock_out_time,
+        te.total_hours,
+        te.overtime_hours,
+        te.total_break_minutes,
+        te.status,
+        te.notes,
+        DATE(te.clock_in_time) as work_date,
+        u.username,
+        json_build_object('username', u.username) as employee
+      FROM time_entries te
+      JOIN users u ON te.user_id = u.id
+      WHERE te.tenant_id = $1
+        ${start_date ? `AND te.clock_in_time >= $2` : ''}
+        ${end_date ? `AND te.clock_in_time <= $${start_date ? '3' : '2'}` : ''}
+      ORDER BY te.clock_in_time DESC
+      LIMIT 500
+    `;
+
+    const params: any[] = [currentUser.tenantId];
+    if (start_date) params.push(start_date);
+    if (end_date) params.push(end_date);
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      entries: result.rows.map(row => ({
+        ...row,
+        total_hours: parseFloat(row.total_hours) || 0,
+        overtime_hours: parseFloat(row.overtime_hours) || 0
+      })),
+      summary: {
+        total_hours: result.rows.reduce((sum, r) => sum + (parseFloat(r.total_hours) || 0), 0),
+        overtime_hours: result.rows.reduce((sum, r) => sum + (parseFloat(r.overtime_hours) || 0), 0),
+        total_entries: result.rows.length,
+        avg_hours: result.rows.length > 0 ? result.rows.reduce((sum, r) => sum + (parseFloat(r.total_hours) || 0), 0) / result.rows.length : 0
+      }
+    });
+  } catch (error) {
+    console.error('Detailed report error:', error);
+    res.status(500).json({ error: 'Failed to generate detailed report' });
+  }
+});
+
+// Overtime report
+router.get('/overtime', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const currentUser = req.user!;
+
+    const query = `
+      SELECT 
+        te.id,
+        te.clock_in_time,
+        te.clock_out_time,
+        te.total_hours,
+        te.overtime_hours,
+        te.total_break_minutes,
+        te.status,
+        te.notes,
+        DATE(te.clock_in_time) as work_date,
+        u.username,
+        json_build_object('username', u.username) as employee
+      FROM time_entries te
+      JOIN users u ON te.user_id = u.id
+      WHERE te.tenant_id = $1
+        AND te.is_overtime = true
+        AND te.overtime_hours > 0
+        ${start_date ? `AND te.clock_in_time >= $2` : ''}
+        ${end_date ? `AND te.clock_in_time <= $${start_date ? '3' : '2'}` : ''}
+      ORDER BY te.overtime_hours DESC, te.clock_in_time DESC
+      LIMIT 500
+    `;
+
+    const params: any[] = [currentUser.tenantId];
+    if (start_date) params.push(start_date);
+    if (end_date) params.push(end_date);
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      entries: result.rows.map(row => ({
+        ...row,
+        total_hours: parseFloat(row.total_hours) || 0,
+        overtime_hours: parseFloat(row.overtime_hours) || 0
+      })),
+      summary: {
+        total_hours: result.rows.reduce((sum, r) => sum + (parseFloat(r.total_hours) || 0), 0),
+        overtime_hours: result.rows.reduce((sum, r) => sum + (parseFloat(r.overtime_hours) || 0), 0),
+        total_entries: result.rows.length,
+        avg_hours: result.rows.length > 0 ? result.rows.reduce((sum, r) => sum + (parseFloat(r.total_hours) || 0), 0) / result.rows.length : 0
+      }
+    });
+  } catch (error) {
+    console.error('Overtime report error:', error);
+    res.status(500).json({ error: 'Failed to generate overtime report' });
+  }
+});
+
+// Exceptions report - incomplete or problematic entries
+router.get('/exceptions', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const currentUser = req.user!;
+
+    const query = `
+      SELECT 
+        te.id,
+        te.clock_in_time,
+        te.clock_out_time,
+        te.total_hours,
+        te.overtime_hours,
+        te.total_break_minutes,
+        te.status,
+        te.notes,
+        DATE(te.clock_in_time) as work_date,
+        u.username,
+        json_build_object('username', u.username) as employee
+      FROM time_entries te
+      JOIN users u ON te.user_id = u.id
+      WHERE te.tenant_id = $1
+        AND (
+          te.clock_out_time IS NULL 
+          OR te.total_hours < 0 
+          OR te.total_hours > 24
+          OR te.status = 'pending'
+        )
+        ${start_date ? `AND te.clock_in_time >= $2` : ''}
+        ${end_date ? `AND te.clock_in_time <= $${start_date ? '3' : '2'}` : ''}
+      ORDER BY te.clock_in_time DESC
+      LIMIT 500
+    `;
+
+    const params: any[] = [currentUser.tenantId];
+    if (start_date) params.push(start_date);
+    if (end_date) params.push(end_date);
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      entries: result.rows.map(row => ({
+        ...row,
+        total_hours: parseFloat(row.total_hours) || 0,
+        overtime_hours: parseFloat(row.overtime_hours) || 0
+      })),
+      summary: {
+        total_hours: result.rows.reduce((sum, r) => sum + (parseFloat(r.total_hours) || 0), 0),
+        overtime_hours: result.rows.reduce((sum, r) => sum + (parseFloat(r.overtime_hours) || 0), 0),
+        total_entries: result.rows.length,
+        avg_hours: result.rows.length > 0 ? result.rows.reduce((sum, r) => sum + (parseFloat(r.total_hours) || 0), 0) / result.rows.length : 0
+      }
+    });
+  } catch (error) {
+    console.error('Exceptions report error:', error);
+    res.status(500).json({ error: 'Failed to generate exceptions report' });
+  }
+});
+
 // Attendance summary report (matches Flask reports.html)
 router.get('/attendance', authenticate, async (req: AuthRequest, res) => {
   try {

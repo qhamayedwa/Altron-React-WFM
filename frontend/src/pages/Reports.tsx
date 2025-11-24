@@ -1,56 +1,66 @@
 import { useState, useEffect } from 'react';
 import { Card, Form, Button, Row, Col, Table, Badge } from 'react-bootstrap';
-import { Download, FileText, Clock, TrendingUp, Users, Calendar, BarChart2, Home, Printer } from 'lucide-react';
+import { Download, BarChart2, ArrowLeft, FileText, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 
-interface AttendanceSummary {
-  username: string;
-  email: string;
-  total_days: number;
+interface ReportEntry {
+  username?: string;
+  employee?: { username: string };
+  total_entries?: number;
   total_hours: number;
-  avg_hours: number;
-}
-
-interface PayPeriodSummary {
-  period_start: string;
-  period_end: string;
-  regular_hours: number;
   overtime_hours: number;
-  total_hours: number;
-  gross_pay: number;
+  work_date?: string;
+  clock_in_time: string;
+  clock_out_time?: string;
+  total_break_minutes?: number;
+  status: string;
+  notes?: string;
 }
 
 interface ReportData {
-  total_hours: number;
-  overtime_hours: number;
-  attendance_summary: AttendanceSummary[];
-  pay_period_summary: PayPeriodSummary[];
+  entries: ReportEntry[];
+  summary: {
+    total_hours: number;
+    overtime_hours: number;
+    total_entries: number;
+    avg_hours: number;
+  };
 }
 
 export default function Reports() {
+  const navigate = useNavigate();
+  const [reportType, setReportType] = useState('summary');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
 
   useEffect(() => {
-    // Set default date range (last 30 days)
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - 30);
+    // Set default date range to current month
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     
-    setEndDate(end.toISOString().split('T')[0]);
-    setStartDate(start.toISOString().split('T')[0]);
+    setStartDate(firstDay.toISOString().split('T')[0]);
+    setEndDate(lastDay.toISOString().split('T')[0]);
   }, []);
 
-  const generateReport = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!startDate || !endDate) return;
+  const generateReport = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!startDate || !endDate) {
+      alert('Please select a date range first');
+      return;
+    }
 
     setLoading(true);
     try {
-      const response = await api.get('/reports/attendance', {
-        params: { start_date: startDate, end_date: endDate }
+      const response = await api.get(`/reports/${reportType}`, {
+        params: { 
+          start_date: startDate, 
+          end_date: endDate,
+          type: reportType
+        }
       });
       setReportData(response.data);
     } catch (error) {
@@ -61,37 +71,14 @@ export default function Reports() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const generateDetailedAnalysis = () => {
-    if (!reportData) return;
-
-    const totalEmployees = reportData.attendance_summary?.length || 0;
-    const totalHours = reportData.total_hours || 0;
-    const overtimeHours = reportData.overtime_hours || 0;
-    
-    let analysisText = `Detailed Analysis Summary:\n\n`;
-    analysisText += `Total Active Employees: ${totalEmployees}\n`;
-    analysisText += `Total Hours Worked: ${totalHours.toFixed(2)}\n`;
-    analysisText += `Overtime Hours: ${overtimeHours.toFixed(2)}\n`;
-    analysisText += `Average Hours per Employee: ${totalEmployees > 0 ? (totalHours/totalEmployees).toFixed(1) : 0}\n\n`;
-    
-    if (totalHours > 0) {
-      analysisText += `Performance Insights:\n`;
-      if (overtimeHours > 0) {
-        analysisText += `• ${((overtimeHours/totalHours)*100).toFixed(1)}% of total hours are overtime\n`;
-      }
-      analysisText += `• Average productivity level: ${totalHours > 160 ? 'High' : totalHours > 80 ? 'Normal' : 'Low'}\n`;
+  const exportReport = async () => {
+    if (!startDate || !endDate) {
+      alert('Please select a date range first');
+      return;
     }
-    
-    alert(analysisText);
-  };
 
-  const exportToCSV = async (type: 'attendance' | 'payroll') => {
     try {
-      const response = await api.get(`/reports/export-${type}-csv`, {
+      const response = await api.get(`/reports/export-${reportType}-csv`, {
         params: { start_date: startDate, end_date: endDate },
         responseType: 'blob'
       });
@@ -99,308 +86,311 @@ export default function Reports() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${type}_report_${startDate}_${endDate}.csv`);
+      link.setAttribute('download', `${reportType}_report_${startDate}_${endDate}.csv`);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
-      console.error(`Failed to export ${type} to CSV:`, error);
-      alert(`Failed to export ${type} to CSV`);
+      console.error('Export failed:', error);
+      alert('Export functionality will be implemented in future updates');
     }
   };
 
-  const getActivityBadge = (hours: number) => {
-    if (hours > 160) {
-      return <Badge bg="success">High Activity</Badge>;
-    } else if (hours > 80) {
-      return <Badge bg="primary">Normal</Badge>;
-    } else {
-      return <Badge bg="warning">Low Activity</Badge>;
+  const handleReportTypeChange = (newType: string) => {
+    setReportType(newType);
+    if (startDate && endDate) {
+      // Auto-generate report when type changes
+      setTimeout(() => {
+        const event = new Event('submit', { bubbles: true, cancelable: true });
+        document.querySelector('form')?.dispatchEvent(event);
+      }, 100);
     }
   };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const calculateTotals = () => {
+    if (!reportData?.entries) return { totalEntries: 0, totalHours: 0, overtimeHours: 0, regularHours: 0 };
+    
+    const totalEntries = reportData.entries.reduce((sum, row) => sum + (row.total_entries || 1), 0);
+    const totalHours = reportData.entries.reduce((sum, row) => sum + (row.total_hours || 0), 0);
+    const overtimeHours = reportData.entries.reduce((sum, row) => sum + (row.overtime_hours || 0), 0);
+    const regularHours = totalHours - overtimeHours;
+    
+    return { totalEntries, totalHours, overtimeHours, regularHours };
+  };
+
+  const getReportTitle = () => {
+    switch (reportType) {
+      case 'summary': return 'Employee Summary Report';
+      case 'detailed': return 'Detailed Time Entries';
+      case 'overtime': return 'Overtime Report';
+      case 'exceptions': return 'Exceptions Report';
+      default: return 'Report';
+    }
+  };
+
+  const totals = calculateTotals();
 
   return (
-    <div className="container-fluid py-4">
-      {/* Header */}
+    <div className="container py-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 className="h3 mb-0">Reports & Analytics</h1>
-        </div>
-        <nav aria-label="breadcrumb">
-          <ol className="breadcrumb mb-0">
-            <li className="breadcrumb-item"><a href="/">Dashboard</a></li>
-            <li className="breadcrumb-item active">Reports</li>
-          </ol>
-        </nav>
+        <h2>
+          <BarChart2 size={28} className="me-2" style={{ color: '#28468D' }} />
+          Time Attendance Reports
+        </h2>
+        <Button
+          variant="outline-secondary"
+          onClick={() => navigate('/')}
+        >
+          <ArrowLeft size={18} className="me-2" />
+          Back to Dashboard
+        </Button>
       </div>
 
-      {/* Date Range Filter */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <Card>
-            <Card.Body>
-              <Form onSubmit={generateReport}>
-                <Row className="g-3">
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label>Start Date</Form.Label>
-                      <Form.Control
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label>End Date</Form.Label>
-                      <Form.Control
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label>&nbsp;</Form.Label>
-                      <div className="d-grid">
-                        <Button 
-                          type="submit"
-                          variant="primary"
-                          style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
-                          disabled={loading}
-                        >
-                          <FileText size={18} className="me-2" />
-                          {loading ? 'Generating...' : 'Generate Report'}
-                        </Button>
-                      </div>
-                    </Form.Group>
-                  </Col>
-                </Row>
-              </Form>
-            </Card.Body>
-          </Card>
-        </div>
-      </div>
+      {/* Report Filters */}
+      <Card className="mb-4">
+        <Card.Header>
+          <h5 className="mb-0">Report Parameters</h5>
+        </Card.Header>
+        <Card.Body>
+          <Form onSubmit={generateReport}>
+            <Row className="g-3">
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label>Report Type</Form.Label>
+                  <Form.Select 
+                    value={reportType} 
+                    onChange={(e) => handleReportTypeChange(e.target.value)}
+                  >
+                    <option value="summary">Summary by Employee</option>
+                    <option value="detailed">Detailed Time Entries</option>
+                    <option value="overtime">Overtime Report</option>
+                    <option value="exceptions">Exceptions Report</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label>Start Date</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label>End Date</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3} className="d-flex align-items-end">
+                <Button 
+                  type="submit"
+                  variant="primary"
+                  style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
+                  className="me-2"
+                  disabled={loading}
+                >
+                  <Search size={18} className="me-2" />
+                  {loading ? 'Loading...' : 'Generate Report'}
+                </Button>
+                <Button 
+                  variant="outline-success"
+                  onClick={exportReport}
+                  disabled={!reportData}
+                >
+                  <Download size={18} className="me-2" />
+                  Export
+                </Button>
+              </Col>
+            </Row>
+          </Form>
+        </Card.Body>
+      </Card>
 
-      {/* Summary Statistics */}
-      {reportData && (
-        <>
-          <Row className="mb-4">
-            <Col md={3}>
-              <Card>
-                <Card.Body className="text-center">
-                  <Clock size={32} className="mb-2" style={{ color: '#0d6efd' }} />
-                  <h5 className="card-title">Total Hours</h5>
-                  <h3 className="text-primary">{reportData.total_hours?.toFixed(2) || '0.00'}</h3>
-                  <small className="text-muted">Current Period</small>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={3}>
-              <Card>
-                <Card.Body className="text-center">
-                  <TrendingUp size={32} className="mb-2" style={{ color: '#198754' }} />
-                  <h5 className="card-title">Overtime Hours</h5>
-                  <h3 className="text-success">{reportData.overtime_hours?.toFixed(2) || '0.00'}</h3>
-                  <small className="text-muted">Extra Time</small>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={3}>
-              <Card>
-                <Card.Body className="text-center">
-                  <Users size={32} className="mb-2" style={{ color: '#20c997' }} />
-                  <h5 className="card-title">Active Employees</h5>
-                  <h3 className="text-info">{reportData.attendance_summary?.length || 0}</h3>
-                  <small className="text-muted">With Time Entries</small>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={3}>
-              <Card>
-                <Card.Body className="text-center">
-                  <Calendar size={32} className="mb-2" style={{ color: '#ffc107' }} />
-                  <h5 className="card-title">Total Days</h5>
-                  <h3 className="text-warning">{reportData.attendance_summary?.length || 0}</h3>
-                  <small className="text-muted">Attendance Days</small>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+      {/* Report Results */}
+      {reportData && reportData.entries && reportData.entries.length > 0 ? (
+        <Card>
+          <Card.Header className="d-flex justify-content-between align-items-center">
+            <h5 className="mb-0">{getReportTitle()}</h5>
+            <small className="text-muted">{startDate} to {endDate}</small>
+          </Card.Header>
+          <Card.Body>
+            {reportType === 'summary' ? (
+              /* Summary Report Table */
+              <div className="table-responsive">
+                <Table striped>
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Total Entries</th>
+                      <th>Regular Hours</th>
+                      <th>Overtime Hours</th>
+                      <th>Total Hours</th>
+                      <th>Average Daily Hours</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.entries.map((row, index) => {
+                      const regularHours = (row.total_hours || 0) - (row.overtime_hours || 0);
+                      const avgHours = (row.total_hours || 0) / (row.total_entries || 1);
+                      return (
+                        <tr key={index}>
+                          <td><strong>{row.username}</strong></td>
+                          <td>{row.total_entries || 0}</td>
+                          <td>{regularHours.toFixed(2)}</td>
+                          <td>{(row.overtime_hours || 0).toFixed(2)}</td>
+                          <td><strong>{(row.total_hours || 0).toFixed(2)}</strong></td>
+                          <td>{avgHours.toFixed(1)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="table-secondary">
+                    <tr>
+                      <th>TOTALS</th>
+                      <th>{totals.totalEntries}</th>
+                      <th>{totals.regularHours.toFixed(2)}</th>
+                      <th>{totals.overtimeHours.toFixed(2)}</th>
+                      <th><strong>{totals.totalHours.toFixed(2)}</strong></th>
+                      <th>-</th>
+                    </tr>
+                  </tfoot>
+                </Table>
+              </div>
+            ) : (
+              /* Detailed Report Table */
+              <div className="table-responsive">
+                <Table striped size="sm">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Date</th>
+                      <th>Clock In</th>
+                      <th>Clock Out</th>
+                      <th>Break</th>
+                      <th>Hours</th>
+                      <th>Overtime</th>
+                      <th>Status</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.entries.map((entry, index) => (
+                      <tr key={index}>
+                        <td>{entry.employee?.username || entry.username}</td>
+                        <td>{entry.work_date ? formatDate(entry.work_date) : formatDate(entry.clock_in_time)}</td>
+                        <td>{formatTime(entry.clock_in_time)}</td>
+                        <td>
+                          {entry.clock_out_time ? (
+                            formatTime(entry.clock_out_time)
+                          ) : (
+                            <Badge bg="warning">Open</Badge>
+                          )}
+                        </td>
+                        <td>{entry.total_break_minutes || 0}m</td>
+                        <td>{entry.total_hours.toFixed(2)}</td>
+                        <td>
+                          {entry.overtime_hours && entry.overtime_hours > 0 ? (
+                            <span className="text-warning">{entry.overtime_hours.toFixed(2)}</span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td>
+                          <Badge bg={
+                            entry.status === 'approved' ? 'success' :
+                            entry.status === 'clocked_in' ? 'primary' : 'warning'
+                          }>
+                            {entry.status}
+                          </Badge>
+                        </td>
+                        <td>
+                          {entry.notes ? (
+                            entry.notes.length > 50 ? `${entry.notes.substring(0, 50)}...` : entry.notes
+                          ) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            )}
 
-          {/* Employee Attendance Summary */}
-          {reportData.attendance_summary && reportData.attendance_summary.length > 0 && (
-            <Row className="mb-4">
-              <Col xs={12}>
-                <Card>
-                  <Card.Header>
-                    <h5 className="card-title mb-0">
-                      <Users size={20} className="me-2" />
-                      Employee Attendance Summary
+            {/* Report Statistics */}
+            <Row className="mt-4">
+              <Col md={3}>
+                <Card className="bg-light">
+                  <Card.Body className="text-center">
+                    <h5 className="text-primary">
+                      {reportType === 'summary' ? reportData.entries.length : reportData.entries.length}
                     </h5>
-                  </Card.Header>
-                  <Card.Body>
-                    <div className="table-responsive">
-                      <Table striped hover>
-                        <thead>
-                          <tr>
-                            <th>Employee</th>
-                            <th>Total Days</th>
-                            <th>Total Hours</th>
-                            <th>Average Hours/Day</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reportData.attendance_summary.map((summary, index) => (
-                            <tr key={index}>
-                              <td>
-                                <strong>{summary.username}</strong>
-                                {summary.email && (
-                                  <>
-                                    <br />
-                                    <small className="text-muted">{summary.email}</small>
-                                  </>
-                                )}
-                              </td>
-                              <td>{summary.total_days}</td>
-                              <td>{summary.total_hours.toFixed(2)} hrs</td>
-                              <td>{summary.avg_hours.toFixed(2)} hrs</td>
-                              <td>{getActivityBadge(summary.total_hours)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
-                    </div>
+                    <small className="text-muted">
+                      {reportType === 'summary' ? 'Employees' : 'Time Entries'}
+                    </small>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="bg-light">
+                  <Card.Body className="text-center">
+                    <h5 className="text-success">{totals.totalHours.toFixed(1)}</h5>
+                    <small className="text-muted">Total Hours</small>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="bg-light">
+                  <Card.Body className="text-center">
+                    <h5 className="text-warning">{totals.overtimeHours.toFixed(1)}</h5>
+                    <small className="text-muted">Overtime Hours</small>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="bg-light">
+                  <Card.Body className="text-center">
+                    <h5 className="text-info">
+                      {(totals.totalHours / (reportData.entries.length || 1)).toFixed(1)}
+                    </h5>
+                    <small className="text-muted">Average Hours</small>
                   </Card.Body>
                 </Card>
               </Col>
             </Row>
-          )}
-
-          {/* Pay Period Summary */}
-          {reportData.pay_period_summary && reportData.pay_period_summary.length > 0 && (
-            <Row className="mb-4">
-              <Col xs={12}>
-                <Card>
-                  <Card.Header>
-                    <h5 className="card-title mb-0">
-                      <span className="me-2 fw-bold" style={{ color: '#198754' }}>R</span>
-                      Pay Period Summary
-                    </h5>
-                  </Card.Header>
-                  <Card.Body>
-                    <div className="table-responsive">
-                      <Table striped hover>
-                        <thead>
-                          <tr>
-                            <th>Period</th>
-                            <th>Regular Hours</th>
-                            <th>Overtime Hours</th>
-                            <th>Total Hours</th>
-                            <th>Gross Pay</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reportData.pay_period_summary.map((period, index) => (
-                            <tr key={index}>
-                              <td>
-                                {new Date(period.period_start).toLocaleDateString()} - {new Date(period.period_end).toLocaleDateString()}
-                              </td>
-                              <td>{period.regular_hours.toFixed(2)} hrs</td>
-                              <td>{period.overtime_hours.toFixed(2)} hrs</td>
-                              <td>{period.total_hours.toFixed(2)} hrs</td>
-                              <td>R{period.gross_pay.toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-          )}
-
-          {/* Export Options */}
-          <Row>
-            <Col xs={12}>
-              <Card>
-                <Card.Header>
-                  <h5 className="card-title mb-0">
-                    <Download size={20} className="me-2" />
-                    Export Options
-                  </h5>
-                </Card.Header>
-                <Card.Body>
-                  <p className="text-muted">Export report data in various formats for further analysis.</p>
-                  <Row>
-                    <Col md={6}>
-                      <div className="d-grid gap-2">
-                        <Button 
-                          variant="outline-primary"
-                          onClick={() => exportToCSV('attendance')}
-                        >
-                          <FileText size={18} className="me-2" />
-                          Export Attendance to CSV
-                        </Button>
-                        <Button 
-                          variant="outline-success"
-                          onClick={() => exportToCSV('payroll')}
-                        >
-                          <span className="me-2 fw-bold" style={{ color: '#198754' }}>R</span>
-                          Export Payroll to CSV
-                        </Button>
-                      </div>
-                    </Col>
-                    <Col md={6}>
-                      <div className="d-grid gap-2">
-                        <Button 
-                          variant="outline-secondary"
-                          onClick={handlePrint}
-                        >
-                          <Printer size={18} className="me-2" />
-                          Print Report
-                        </Button>
-                        <Button 
-                          variant="outline-info"
-                          onClick={generateDetailedAnalysis}
-                        >
-                          <BarChart2 size={18} className="me-2" />
-                          Detailed Analysis
-                        </Button>
-                      </div>
-                    </Col>
-                  </Row>
-                  <small className="text-muted">Click the buttons above to export reports or generate detailed analysis.</small>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-        </>
-      )}
-
-      {/* No Data Message */}
-      {!reportData && !loading && (
-        <Row>
-          <Col xs={12}>
-            <Card>
-              <Card.Body className="text-center py-5">
-                <BarChart2 size={48} className="mb-3 text-muted" />
-                <h5 className="text-muted">No Report Data Available</h5>
-                <p className="text-muted">Select a date range above or ensure time entries exist for the selected period.</p>
-                <a href="/" className="btn btn-primary" style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}>
-                  <Home size={18} className="me-2" />
-                  Back to Dashboard
-                </a>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+          </Card.Body>
+        </Card>
+      ) : (
+        <Card>
+          <Card.Body className="text-center py-5">
+            <FileText size={64} className="text-muted mb-3" />
+            <h5>No Data Found</h5>
+            <p className="text-muted">Select a date range and report type to generate a report.</p>
+          </Card.Body>
+        </Card>
       )}
     </div>
   );
