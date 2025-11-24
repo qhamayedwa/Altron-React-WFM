@@ -79,7 +79,6 @@
     "cosmiconfig": "^8.3.6",
     "cross-spawn": "^7.0.6",
     "csstype": "^3.2.3",
-    "date-fns": "^4.1.0",
     "dayjs": "^1.11.19",
     "debug": "^4.4.3",
     "dedent": "^1.7.0",
