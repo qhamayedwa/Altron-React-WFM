@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Row, Col, Card, Button } from 'react-bootstrap';
-import { Clock, Calendar, Users, TrendingUp } from 'lucide-react';
+import { Clock, Calendar, Users, TrendingUp, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
@@ -123,6 +123,10 @@ export default function Dashboard() {
               <Button variant="outline-primary" className="w-100" onClick={() => navigate('/my-schedule')}>
                 <TrendingUp size={16} className="me-2" />
                 View Schedule
+              </Button>
+              <Button variant="outline-success" className="w-100" onClick={() => navigate('/payroll/processing')}>
+                <DollarSign size={16} className="me-2" />
+                View Payroll
               </Button>
             </Card.Body>
           </Card>
