@@ -1,14 +1,62 @@
-import { Card, Button, Row, Col } from 'react-bootstrap';
+import { useState, useEffect } from 'react';
+import { Card, Button, Row, Col, Badge, Spinner, Table } from 'react-bootstrap';
 import { Briefcase, Plus, List, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/client';
+
+interface LeaveApplication {
+  id: number;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function MyLeave() {
   const navigate = useNavigate();
+  const [recentApplications, setRecentApplications] = useState<LeaveApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const leaveBalances = [
     { name: 'Annual Leave', balance: 15.0, used: 5.0, accrued: 20.0 },
     { name: 'Sick Leave', balance: 10.0, used: 2.0, accrued: 12.0 },
     { name: 'Personal Leave', balance: 5.0, used: 0.0, accrued: 5.0 },
   ];
+
+  useEffect(() => {
+    loadRecentApplications();
+  }, []);
+
+  const loadRecentApplications = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/leave/requests');
+      const all = response.data.leaveRequests || [];
+      // Get the 5 most recent
+      setRecentApplications(all.slice(0, 5));
+    } catch (error) {
+      console.error('Failed to load recent applications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusMap: Record<string, string> = {
+      pending: 'warning',
+      approved: 'success',
+      rejected: 'danger'
+    };
+    return <Badge bg={statusMap[status] || 'secondary'}>{status.toUpperCase()}</Badge>;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-ZA', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   return (
     <div className="py-4">
@@ -62,18 +110,49 @@ export default function MyLeave() {
       <Row>
         <Col md={8}>
           <Card>
-            <Card.Header>
+            <Card.Header className="d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Recent Leave Applications</h5>
+              <Button variant="outline-secondary" size="sm" onClick={() => navigate('/my-applications')}>
+                View All
+              </Button>
             </Card.Header>
             <Card.Body>
-              <div className="text-center py-4">
-                <Calendar size={48} className="text-muted mb-3" />
-                <h6>No Leave Applications</h6>
-                <p className="text-muted">You haven't submitted any leave applications yet.</p>
-                <Button variant="primary" onClick={() => navigate('/apply-leave')}>
-                  Apply for Leave
-                </Button>
-              </div>
+              {loading ? (
+                <div className="text-center py-4">
+                  <Spinner animation="border" variant="primary" size="sm" />
+                  <p className="mt-2 text-muted">Loading...</p>
+                </div>
+              ) : recentApplications.length === 0 ? (
+                <div className="text-center py-4">
+                  <Calendar size={48} className="text-muted mb-3" />
+                  <h6>No Leave Applications</h6>
+                  <p className="text-muted">You haven't submitted any leave applications yet.</p>
+                  <Button variant="primary" onClick={() => navigate('/apply-leave')}>
+                    Apply for Leave
+                  </Button>
+                </div>
+              ) : (
+                <Table hover size="sm">
+                  <thead>
+                    <tr>
+                      <th>Leave Type</th>
+                      <th>Dates</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentApplications.map((app) => (
+                      <tr key={app.id}>
+                        <td>{app.leaveType}</td>
+                        <td>
+                          {formatDate(app.startDate)} - {formatDate(app.endDate)}
+                        </td>
+                        <td>{getStatusBadge(app.status)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
             </Card.Body>
           </Card>
         </Col>
