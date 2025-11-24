@@ -302,7 +302,34 @@ router.get('/entries', authenticate, async (req: AuthRequest, res: Response): Pr
 
     const { start_date, end_date, page = '1', per_page = '10' } = req.query;
 
-    let queryStr = `
+    // Build WHERE clause
+    const params: any[] = [userId];
+    let paramCount = 1;
+    let whereClause = 'WHERE user_id = $1';
+
+    if (start_date) {
+      paramCount++;
+      whereClause += ` AND DATE(clock_in_time) >= $${paramCount}`;
+      params.push(start_date);
+    }
+
+    if (end_date) {
+      paramCount++;
+      whereClause += ` AND DATE(clock_in_time) <= $${paramCount}`;
+      params.push(end_date);
+    }
+
+    // Get total count for pagination
+    const countQuery = `SELECT COUNT(*) as count FROM time_entries ${whereClause}`;
+    const countResult = await query(countQuery, params);
+    const totalItems = parseInt(countResult.rows[0].count);
+    const pageNum = parseInt(page as string);
+    const perPageNum = parseInt(per_page as string);
+    const totalPages = Math.ceil(totalItems / perPageNum);
+    const offset = (pageNum - 1) * perPageNum;
+
+    // Build main query with pagination
+    const queryStr = `
       SELECT 
         id,
         clock_in_time,
@@ -324,41 +351,12 @@ router.get('/entries', authenticate, async (req: AuthRequest, res: Response): Pr
         END as overtime_hours,
         is_overtime_approved
       FROM time_entries
-      WHERE user_id = $1
+      ${whereClause}
+      ORDER BY clock_in_time DESC
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
-
-    const params: any[] = [userId];
-    let paramCount = 1;
-
-    if (start_date) {
-      paramCount++;
-      queryStr += ` AND DATE(clock_in_time) >= $${paramCount}`;
-      params.push(start_date);
-    }
-
-    if (end_date) {
-      paramCount++;
-      queryStr += ` AND DATE(clock_in_time) <= $${paramCount}`;
-      params.push(end_date);
-    }
-
-    queryStr += ` ORDER BY clock_in_time DESC`;
-
-    // Get total count for pagination
-    const countResult = await query(
-      queryStr.replace('SELECT id,', 'SELECT COUNT(*) as count FROM (SELECT id,').replace('ORDER BY clock_in_time DESC', ') as subq'),
-      params
-    );
-    const totalItems = parseInt(countResult.rows[0].count);
-    const pageNum = parseInt(page as string);
-    const perPageNum = parseInt(per_page as string);
-    const totalPages = Math.ceil(totalItems / perPageNum);
-    const offset = (pageNum - 1) * perPageNum;
-
-    // Add pagination
-    queryStr += ` LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    
     params.push(perPageNum, offset);
-
     const result = await query(queryStr, params);
 
     res.json({
