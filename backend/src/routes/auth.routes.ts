@@ -208,8 +208,7 @@ router.get('/users/:id', authenticate, async (req: AuthRequest, res: Response): 
     const userId = parseInt(req.params.id);
 
     const userResult = await query(
-      `SELECT u.id, u.username, u.email, u.first_name, u.last_name, 
-              u.employee_number, u.department_id, u.job_id, u.is_active, u.created_at,
+      `SELECT u.*, 
               array_agg(r.name) FILTER (WHERE r.name IS NOT NULL) as roles,
               d.name as department_name
        FROM users u
@@ -234,12 +233,26 @@ router.get('/users/:id', authenticate, async (req: AuthRequest, res: Response): 
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
+      phone: user.phone,
       employee_number: user.employee_number,
       department_id: user.department_id,
       department_name: user.department_name,
       job_id: user.job_id,
+      position: user.employment_type,
+      employment_type: user.employment_type,
+      hire_date: user.hire_date,
+      manager_id: user.manager_id,
+      hourly_rate: user.hourly_rate,
+      address_line1: user.address_line1,
+      address_line2: user.address_line2,
+      city: user.city,
+      postal_code: user.postal_code,
+      emergency_contact_name: user.emergency_contact_name,
+      emergency_contact_phone: user.emergency_contact_phone,
+      emergency_contact_relationship: user.emergency_contact_relationship,
       is_active: user.is_active,
       created_at: user.created_at,
+      last_login: user.last_login,
       roles: user.roles || []
     });
   } catch (error) {
@@ -260,49 +273,131 @@ router.put('/users/:id', authenticate, async (req: AuthRequest, res: Response): 
       email,
       first_name,
       last_name,
+      phone,
       employee_number,
       department_id,
       job_id,
+      position,
+      employment_type,
+      hire_date,
+      manager_id,
+      hourly_rate,
+      address_line1,
+      address_line2,
+      city,
+      postal_code,
+      emergency_contact_name,
+      emergency_contact_phone,
+      emergency_contact_relationship,
       is_active,
       roles,
       password
     } = req.body;
 
-    // Update user basic info
-    let updateQuery = `UPDATE users SET 
-      email = $1, 
-      first_name = $2, 
-      last_name = $3, 
-      employee_number = $4, 
-      department_id = $5, 
-      job_id = $6, 
-      is_active = $7`;
-    
-    let updateParams: any[] = [
-      email,
-      first_name,
-      last_name,
-      employee_number || null,
-      department_id || null,
-      job_id || null,
-      is_active !== false
-    ];
+    // Build dynamic update query
+    const updateFields: string[] = [];
+    const updateParams: any[] = [];
+    let paramIndex = 1;
+
+    // Add fields to update
+    if (email !== undefined) {
+      updateFields.push(`email = $${paramIndex++}`);
+      updateParams.push(email);
+    }
+    if (first_name !== undefined) {
+      updateFields.push(`first_name = $${paramIndex++}`);
+      updateParams.push(first_name);
+    }
+    if (last_name !== undefined) {
+      updateFields.push(`last_name = $${paramIndex++}`);
+      updateParams.push(last_name);
+    }
+    if (phone !== undefined) {
+      updateFields.push(`phone = $${paramIndex++}`);
+      updateParams.push(phone);
+    }
+    if (employee_number !== undefined) {
+      updateFields.push(`employee_number = $${paramIndex++}`);
+      updateParams.push(employee_number || null);
+    }
+    if (department_id !== undefined) {
+      updateFields.push(`department_id = $${paramIndex++}`);
+      updateParams.push(department_id || null);
+    }
+    if (job_id !== undefined) {
+      updateFields.push(`job_id = $${paramIndex++}`);
+      updateParams.push(job_id || null);
+    }
+    if (employment_type !== undefined) {
+      updateFields.push(`employment_type = $${paramIndex++}`);
+      updateParams.push(employment_type || null);
+    }
+    if (hire_date !== undefined) {
+      updateFields.push(`hire_date = $${paramIndex++}`);
+      updateParams.push(hire_date || null);
+    }
+    if (manager_id !== undefined) {
+      updateFields.push(`manager_id = $${paramIndex++}`);
+      updateParams.push(manager_id || null);
+    }
+    if (hourly_rate !== undefined) {
+      updateFields.push(`hourly_rate = $${paramIndex++}`);
+      updateParams.push(hourly_rate || null);
+    }
+    if (address_line1 !== undefined) {
+      updateFields.push(`address_line1 = $${paramIndex++}`);
+      updateParams.push(address_line1 || null);
+    }
+    if (address_line2 !== undefined) {
+      updateFields.push(`address_line2 = $${paramIndex++}`);
+      updateParams.push(address_line2 || null);
+    }
+    if (city !== undefined) {
+      updateFields.push(`city = $${paramIndex++}`);
+      updateParams.push(city || null);
+    }
+    if (postal_code !== undefined) {
+      updateFields.push(`postal_code = $${paramIndex++}`);
+      updateParams.push(postal_code || null);
+    }
+    if (emergency_contact_name !== undefined) {
+      updateFields.push(`emergency_contact_name = $${paramIndex++}`);
+      updateParams.push(emergency_contact_name || null);
+    }
+    if (emergency_contact_phone !== undefined) {
+      updateFields.push(`emergency_contact_phone = $${paramIndex++}`);
+      updateParams.push(emergency_contact_phone || null);
+    }
+    if (emergency_contact_relationship !== undefined) {
+      updateFields.push(`emergency_contact_relationship = $${paramIndex++}`);
+      updateParams.push(emergency_contact_relationship || null);
+    }
+    if (is_active !== undefined) {
+      updateFields.push(`is_active = $${paramIndex++}`);
+      updateParams.push(is_active !== false);
+    }
 
     // If password is provided, update it too
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
-      updateQuery += `, password_hash = $${updateParams.length + 1}`;
+      updateFields.push(`password_hash = $${paramIndex++}`);
       updateParams.push(hashedPassword);
     }
 
-    updateQuery += ` WHERE id = $${updateParams.length + 1} RETURNING id`;
-    updateParams.push(userId);
+    // Always update the updated_at timestamp
+    updateFields.push(`updated_at = NOW()`);
 
-    const updateResult = await query(updateQuery, updateParams);
+    // Execute update
+    if (updateFields.length > 0) {
+      updateParams.push(userId);
+      const updateQuery = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramIndex} RETURNING id`;
+      
+      const updateResult = await query(updateQuery, updateParams);
 
-    if (updateResult.rows.length === 0) {
-      res.status(404).json({ error: 'User not found' });
-      return;
+      if (updateResult.rows.length === 0) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
     }
 
     // Update roles if provided
