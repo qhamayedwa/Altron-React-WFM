@@ -140,17 +140,23 @@ router.get('/team-entries', requireRole('Manager', 'Super User'), async (req: Au
     const { departmentId, status, startDate, endDate } = req.query;
     
     let sql = `
-      SELECT te.*, u.first_name, u.last_name, u.employee_number, d.name as department_name
+      SELECT te.*, u.first_name, u.last_name, u.employee_number, u.username, 
+             d.name as department_name,
+             CASE 
+               WHEN te.clock_out_time IS NOT NULL THEN 
+                 EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0
+               ELSE 0 
+             END as total_hours
       FROM time_entries te
       JOIN users u ON te.user_id = u.id
-      LEFT JOIN departments d ON te.department_id = d.id
-      WHERE te.tenant_id = $1
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.tenant_id = $1
     `;
     const params: any[] = [req.user!.tenantId];
     
     if (departmentId) {
       params.push(departmentId);
-      sql += ` AND te.department_id = $${params.length}`;
+      sql += ` AND u.department_id = $${params.length}`;
     }
     
     if (status) {
@@ -176,16 +182,26 @@ router.get('/team-entries', requireRole('Manager', 'Super User'), async (req: Au
       timeEntries: result.rows.map(row => ({
         id: row.id,
         userId: row.user_id,
+        username: row.username,
+        first_name: row.first_name,
+        last_name: row.last_name,
         employeeName: `${row.first_name} ${row.last_name}`,
         employeeNumber: row.employee_number,
+        employee_number: row.employee_number,
         department: row.department_name,
+        department_name: row.department_name,
         clockInTime: row.clock_in_time,
+        clock_in_time: row.clock_in_time,
         clockOutTime: row.clock_out_time,
-        breakMinutes: row.break_minutes,
-        totalHours: row.total_hours,
+        clock_out_time: row.clock_out_time,
+        breakMinutes: row.total_break_minutes || 0,
+        break_minutes: row.total_break_minutes || 0,
+        totalHours: parseFloat(row.total_hours) || 0,
+        total_hours: parseFloat(row.total_hours) || 0,
         status: row.status,
-        approvedBy: row.approved_by,
-        approvedAt: row.approved_at
+        approvedBy: row.approved_by_manager_id,
+        approved_by: row.approved_by_manager_id,
+        notes: row.notes
       }))
     });
   } catch (error) {

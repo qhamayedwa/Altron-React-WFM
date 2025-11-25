@@ -77,7 +77,7 @@ export default function TeamTimecard() {
 
   const loadDepartments = async () => {
     try {
-      const response = await api.get('/departments');
+      const response = await api.get('/organization/departments');
       setDepartments(response.data.departments || response.data || []);
     } catch (error) {
       console.error('Failed to load departments:', error);

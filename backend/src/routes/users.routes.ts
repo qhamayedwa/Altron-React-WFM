@@ -63,6 +63,35 @@ router.get('/', requireSuperUser, async (req: AuthRequest, res: Response): Promi
   }
 });
 
+// Get team users (for managers and super users)
+router.get('/team', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await query(
+      `SELECT u.id, u.username, u.first_name, u.last_name, u.employee_number, 
+              d.name as department_name
+       FROM users u
+       LEFT JOIN departments d ON u.department_id = d.id
+       WHERE u.tenant_id = $1 AND u.is_active = true
+       ORDER BY u.last_name, u.first_name`,
+      [req.user!.tenantId]
+    );
+
+    res.json({
+      users: result.rows.map(row => ({
+        id: row.id,
+        username: row.username,
+        first_name: row.first_name,
+        last_name: row.last_name,
+        employee_number: row.employee_number,
+        department: row.department_name
+      }))
+    });
+  } catch (error) {
+    console.error('Get team users error:', error);
+    res.status(500).json({ error: 'Failed to retrieve team users' });
+  }
+});
+
 // Get single user
 router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
