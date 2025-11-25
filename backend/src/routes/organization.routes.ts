@@ -11,7 +11,7 @@ router.use(authenticate);
 router.get('/dashboard-stats', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const [companiesCount, regionsCount, sitesCount, departmentsCount, employeesCount] = await Promise.all([
-      query('SELECT COUNT(*) as count FROM companies WHERE tenant_id = $1 AND is_active = true', [req.user!.tenantId]),
+      query('SELECT COUNT(*) as count FROM companies WHERE is_active = true'),
       query('SELECT COUNT(*) as count FROM regions WHERE is_active = true'),
       query('SELECT COUNT(*) as count FROM sites WHERE is_active = true'),
       query('SELECT COUNT(*) as count FROM departments WHERE is_active = true'),
@@ -35,9 +35,9 @@ router.get('/dashboard-stats', async (req: AuthRequest, res: Response): Promise<
               INNER JOIN regions r ON s.region_id = r.id
               WHERE r.company_id = c.id AND u.is_active = true) as employees
       FROM companies c
-      WHERE c.tenant_id = $1 AND c.is_active = true
+      WHERE c.is_active = true
       ORDER BY c.name
-    `, [req.user!.tenantId]);
+    `);
 
     res.json({
       stats: {
@@ -74,7 +74,7 @@ router.get('/dashboard-stats', async (req: AuthRequest, res: Response): Promise<
 router.get('/hierarchy', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const [companies, regions, sites, departments] = await Promise.all([
-      query('SELECT * FROM companies WHERE tenant_id = $1 AND is_active = true ORDER BY name', [req.user!.tenantId]),
+      query('SELECT * FROM companies WHERE is_active = true ORDER BY name'),
       query('SELECT * FROM regions WHERE is_active = true ORDER BY name'),
       query('SELECT * FROM sites WHERE is_active = true ORDER BY name'),
       query('SELECT * FROM departments WHERE is_active = true ORDER BY name')
@@ -652,10 +652,9 @@ router.get('/companies', async (req: AuthRequest, res: Response): Promise<void> 
       `SELECT c.*, COUNT(DISTINCT r.id) as region_count
        FROM companies c
        LEFT JOIN regions r ON r.company_id = c.id AND r.is_active = true
-       WHERE c.tenant_id = $1 AND c.is_active = true
+       WHERE c.is_active = true
        GROUP BY c.id
-       ORDER BY c.name`,
-      [req.user!.tenantId]
+       ORDER BY c.name`
     );
 
     res.json({
@@ -681,8 +680,8 @@ router.get('/companies/:id', async (req: AuthRequest, res: Response): Promise<vo
     const { id } = req.params;
     
     const companyResult = await query(
-      `SELECT * FROM companies WHERE id = $1 AND tenant_id = $2`,
-      [id, req.user!.tenantId]
+      `SELECT * FROM companies WHERE id = $1`,
+      [id]
     );
 
     if (companyResult.rows.length === 0) {
@@ -774,13 +773,13 @@ router.post('/companies', requireSuperUser, async (req: AuthRequest, res: Respon
 
     const result = await query(
       `INSERT INTO companies (
-        tenant_id, name, code, legal_name, registration_number, tax_number,
+        name, code, legal_name, registration_number, tax_number,
         email, phone, website, address_line1, address_line2, city, state_province,
         postal_code, country, timezone, currency, fiscal_year_start
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
-      [req.user!.tenantId, name, code, legalName, registrationNumber, taxNumber,
+      [name, code, legalName, registrationNumber, taxNumber,
        email, phone, website, addressLine1, addressLine2, city, stateProvince,
        postalCode, country, timezone, currency, fiscalYearStart]
     );
@@ -809,11 +808,11 @@ router.put('/companies/:id', requireSuperUser, async (req: AuthRequest, res: Res
         address_line1 = $9, address_line2 = $10, city = $11, state_province = $12,
         postal_code = $13, country = $14, timezone = $15, currency = $16,
         fiscal_year_start = $17, is_active = $18, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $19 AND tenant_id = $20
+      WHERE id = $19
       RETURNING *`,
       [name, code, legalName, registrationNumber, taxNumber, email, phone, website,
        addressLine1, addressLine2, city, stateProvince, postalCode, country,
-       timezone, currency, fiscalYearStart, isActive !== false, id, req.user!.tenantId]
+       timezone, currency, fiscalYearStart, isActive !== false, id]
     );
 
     if (result.rows.length === 0) {
