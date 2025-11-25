@@ -9,7 +9,11 @@ interface Employee {
   full_name?: string;
   first_name?: string;
   last_name?: string;
+  firstName?: string;
+  lastName?: string;
   username: string;
+  isActive?: boolean;
+  is_active?: boolean;
   roles?: Array<{ name: string } | string>;
 }
 
@@ -32,7 +36,9 @@ export default function CalculatePay() {
   const loadEmployees = async () => {
     try {
       const response = await api.get('/users');
-      const activeEmployees = response.data.filter((user: any) => user.is_active);
+      const activeEmployees = response.data.filter((user: any) => 
+        user.isActive === true || user.is_active === true
+      );
       setEmployees(activeEmployees);
     } catch (error) {
       console.error('Error fetching employees:', error);
@@ -41,8 +47,10 @@ export default function CalculatePay() {
 
   const getEmployeeName = (employee: Employee): string => {
     if (employee.full_name) return employee.full_name;
-    if (employee.first_name || employee.last_name) {
-      return `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
+    const firstName = employee.firstName || employee.first_name || '';
+    const lastName = employee.lastName || employee.last_name || '';
+    if (firstName || lastName) {
+      return `${firstName} ${lastName}`.trim();
     }
     return employee.username;
   };
