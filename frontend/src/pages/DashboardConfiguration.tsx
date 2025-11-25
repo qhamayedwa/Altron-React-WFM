@@ -3,115 +3,116 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Table, Button, Badge } from 'react-bootstrap';
 import { 
   Sliders, Save, RefreshCw, ArrowLeft, User, Users, Shield, 
-  Activity, Building2, Clock, Cpu, Calendar, Brain, Bell, Eye 
+  Activity, Building2, Clock, Cpu, Calendar, Brain, Bell, Eye,
+  LucideIcon
 } from 'lucide-react';
 import api from '../api/client';
 
-interface DashboardSection {
+interface SectionConfig {
   id: string;
   name: string;
   description: string;
-  icon: any;
-  color: string;
   employee: boolean;
   manager: boolean;
   super_admin: boolean;
 }
 
+interface SectionMeta {
+  icon: LucideIcon;
+  color: string;
+}
+
+const sectionMetadata: Record<string, SectionMeta> = {
+  'system-health': { icon: Activity, color: 'text-success' },
+  'organization-overview': { icon: Building2, color: 'text-primary' },
+  'attendance-analytics': { icon: Clock, color: 'text-info' },
+  'workflow-automation': { icon: Cpu, color: 'text-success' },
+  'leave-scheduling': { icon: Calendar, color: 'text-warning' },
+  'ai-insights': { icon: Brain, color: 'text-secondary' },
+  'alerts-notifications': { icon: Bell, color: 'text-danger' },
+  'personal-time-tracking': { icon: Clock, color: 'text-primary' },
+  'team-management': { icon: Users, color: 'text-info' }
+};
+
+const defaultSections: SectionConfig[] = [
+  {
+    id: 'system-health',
+    name: 'System Health & Performance',
+    description: 'System uptime, active users, pending tasks, data integrity',
+    employee: false,
+    manager: true,
+    super_admin: true
+  },
+  {
+    id: 'organization-overview',
+    name: 'Organization Structure & User Management',
+    description: 'Companies, regions, departments, user roles and statistics',
+    employee: false,
+    manager: true,
+    super_admin: true
+  },
+  {
+    id: 'attendance-analytics',
+    name: 'Time & Attendance Analytics',
+    description: 'Clock-in charts, metrics, overtime hours, exceptions',
+    employee: true,
+    manager: true,
+    super_admin: true
+  },
+  {
+    id: 'workflow-automation',
+    name: 'Workflow & Automation Status',
+    description: 'Active workflows, automation rates, payroll overview',
+    employee: false,
+    manager: true,
+    super_admin: true
+  },
+  {
+    id: 'leave-scheduling',
+    name: 'Leave Management & Scheduling',
+    description: 'Leave applications, scheduling overview, coverage rates',
+    employee: true,
+    manager: true,
+    super_admin: true
+  },
+  {
+    id: 'ai-insights',
+    name: 'AI Insights & Reports',
+    description: 'AI recommendations, productivity trends, analytics reports',
+    employee: false,
+    manager: true,
+    super_admin: true
+  },
+  {
+    id: 'alerts-notifications',
+    name: 'System Alerts & Notifications',
+    description: 'Critical alerts, system warnings, information messages',
+    employee: true,
+    manager: true,
+    super_admin: true
+  },
+  {
+    id: 'personal-time-tracking',
+    name: 'Personal Time Tracking',
+    description: 'Individual clock-in/out, personal schedule, timecard status',
+    employee: true,
+    manager: false,
+    super_admin: false
+  },
+  {
+    id: 'team-management',
+    name: 'Team Management',
+    description: 'Team member status, pending approvals, team performance',
+    employee: false,
+    manager: true,
+    super_admin: true
+  }
+];
+
 export default function DashboardConfiguration() {
   const navigate = useNavigate();
-  const [sections, setSections] = useState<DashboardSection[]>([
-    {
-      id: 'system-health',
-      name: 'System Health & Performance',
-      description: 'System uptime, active users, pending tasks, data integrity',
-      icon: Activity,
-      color: 'text-success',
-      employee: false,
-      manager: true,
-      super_admin: true
-    },
-    {
-      id: 'organization-overview',
-      name: 'Organization Structure & User Management',
-      description: 'Companies, regions, departments, user roles and statistics',
-      icon: Building2,
-      color: 'text-primary',
-      employee: false,
-      manager: true,
-      super_admin: true
-    },
-    {
-      id: 'attendance-analytics',
-      name: 'Time & Attendance Analytics',
-      description: 'Clock-in charts, metrics, overtime hours, exceptions',
-      icon: Clock,
-      color: 'text-info',
-      employee: true,
-      manager: true,
-      super_admin: true
-    },
-    {
-      id: 'workflow-automation',
-      name: 'Workflow & Automation Status',
-      description: 'Active workflows, automation rates, payroll overview',
-      icon: Cpu,
-      color: 'text-success',
-      employee: false,
-      manager: true,
-      super_admin: true
-    },
-    {
-      id: 'leave-scheduling',
-      name: 'Leave Management & Scheduling',
-      description: 'Leave applications, scheduling overview, coverage rates',
-      icon: Calendar,
-      color: 'text-warning',
-      employee: true,
-      manager: true,
-      super_admin: true
-    },
-    {
-      id: 'ai-insights',
-      name: 'AI Insights & Reports',
-      description: 'AI recommendations, productivity trends, analytics reports',
-      icon: Brain,
-      color: 'text-secondary',
-      employee: false,
-      manager: true,
-      super_admin: true
-    },
-    {
-      id: 'alerts-notifications',
-      name: 'System Alerts & Notifications',
-      description: 'Critical alerts, system warnings, information messages',
-      icon: Bell,
-      color: 'text-danger',
-      employee: true,
-      manager: true,
-      super_admin: true
-    },
-    {
-      id: 'personal-time-tracking',
-      name: 'Personal Time Tracking',
-      description: 'Individual clock-in/out, personal schedule, timecard status',
-      icon: Clock,
-      color: 'text-primary',
-      employee: true,
-      manager: false,
-      super_admin: false
-    },
-    {
-      id: 'team-management',
-      name: 'Team Management',
-      description: 'Team member status, pending approvals, team performance',
-      icon: Users,
-      color: 'text-info',
-      employee: false,
-      manager: true,
-      super_admin: true
-    }
-  ]);
+  const [sections, setSections] = useState<SectionConfig[]>(defaultSections);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadConfiguration();
@@ -125,6 +126,8 @@ export default function DashboardConfiguration() {
       }
     } catch (error) {
       console.log('No existing configuration found, using defaults');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -148,7 +151,7 @@ export default function DashboardConfiguration() {
 
   const handleReset = () => {
     if (confirm('Reset all dashboard settings to defaults?')) {
-      loadConfiguration();
+      setSections(defaultSections);
     }
   };
 
@@ -157,6 +160,24 @@ export default function DashboardConfiguration() {
       .filter(section => section[role])
       .map(section => section.name);
   };
+
+  const getIconForSection = (sectionId: string) => {
+    return sectionMetadata[sectionId]?.icon || Activity;
+  };
+
+  const getColorForSection = (sectionId: string) => {
+    return sectionMetadata[sectionId]?.color || 'text-secondary';
+  };
+
+  if (loading) {
+    return (
+      <div className="container py-5 text-center">
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-5">
@@ -276,12 +297,13 @@ export default function DashboardConfiguration() {
               </thead>
               <tbody>
                 {sections.map(section => {
-                  const Icon = section.icon;
+                  const Icon = getIconForSection(section.id);
+                  const color = getColorForSection(section.id);
                   return (
                     <tr key={section.id}>
                       <td>
                         <div className="d-flex align-items-center">
-                          <Icon size={20} className={`me-2 ${section.color}`} />
+                          <Icon size={20} className={`me-2 ${color}`} />
                           <div>
                             <strong>{section.name}</strong>
                             <br />
