@@ -327,10 +327,10 @@ router.post('/shift-types', requireRole('Manager', 'Super User'), async (req: Au
     const { name, description, defaultStartTime, defaultEndTime } = req.body;
     
     const result = await query(
-      `INSERT INTO shift_types (name, description, default_start_time, default_end_time, is_active, tenant_id)
-       VALUES ($1, $2, $3, $4, true, $5)
+      `INSERT INTO shift_types (name, description, default_start_time, default_end_time, is_active, created_at)
+       VALUES ($1, $2, $3, $4, true, NOW())
        RETURNING *`,
-      [name, description, defaultStartTime, defaultEndTime, req.user!.tenantId]
+      [name, description, defaultStartTime, defaultEndTime]
     );
 
     res.json({
@@ -371,14 +371,10 @@ router.get('/shift-types/:id', async (req: AuthRequest, res: Response): Promise<
         id: shiftType.id,
         name: shiftType.name,
         description: shiftType.description,
-        code: shiftType.code,
         defaultStartTime: shiftType.default_start_time,
         defaultEndTime: shiftType.default_end_time,
-        duration: shiftType.duration,
-        color: shiftType.color,
         isActive: shiftType.is_active,
-        createdAt: shiftType.created_at,
-        updatedAt: shiftType.updated_at
+        createdAt: shiftType.created_at
       }
     });
   } catch (error) {
