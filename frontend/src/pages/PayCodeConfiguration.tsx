@@ -173,11 +173,11 @@ const PayCodeConfiguration: React.FC = () => {
             <Plus className="me-2" size={16} />
             Create Pay Code
           </Button>
-          <Button variant="outline-primary" onClick={() => navigate('/pay-codes/assign')} style={{ color: '#28468D', borderColor: '#28468D' }}>
+          <Button variant="outline-primary" onClick={() => navigate('/pay-codes/bulk-assign')} style={{ color: '#28468D', borderColor: '#28468D' }}>
             <Users className="me-2" size={16} />
             Assign to Employees
           </Button>
-          <Button variant="outline-secondary" onClick={() => navigate('/payroll/reports')}>
+          <Button variant="outline-secondary" onClick={() => navigate('/reports')}>
             <BarChart className="me-2" size={16} />
             Reports
           </Button>
