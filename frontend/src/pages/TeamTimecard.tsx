@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Table, Form, Row, Col, ButtonGroup, InputGroup, Modal, Badge } from 'react-bootstrap';
-import { Users, Calendar as CalendarIcon, AlertTriangle, Download, Filter, Search, X, CheckCircle } from 'lucide-react';
+import { Card, Button, Table, Form, Row, Col, ButtonGroup, InputGroup, Badge } from 'react-bootstrap';
+import { Users, Calendar as CalendarIcon, AlertTriangle, Download, Filter, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 
@@ -47,7 +47,6 @@ export default function TeamTimecard() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showExceptionsModal, setShowExceptionsModal] = useState(false);
   const [exceptions, setExceptions] = useState<TimeEntry[]>([]);
 
   const [summaryStats, setSummaryStats] = useState({
@@ -282,7 +281,7 @@ export default function TeamTimecard() {
           </Button>
           <Button 
             variant="outline-warning" 
-            onClick={() => setShowExceptionsModal(true)}
+            onClick={() => navigate('/time-exceptions')}
           >
             <AlertTriangle size={18} className="me-2" />
             Exceptions {exceptions.length > 0 && <Badge bg="danger" className="ms-1">{exceptions.length}</Badge>}
@@ -514,64 +513,6 @@ export default function TeamTimecard() {
         </Card.Body>
       </Card>
 
-      {/* Exceptions Modal */}
-      <Modal show={showExceptionsModal} onHide={() => setShowExceptionsModal(false)} size="lg">
-        <Modal.Header closeButton style={{ backgroundColor: '#ffc107', color: '#333' }}>
-          <Modal.Title>
-            <AlertTriangle size={24} className="me-2" />
-            Time Entry Exceptions
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {exceptions.length === 0 ? (
-            <div className="text-center py-4">
-              <CheckCircle size={48} className="text-success mb-3" />
-              <h5>No Exceptions Found</h5>
-              <p className="text-muted">All time entries are complete and within normal parameters.</p>
-            </div>
-          ) : (
-            <>
-              <div className="alert alert-warning">
-                <AlertTriangle size={18} className="me-2" />
-                Found {exceptions.length} entries that require attention
-              </div>
-              <Table striped bordered>
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Date</th>
-                    <th>Issue</th>
-                    <th>Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {exceptions.map(entry => (
-                    <tr key={entry.id}>
-                      <td>{entry.first_name} {entry.last_name}</td>
-                      <td>{formatDate(entry.clock_in_time)}</td>
-                      <td>
-                        {!entry.clock_out_time && <Badge bg="warning">Missing Clock Out</Badge>}
-                        {entry.total_hours > 10 && <Badge bg="danger">Excessive Hours</Badge>}
-                        {entry.status === 'exception' && <Badge bg="secondary">Flagged</Badge>}
-                      </td>
-                      <td>
-                        Clock In: {formatTime(entry.clock_in_time)}
-                        {entry.clock_out_time && ` | Clock Out: ${formatTime(entry.clock_out_time)}`}
-                        {entry.total_hours > 0 && ` | ${entry.total_hours.toFixed(2)} hrs`}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowExceptionsModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 }

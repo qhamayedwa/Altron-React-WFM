@@ -423,4 +423,159 @@ router.get('/recent-entries', requireRole('Admin', 'Manager', 'Super User'), asy
   }
 });
 
+// Get Exceptions (entries with issues that need manager attention)
+router.get('/exceptions', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await query(
+      `SELECT 
+        te.id,
+        te.user_id,
+        te.clock_in_time,
+        te.clock_out_time,
+        te.status,
+        te.notes,
+        te.is_overtime_approved,
+        te.approved_by_manager_id,
+        te.total_break_minutes,
+        u.username,
+        u.first_name,
+        u.last_name,
+        CASE 
+          WHEN te.clock_out_time IS NOT NULL THEN 
+            EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0
+          ELSE 0 
+        END as total_hours
+       FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       WHERE u.tenant_id = $1
+         AND (
+           te.status = 'exception'
+           OR te.clock_out_time IS NULL
+           OR (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 > 10)
+           OR (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 > 8 AND te.is_overtime_approved = false)
+         )
+       ORDER BY te.clock_in_time DESC
+       LIMIT 100`,
+      [req.user!.tenantId]
+    );
+
+    const exceptions = result.rows.map(entry => {
+      const totalHours = parseFloat(entry.total_hours) || 0;
+      const overtimeHours = totalHours > 8 ? totalHours - 8 : 0;
+      return {
+        id: entry.id,
+        user_id: entry.user_id,
+        username: entry.username,
+        first_name: entry.first_name,
+        last_name: entry.last_name,
+        full_name: `${entry.first_name || ''} ${entry.last_name || ''}`.trim(),
+        work_date: entry.clock_in_time,
+        clock_in_time: entry.clock_in_time,
+        clock_out_time: entry.clock_out_time,
+        total_hours: totalHours,
+        overtime_hours: overtimeHours,
+        status: entry.status,
+        notes: entry.notes,
+        is_overtime: totalHours > 8,
+        is_overtime_approved: entry.is_overtime_approved || false,
+        approved_by_manager_id: entry.approved_by_manager_id
+      };
+    });
+
+    res.json({ exceptions });
+  } catch (error) {
+    console.error('Get exceptions error:', error);
+    res.status(500).json({ error: 'Failed to retrieve exceptions' });
+  }
+});
+
+// Approve overtime for a time entry
+router.post('/approve-overtime/:id', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    const result = await query(
+      `UPDATE time_entries
+       SET is_overtime_approved = true, approved_by_manager_id = $1
+       WHERE id = $2
+       RETURNING *`,
+      [req.user!.id, id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Time entry not found' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'Overtime approved successfully'
+    });
+  } catch (error) {
+    console.error('Approve overtime error:', error);
+    res.status(500).json({ error: 'Failed to approve overtime' });
+  }
+});
+
+// Add clock out time to a time entry
+router.post('/add-clock-out/:id', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { clockOutTime, notes } = req.body;
+    
+    const result = await query(
+      `UPDATE time_entries
+       SET clock_out_time = $1, 
+           notes = COALESCE(notes, '') || ' ' || COALESCE($2, ''),
+           status = 'approved',
+           approved_by_manager_id = $3
+       WHERE id = $4 AND clock_out_time IS NULL
+       RETURNING *`,
+      [clockOutTime, notes, req.user!.id, id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Time entry not found or already has clock out time' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'Clock out time added successfully'
+    });
+  } catch (error) {
+    console.error('Add clock out error:', error);
+    res.status(500).json({ error: 'Failed to add clock out time' });
+  }
+});
+
+// Add note to a time entry
+router.post('/add-note/:id', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { note } = req.body;
+    
+    const result = await query(
+      `UPDATE time_entries
+       SET notes = COALESCE(notes, '') || ' [Manager Note: ' || $1 || ']'
+       WHERE id = $2
+       RETURNING *`,
+      [note, id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Time entry not found' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: 'Note added successfully'
+    });
+  } catch (error) {
+    console.error('Add note error:', error);
+    res.status(500).json({ error: 'Failed to add note' });
+  }
+});
+
 export default router;
