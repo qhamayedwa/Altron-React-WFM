@@ -578,4 +578,324 @@ router.post('/add-note/:id', requireRole('Manager', 'Super User'), async (req: A
   }
 });
 
+// Get employee timecards with comprehensive data
+router.get('/employee-timecards', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { user_id, start_date, end_date, page = '1', per_page = '20', summary_group = 'pay_code' } = req.query;
+    const pageNum = parseInt(page as string);
+    const perPageNum = parseInt(per_page as string);
+    const offset = (pageNum - 1) * perPageNum;
+    
+    // Default to last 30 days if no dates provided
+    const today = new Date();
+    const defaultStartDate = new Date(today);
+    defaultStartDate.setDate(today.getDate() - 30);
+    
+    const startDateStr = (start_date as string) || defaultStartDate.toISOString().split('T')[0];
+    const endDateStr = (end_date as string) || today.toISOString().split('T')[0];
+    
+    // Build the main query for timecard records
+    let whereConditions = [`DATE(te.clock_in_time) >= $1`, `DATE(te.clock_in_time) <= $2`];
+    const params: any[] = [startDateStr, endDateStr];
+    let paramIndex = 2;
+    
+    // Filter by specific user if provided
+    if (user_id) {
+      paramIndex++;
+      whereConditions.push(`te.user_id = $${paramIndex}`);
+      params.push(user_id);
+    }
+    
+    // For managers, filter by managed departments (unless Super User)
+    const isSuperUser = req.user!.roles?.includes('Super User');
+    if (!isSuperUser) {
+      const managedDepts = await query(
+        `SELECT id FROM departments WHERE manager_id = $1`,
+        [req.user!.id]
+      );
+      if (managedDepts.rows.length > 0) {
+        const deptIds = managedDepts.rows.map(d => d.id);
+        paramIndex++;
+        whereConditions.push(`u.department_id = ANY($${paramIndex})`);
+        params.push(deptIds);
+      } else {
+        // No managed departments, return empty
+        res.json({
+          timecards: [],
+          pagination: { total: 0, page: pageNum, per_page: perPageNum, pages: 0 },
+          summary: { total_records: 0, total_hours: 0, total_amount: 0, absences: 0 },
+          pay_code_summary: []
+        });
+        return;
+      }
+    }
+    
+    const whereClause = whereConditions.join(' AND ');
+    
+    // Get count for pagination
+    const countResult = await query(
+      `SELECT COUNT(*) as total
+       FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       WHERE ${whereClause}`,
+      params
+    );
+    const total = parseInt(countResult.rows[0].total);
+    
+    // Get timecard records with user, department, and schedule info
+    const timecardResult = await query(
+      `SELECT 
+        te.id,
+        te.user_id,
+        te.clock_in_time,
+        te.clock_out_time,
+        te.break_minutes,
+        te.status,
+        te.notes,
+        te.clock_in_latitude,
+        te.clock_in_longitude,
+        te.clock_out_latitude,
+        te.clock_out_longitude,
+        COALESCE(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0, 0) as total_hours,
+        u.username,
+        u.first_name,
+        u.last_name,
+        u.employee_number,
+        u.hourly_rate,
+        u.pay_code,
+        d.id as department_id,
+        d.name as department_name,
+        DATE(te.clock_in_time) as entry_date
+       FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       WHERE ${whereClause}
+       ORDER BY te.clock_in_time DESC
+       LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}`,
+      [...params, perPageNum, offset]
+    );
+    
+    // Calculate summary stats
+    const summaryResult = await query(
+      `SELECT 
+        COUNT(*) as total_records,
+        COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0), 0) as total_hours,
+        COALESCE(SUM(
+          (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
+        ), 0) as total_amount
+       FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       WHERE ${whereClause} AND te.clock_out_time IS NOT NULL`,
+      params
+    );
+    
+    // Get absence count (leave applications in the date range)
+    const absenceResult = await query(
+      `SELECT COUNT(*) as absences
+       FROM leave_applications la
+       JOIN users u ON la.user_id = u.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       WHERE la.start_date <= $2 AND la.end_date >= $1 
+         AND la.status = 'approved'
+         ${user_id ? `AND la.user_id = $${paramIndex}` : ''}`,
+      user_id ? [startDateStr, endDateStr, user_id] : [startDateStr, endDateStr]
+    );
+    
+    // Get pay code summary
+    let payCodeSummary: any[] = [];
+    
+    if (summary_group === 'pay_code') {
+      const payCodeResult = await query(
+        `SELECT 
+          COALESCE(u.pay_code, 'Standard') as pay_code,
+          COALESCE(u.hourly_rate, 0) as rate,
+          COUNT(DISTINCT u.id) as employee_count,
+          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0), 0) as total_hours,
+          COALESCE(SUM(
+            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
+          ), 0) as total_amount
+         FROM time_entries te
+         JOIN users u ON te.user_id = u.id
+         LEFT JOIN departments d ON u.department_id = d.id
+         WHERE ${whereClause} AND te.clock_out_time IS NOT NULL
+         GROUP BY u.pay_code, u.hourly_rate
+         ORDER BY total_amount DESC`,
+        params
+      );
+      payCodeSummary = payCodeResult.rows;
+    } else if (summary_group === 'employee') {
+      const employeeSummaryResult = await query(
+        `SELECT 
+          u.id as user_id,
+          u.username,
+          u.first_name,
+          u.last_name,
+          d.name as department_name,
+          COALESCE(u.pay_code, 'Standard') as pay_code,
+          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0), 0) as total_hours,
+          COALESCE(SUM(
+            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
+          ), 0) as total_amount
+         FROM time_entries te
+         JOIN users u ON te.user_id = u.id
+         LEFT JOIN departments d ON u.department_id = d.id
+         WHERE ${whereClause} AND te.clock_out_time IS NOT NULL
+         GROUP BY u.id, u.username, u.first_name, u.last_name, d.name, u.pay_code
+         ORDER BY total_amount DESC`,
+        params
+      );
+      payCodeSummary = employeeSummaryResult.rows;
+    } else if (summary_group === 'department') {
+      const deptSummaryResult = await query(
+        `SELECT 
+          d.id as department_id,
+          d.name as department_name,
+          COUNT(DISTINCT u.id) as employee_count,
+          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0), 0) as total_hours,
+          COALESCE(SUM(
+            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
+          ), 0) as total_amount
+         FROM time_entries te
+         JOIN users u ON te.user_id = u.id
+         LEFT JOIN departments d ON u.department_id = d.id
+         WHERE ${whereClause} AND te.clock_out_time IS NOT NULL
+         GROUP BY d.id, d.name
+         ORDER BY total_amount DESC`,
+        params
+      );
+      payCodeSummary = deptSummaryResult.rows;
+    }
+    
+    // Format timecard records
+    const timecards = timecardResult.rows.map(row => {
+      const totalHours = parseFloat(row.total_hours) || 0;
+      const hourlyRate = parseFloat(row.hourly_rate) || 0;
+      const amountEarned = totalHours * hourlyRate;
+      
+      return {
+        id: row.id,
+        user_id: row.user_id,
+        username: row.username,
+        first_name: row.first_name,
+        last_name: row.last_name,
+        full_name: `${row.first_name || ''} ${row.last_name || ''}`.trim() || row.username,
+        employee_number: row.employee_number,
+        department: row.department_name,
+        department_id: row.department_id,
+        date: row.entry_date,
+        clock_in: row.clock_in_time,
+        clock_out: row.clock_out_time,
+        break_minutes: row.break_minutes || 0,
+        total_hours: totalHours,
+        hourly_rate: hourlyRate,
+        pay_code: row.pay_code || 'Standard',
+        amount_earned: amountEarned,
+        status: row.status,
+        notes: row.notes,
+        clock_in_location: row.clock_in_latitude && row.clock_in_longitude 
+          ? { lat: row.clock_in_latitude, lng: row.clock_in_longitude }
+          : null,
+        clock_out_location: row.clock_out_latitude && row.clock_out_longitude
+          ? { lat: row.clock_out_latitude, lng: row.clock_out_longitude }
+          : null
+      };
+    });
+    
+    res.json({
+      timecards,
+      pagination: {
+        total,
+        page: pageNum,
+        per_page: perPageNum,
+        pages: Math.ceil(total / perPageNum),
+        has_prev: pageNum > 1,
+        has_next: pageNum < Math.ceil(total / perPageNum)
+      },
+      summary: {
+        total_records: parseInt(summaryResult.rows[0]?.total_records) || 0,
+        total_hours: parseFloat(summaryResult.rows[0]?.total_hours) || 0,
+        total_amount: parseFloat(summaryResult.rows[0]?.total_amount) || 0,
+        absences: parseInt(absenceResult.rows[0]?.absences) || 0
+      },
+      pay_code_summary: payCodeSummary.map(row => ({
+        ...row,
+        total_hours: parseFloat(row.total_hours) || 0,
+        total_amount: parseFloat(row.total_amount) || 0,
+        rate: parseFloat(row.rate) || 0,
+        employee_count: parseInt(row.employee_count) || 0
+      })),
+      date_range: {
+        start_date: startDateStr,
+        end_date: endDateStr
+      }
+    });
+  } catch (error) {
+    console.error('Get employee timecards error:', error);
+    res.status(500).json({ error: 'Failed to retrieve employee timecards' });
+  }
+});
+
+// Get schedules for a user in a date range
+router.get('/schedules', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { user_id, start_date, end_date } = req.query;
+    
+    let whereConditions = ['1=1'];
+    const params: any[] = [];
+    let paramIndex = 0;
+    
+    if (user_id) {
+      paramIndex++;
+      whereConditions.push(`s.user_id = $${paramIndex}`);
+      params.push(user_id);
+    } else {
+      paramIndex++;
+      whereConditions.push(`s.user_id = $${paramIndex}`);
+      params.push(req.user!.id);
+    }
+    
+    if (start_date) {
+      paramIndex++;
+      whereConditions.push(`s.date >= $${paramIndex}`);
+      params.push(start_date);
+    }
+    
+    if (end_date) {
+      paramIndex++;
+      whereConditions.push(`s.date <= $${paramIndex}`);
+      params.push(end_date);
+    }
+    
+    const result = await query(
+      `SELECT 
+        s.*,
+        st.name as shift_type_name,
+        st.start_time as shift_start_time,
+        st.end_time as shift_end_time
+       FROM schedules s
+       LEFT JOIN shift_types st ON s.shift_type_id = st.id
+       WHERE ${whereConditions.join(' AND ')}
+       ORDER BY s.date ASC`,
+      params
+    );
+    
+    res.json({
+      schedules: result.rows.map(row => ({
+        id: row.id,
+        user_id: row.user_id,
+        date: row.date,
+        shift_type: row.shift_type_name,
+        start_time: row.shift_start_time || row.start_time,
+        end_time: row.shift_end_time || row.end_time,
+        notes: row.notes
+      }))
+    });
+  } catch (error) {
+    console.error('Get schedules error:', error);
+    res.status(500).json({ error: 'Failed to retrieve schedules' });
+  }
+});
+
 export default router;
