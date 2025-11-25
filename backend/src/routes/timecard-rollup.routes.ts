@@ -106,17 +106,20 @@ router.post(
         exclude_incomplete
       } = req.body;
 
-      // Build base query
+      // Build base query - calculate hours from clock times
       let sql = `
         SELECT 
           te.id,
           te.user_id,
           te.clock_in_time,
           te.clock_out_time,
-          te.break_start_time,
-          te.break_end_time,
-          te.total_hours,
+          te.total_break_minutes,
           te.status,
+          CASE 
+            WHEN te.clock_out_time IS NOT NULL 
+            THEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0
+            ELSE 0 
+          END as total_hours,
           u.first_name,
           u.last_name,
           u.employee_number,
