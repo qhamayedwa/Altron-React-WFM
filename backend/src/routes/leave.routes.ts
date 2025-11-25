@@ -303,25 +303,61 @@ router.get('/balance', async (req: AuthRequest, res: Response): Promise<void> =>
   try {
     const year = req.query.year || new Date().getFullYear();
     
-    const result = await query(
-      `SELECT lb.*, lt.name
-       FROM leave_balances lb
-       JOIN leave_types lt ON lb.leave_type_id = lt.id
-       WHERE lb.user_id = $1 AND lb.year = $2
-       ORDER BY lt.name`,
-      [req.user!.id, year]
+    // Check if leave_balances table exists
+    const tableCheck = await query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'leave_balances'
+      )`
     );
 
-    res.json({
-      balances: result.rows.map(row => ({
-        leaveType: row.name,
-        leaveTypeCode: row.name ? row.name.substring(0, 2).toUpperCase() : 'LT',
-        totalDays: row.total_days,
-        usedDays: row.used_days,
-        remainingDays: row.remaining_days,
-        year: row.year
-      }))
-    });
+    if (tableCheck.rows[0].exists) {
+      const result = await query(
+        `SELECT lb.*, lt.name as leave_type_name
+         FROM leave_balances lb
+         JOIN leave_types lt ON lb.leave_type_id = lt.id
+         WHERE lb.user_id = $1 AND lb.year = $2
+         ORDER BY lt.name`,
+        [req.user!.id, year]
+      );
+
+      if (result.rows.length > 0) {
+        res.json({
+          balances: result.rows.map(row => ({
+            id: row.id,
+            leaveType: row.leave_type_name,
+            leaveTypeCode: row.leave_type_name ? row.leave_type_name.substring(0, 2).toUpperCase() : 'LT',
+            balance: parseFloat(row.balance) || 0,
+            accrued: parseFloat(row.accrued_this_year) || 0,
+            used: parseFloat(row.used_this_year) || 0,
+            year: row.year
+          }))
+        });
+        return;
+      }
+    }
+
+    // If no balances exist, fetch leave types and create default balances
+    const leaveTypesResult = await query(
+      `SELECT id, name, default_accrual_rate FROM leave_types WHERE is_active = true ORDER BY name`
+    );
+
+    if (leaveTypesResult.rows.length > 0) {
+      res.json({
+        balances: leaveTypesResult.rows.map(lt => ({
+          id: 0,
+          leaveType: lt.name,
+          leaveTypeCode: lt.name ? lt.name.substring(0, 2).toUpperCase() : 'LT',
+          balance: parseFloat(lt.default_accrual_rate) || 0,
+          accrued: parseFloat(lt.default_accrual_rate) || 0,
+          used: 0,
+          year: year
+        }))
+      });
+    } else {
+      // Return empty if no leave types
+      res.json({ balances: [] });
+    }
   } catch (error) {
     console.error('Get leave balance error:', error);
     res.status(500).json({ error: 'Failed to retrieve leave balance' });

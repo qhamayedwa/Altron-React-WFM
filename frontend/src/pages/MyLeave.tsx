@@ -13,32 +13,56 @@ interface LeaveApplication {
   createdAt: string;
 }
 
+interface LeaveBalance {
+  id: number;
+  leaveType: string;
+  leaveTypeCode: string;
+  balance: number;
+  accrued: number;
+  used: number;
+  year: number;
+}
+
 export default function MyLeave() {
   const navigate = useNavigate();
   const [recentApplications, setRecentApplications] = useState<LeaveApplication[]>([]);
+  const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const leaveBalances = [
-    { name: 'Annual Leave', balance: 15.0, used: 5.0, accrued: 20.0 },
-    { name: 'Sick Leave', balance: 10.0, used: 2.0, accrued: 12.0 },
-    { name: 'Personal Leave', balance: 5.0, used: 0.0, accrued: 5.0 },
-  ];
+  const [balancesLoading, setBalancesLoading] = useState(true);
 
   useEffect(() => {
-    loadRecentApplications();
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    await Promise.all([
+      loadRecentApplications(),
+      loadLeaveBalances()
+    ]);
+  };
 
   const loadRecentApplications = async () => {
     try {
       setLoading(true);
       const response = await api.get('/leave/requests');
       const all = response.data.leaveRequests || [];
-      // Get the 5 most recent
       setRecentApplications(all.slice(0, 5));
     } catch (error) {
       console.error('Failed to load recent applications:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLeaveBalances = async () => {
+    try {
+      setBalancesLoading(true);
+      const response = await api.get('/leave/balance');
+      setLeaveBalances(response.data.balances || []);
+    } catch (error) {
+      console.error('Failed to load leave balances:', error);
+    } finally {
+      setBalancesLoading(false);
     }
   };
 
@@ -85,22 +109,33 @@ export default function MyLeave() {
               <h5 className="mb-0">Leave Balances ({new Date().getFullYear()})</h5>
             </Card.Header>
             <Card.Body>
-              <Row>
-                {leaveBalances.map((leave, index) => (
-                  <Col md={4} key={index} className="mb-3">
-                    <Card className="bg-light">
-                      <Card.Body className="text-center">
-                        <h6 className="card-title">{leave.name}</h6>
-                        <h4 className="text-primary">{leave.balance.toFixed(1)}</h4>
-                        <p className="text-muted mb-0">Hours Available</p>
-                        <small className="text-muted">
-                          Used: {leave.used.toFixed(1)}h | Accrued: {leave.accrued.toFixed(1)}h
-                        </small>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
+              {balancesLoading ? (
+                <div className="text-center py-4">
+                  <Spinner animation="border" variant="primary" size="sm" />
+                  <p className="mt-2 text-muted">Loading balances...</p>
+                </div>
+              ) : leaveBalances.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-muted">No leave balances available</p>
+                </div>
+              ) : (
+                <Row>
+                  {leaveBalances.map((leave, index) => (
+                    <Col md={4} key={index} className="mb-3">
+                      <Card className="bg-light">
+                        <Card.Body className="text-center">
+                          <h6 className="card-title">{leave.leaveType}</h6>
+                          <h4 className="text-primary">{leave.balance.toFixed(1)}</h4>
+                          <p className="text-muted mb-0">Hours Available</p>
+                          <small className="text-muted">
+                            Used: {leave.used.toFixed(1)}h | Accrued: {leave.accrued.toFixed(1)}h
+                          </small>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              )}
             </Card.Body>
           </Card>
         </Col>
