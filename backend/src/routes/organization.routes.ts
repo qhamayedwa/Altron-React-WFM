@@ -785,8 +785,18 @@ router.post('/companies', requireSuperUser, async (req: AuthRequest, res: Respon
     );
 
     res.status(201).json({ success: true, company: result.rows[0] });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create company error:', error);
+    if (error.code === '23505') {
+      if (error.detail?.includes('code')) {
+        res.status(400).json({ error: 'A company with this code already exists. Please use a different company code.' });
+      } else if (error.detail?.includes('name')) {
+        res.status(400).json({ error: 'A company with this name already exists. Please use a different company name.' });
+      } else {
+        res.status(400).json({ error: 'A company with these details already exists.' });
+      }
+      return;
+    }
     res.status(500).json({ error: 'Failed to create company' });
   }
 });
