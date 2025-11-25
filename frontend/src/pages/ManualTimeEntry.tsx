@@ -103,10 +103,15 @@ export default function ManualTimeEntry() {
 
     try {
       setLoading(true);
+      
+      // Convert local datetime to ISO string with timezone for consistent storage
+      const clockInDate = new Date(formData.clockInTime);
+      const clockOutDate = formData.clockOutTime ? new Date(formData.clockOutTime) : null;
+      
       await api.post('/time-attendance/manual-entry', {
         userId: parseInt(formData.userId),
-        clockInTime: formData.clockInTime,
-        clockOutTime: formData.clockOutTime || null,
+        clockInTime: clockInDate.toISOString(),
+        clockOutTime: clockOutDate ? clockOutDate.toISOString() : null,
         notes: formData.notes,
         approveOvertime: formData.approveOvertime
       });
