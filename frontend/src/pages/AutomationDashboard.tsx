@@ -47,7 +47,13 @@ const AutomationDashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
-      const response = await fetch('/api/automation/dashboard');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/automation/dashboard', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await response.json();
       
       setWorkflowStats(data.workflow_stats || {});
@@ -66,13 +72,13 @@ const AutomationDashboard: React.FC = () => {
     let endpoint;
     switch(workflowId) {
       case 'leave_accrual':
-        endpoint = '/automation/run-accrual';
+        endpoint = '/api/automation/run-accrual';
         break;
       case 'notifications':
-        endpoint = '/automation/run-notifications';
+        endpoint = '/api/automation/run-notifications';
         break;
       case 'payroll':
-        endpoint = '/automation/run-payroll';
+        endpoint = '/api/automation/run-payroll';
         break;
       default:
         console.error('Unknown workflow:', workflowId);
@@ -81,10 +87,12 @@ const AutomationDashboard: React.FC = () => {
     }
     
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -92,10 +100,10 @@ const AutomationDashboard: React.FC = () => {
       setShowModal(false);
       
       if (data.success) {
-        showAlert('success', `${workflowName} completed successfully. ${data.message}`);
+        showAlert('success', `${workflowName} completed successfully. ${data.message || ''}`);
         setTimeout(() => loadDashboardData(), 2000);
       } else {
-        showAlert('danger', `Error running ${workflowName}: ${data.message}`);
+        showAlert('danger', `Error running ${workflowName}: ${data.message || data.error}`);
       }
     } catch (error) {
       setShowModal(false);
@@ -103,19 +111,35 @@ const AutomationDashboard: React.FC = () => {
     }
   };
 
-  const runAllWorkflows = () => {
+  const runAllWorkflows = async () => {
     if (confirm('Are you sure you want to run all workflows? This may take several minutes.')) {
-      const workflowIds = ['leave_accrual', 'notifications', 'payroll'];
-      let completed = 0;
-      
+      setCurrentWorkflow('All Workflows');
+      setWorkflowStatus('Running all workflows...');
       setShowModal(true);
       
-      workflowIds.forEach((workflowId, index) => {
-        setTimeout(() => {
-          setWorkflowStatus(`Running workflow ${index + 1} of ${workflowIds.length}...`);
-          runWorkflow(workflowId, workflowId);
-        }, index * 5000);
-      });
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/automation/run-all', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+        setShowModal(false);
+        
+        if (data.success) {
+          showAlert('success', `All workflows completed successfully. ${data.message || ''}`);
+          setTimeout(() => loadDashboardData(), 2000);
+        } else {
+          showAlert('danger', `Error running workflows: ${data.message || data.error}`);
+        }
+      } catch (error) {
+        setShowModal(false);
+        showAlert('danger', `Error running all workflows: ${error}`);
+      }
     }
   };
 
