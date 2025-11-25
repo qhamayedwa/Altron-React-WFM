@@ -248,7 +248,7 @@ function App() {
           <Route path="timecard-rollup/configure" element={<TimecardRollupConfig />} />
           <Route path="timecard-rollup/sage-config" element={<SageVIPTimecardConfig />} />
           <Route path="timecard-rollup/history" element={<TimecardRollup />} />
-          <Route path="automation-workflows" element={<AutomationWorkflows />} />
+          <Route path="automation/workflows" element={<AutomationWorkflows />} />
           <Route path="dashboard-configuration" element={<DashboardConfiguration />} />
           <Route path="notification-management" element={<NotificationManagement />} />
           
