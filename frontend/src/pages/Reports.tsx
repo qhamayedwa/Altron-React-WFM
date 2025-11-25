@@ -128,25 +128,149 @@ export default function Reports() {
 
   const generateDetailedReport = () => {
     const totalEmployees = attendanceSummary.length;
-    const avgHoursPerEmployee = totalEmployees > 0 ? (totalHours / totalEmployees).toFixed(1) : 0;
-    const overtimePercentage = totalHours > 0 ? ((overtimeHours / totalHours) * 100).toFixed(1) : 0;
+    const avgHoursPerEmployee = totalEmployees > 0 ? (totalHours / totalEmployees).toFixed(1) : '0';
+    const overtimePercentage = totalHours > 0 ? ((overtimeHours / totalHours) * 100).toFixed(1) : '0';
     const productivityLevel = totalHours > 160 ? 'High' : totalHours > 80 ? 'Normal' : 'Low';
+    const reportDate = new Date().toLocaleDateString('en-ZA', { 
+      year: 'numeric', month: 'long', day: 'numeric' 
+    });
 
-    let analysisText = `Detailed Analysis Summary:\n\n`;
-    analysisText += `Total Active Employees: ${totalEmployees}\n`;
-    analysisText += `Total Hours Worked: ${totalHours.toFixed(2)}\n`;
-    analysisText += `Overtime Hours: ${overtimeHours.toFixed(2)}\n`;
-    analysisText += `Average Hours per Employee: ${avgHoursPerEmployee}\n\n`;
-    
-    if (totalHours > 0) {
-      analysisText += `Performance Insights:\n`;
-      if (overtimeHours > 0) {
-        analysisText += `• ${overtimePercentage}% of total hours are overtime\n`;
-      }
-      analysisText += `• Average productivity level: ${productivityLevel}\n`;
-    }
-    
-    alert(analysisText);
+    // Generate Word document content as HTML (Word can open HTML files)
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Detailed Workforce Analysis Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #28468D; padding-bottom: 20px; }
+          .header h1 { color: #28468D; margin: 0; font-size: 24px; }
+          .header p { color: #666; margin: 5px 0 0 0; }
+          .logo { color: #28468D; font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+          .section { margin: 25px 0; }
+          .section h2 { color: #28468D; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+          .stats-grid { display: table; width: 100%; }
+          .stat-box { display: table-cell; width: 25%; padding: 15px; text-align: center; background: #f8f9fa; border: 1px solid #ddd; }
+          .stat-value { font-size: 24px; font-weight: bold; color: #28468D; }
+          .stat-label { font-size: 12px; color: #666; margin-top: 5px; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background: #28468D; color: white; }
+          tr:nth-child(even) { background: #f8f9fa; }
+          .insight { background: #e8f4f8; padding: 15px; border-left: 4px solid #54B8DF; margin: 10px 0; }
+          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 15px; }
+          .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
+          .badge-success { background: #198754; color: white; }
+          .badge-primary { background: #0d6efd; color: white; }
+          .badge-warning { background: #ffc107; color: #333; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">Altron WFM24/7</div>
+          <h1>Detailed Workforce Analysis Report</h1>
+          <p>Report Period: ${startDate} to ${endDate}</p>
+          <p>Generated: ${reportDate}</p>
+        </div>
+
+        <div class="section">
+          <h2>Executive Summary</h2>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-value">${totalEmployees}</div>
+              <div class="stat-label">Active Employees</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${totalHours.toFixed(2)}</div>
+              <div class="stat-label">Total Hours Worked</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${overtimeHours.toFixed(2)}</div>
+              <div class="stat-label">Overtime Hours</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${avgHoursPerEmployee}</div>
+              <div class="stat-label">Avg Hours/Employee</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Performance Insights</h2>
+          <div class="insight">
+            <strong>Productivity Level:</strong> ${productivityLevel}<br>
+            <strong>Overtime Percentage:</strong> ${overtimePercentage}% of total hours are overtime<br>
+            <strong>Workforce Utilization:</strong> ${totalEmployees > 0 ? 'Active workforce with recorded time entries' : 'No time entries recorded for this period'}
+          </div>
+        </div>
+
+        ${attendanceSummary.length > 0 ? `
+        <div class="section">
+          <h2>Employee Attendance Details</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Email</th>
+                <th>Total Days</th>
+                <th>Total Hours</th>
+                <th>Avg Hours/Day</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${attendanceSummary.map(emp => `
+                <tr>
+                  <td><strong>${emp.username}</strong></td>
+                  <td>${emp.email || '-'}</td>
+                  <td>${emp.total_days}</td>
+                  <td>${emp.total_hours.toFixed(2)} hrs</td>
+                  <td>${emp.avg_hours.toFixed(2)} hrs</td>
+                  <td>
+                    <span class="badge ${emp.total_hours > 160 ? 'badge-success' : emp.total_hours > 80 ? 'badge-primary' : 'badge-warning'}">
+                      ${emp.total_hours > 160 ? 'High Activity' : emp.total_hours > 80 ? 'Normal' : 'Low Activity'}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div class="section">
+          <h2>Recommendations</h2>
+          <ul>
+            ${overtimeHours > totalHours * 0.2 ? '<li>High overtime detected. Consider reviewing workload distribution or hiring additional staff.</li>' : ''}
+            ${totalEmployees === 0 ? '<li>No employee data found for this period. Ensure time entries are being recorded correctly.</li>' : ''}
+            ${productivityLevel === 'Low' ? '<li>Low overall productivity. Review scheduling and attendance policies.</li>' : ''}
+            ${productivityLevel === 'High' ? '<li>Excellent productivity levels maintained. Consider recognizing top performers.</li>' : ''}
+            <li>Continue monitoring attendance patterns for workforce optimization.</li>
+            <li>Regular review of overtime trends recommended for cost management.</li>
+          </ul>
+        </div>
+
+        <div class="footer">
+          <p>This report was automatically generated by Altron WFM24/7 Workforce Management System</p>
+          <p>Confidential - For Internal Use Only</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Create and download the Word document
+    const blob = new Blob([htmlContent], { 
+      type: 'application/msword' 
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `workforce-analysis-${startDate}-to-${endDate}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   const getActivityBadge = (hours: number) => {
