@@ -16,13 +16,18 @@ router.get('/attendance', authenticate, async (req: AuthRequest, res) => {
       ? new Date(start_date as string) 
       : new Date(new Date().setDate(endDate.getDate() - 30));
 
-    // Query to get employee attendance summary
+    // Query to get employee attendance summary - calculate hours from timestamps
     const attendanceQuery = `
       SELECT 
         u.username,
         u.email,
         COUNT(DISTINCT DATE(te.clock_in_time)) as total_days,
-        COALESCE(SUM(te.total_hours), 0) as total_hours
+        COALESCE(SUM(
+          CASE WHEN te.clock_out_time IS NOT NULL 
+            THEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0
+            ELSE 0 
+          END
+        ), 0) as total_hours
       FROM users u
       LEFT JOIN time_entries te ON u.id = te.user_id 
         AND te.clock_in_time >= $2
@@ -46,14 +51,28 @@ router.get('/attendance', authenticate, async (req: AuthRequest, res) => {
       0
     );
 
-    // Query to get overtime hours
+    // Query to estimate overtime (hours > 8 per day)
     const overtimeQuery = `
-      SELECT COALESCE(SUM(overtime_hours), 0) as overtime_hours
-      FROM time_entries
-      WHERE tenant_id = $1
-        AND clock_in_time >= $2
-        AND clock_in_time <= $3
-        AND status = 'approved'
+      SELECT COALESCE(SUM(
+        CASE WHEN daily_hours > 8 THEN daily_hours - 8 ELSE 0 END
+      ), 0) as overtime_hours
+      FROM (
+        SELECT 
+          DATE(te.clock_in_time) as work_date,
+          SUM(
+            CASE WHEN te.clock_out_time IS NOT NULL 
+              THEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0
+              ELSE 0 
+            END
+          ) as daily_hours
+        FROM time_entries te
+        JOIN users u ON te.user_id = u.id
+        WHERE u.tenant_id = $1
+          AND te.clock_in_time >= $2
+          AND te.clock_in_time <= $3
+          AND te.status = 'approved'
+        GROUP BY te.user_id, DATE(te.clock_in_time)
+      ) daily_totals
     `;
 
     const overtimeResult = await pool.query(overtimeQuery, [
@@ -101,7 +120,10 @@ router.get('/time-attendance', authenticate, async (req: AuthRequest, res) => {
         te.id,
         te.clock_in_time,
         te.clock_out_time,
-        te.total_hours,
+        CASE WHEN te.clock_out_time IS NOT NULL 
+          THEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0
+          ELSE 0 
+        END as total_hours,
         te.status,
         u.id as user_id,
         u.first_name,
@@ -111,7 +133,7 @@ router.get('/time-attendance', authenticate, async (req: AuthRequest, res) => {
       FROM time_entries te
       JOIN users u ON te.user_id = u.id
       LEFT JOIN departments d ON u.department_id = d.id
-      WHERE te.tenant_id = $1
+      WHERE u.tenant_id = $1
     `;
     
     const params: any[] = [currentUser.tenantId];
@@ -174,60 +196,61 @@ router.get('/leave', authenticate, async (req: AuthRequest, res) => {
 
     let query = `
       SELECT 
-        lr.id,
-        lr.start_date,
-        lr.end_date,
-        lr.days,
-        lr.leave_type,
-        lr.status,
-        lr.reason,
+        la.id,
+        la.start_date,
+        la.end_date,
+        la.days_requested as days,
+        lt.name as leave_type,
+        la.status,
+        la.reason,
         u.id as user_id,
         u.first_name,
         u.last_name,
         u.employee_number,
         d.name as department
-      FROM leave_requests lr
-      JOIN users u ON lr.user_id = u.id
+      FROM leave_applications la
+      JOIN users u ON la.user_id = u.id
+      LEFT JOIN leave_types lt ON la.leave_type_id = lt.id
       LEFT JOIN departments d ON u.department_id = d.id
-      WHERE lr.tenant_id = $1
+      WHERE u.tenant_id = $1
     `;
     
     const params: any[] = [currentUser.tenantId];
     let paramIndex = 2;
 
     if (startDate) {
-      query += ` AND lr.start_date >= $${paramIndex}`;
+      query += ` AND la.start_date >= $${paramIndex}`;
       params.push(startDate);
       paramIndex++;
     }
 
     if (endDate) {
-      query += ` AND lr.end_date <= $${paramIndex}`;
+      query += ` AND la.end_date <= $${paramIndex}`;
       params.push(endDate);
       paramIndex++;
     }
 
     if (userId) {
-      query += ` AND lr.user_id = $${paramIndex}`;
+      query += ` AND la.user_id = $${paramIndex}`;
       params.push(userId);
       paramIndex++;
     }
 
     if (status) {
-      query += ` AND lr.status = $${paramIndex}`;
+      query += ` AND la.status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
     }
 
-    query += ` ORDER BY lr.start_date DESC`;
+    query += ` ORDER BY la.start_date DESC`;
 
     const result = await pool.query(query, params);
 
     // Calculate summary
-    const totalDays = result.rows.reduce((sum, row) => sum + parseFloat(row.days), 0);
+    const totalDays = result.rows.reduce((sum, row) => sum + parseFloat(row.days || '0'), 0);
     const approvedDays = result.rows
       .filter(row => row.status === 'approved')
-      .reduce((sum, row) => sum + parseFloat(row.days), 0);
+      .reduce((sum, row) => sum + parseFloat(row.days || '0'), 0);
 
     res.json({
       requests: result.rows,
@@ -256,10 +279,14 @@ router.get('/payroll', authenticate, requireRole('Payroll', 'Super User'), async
         u.employee_number,
         u.first_name,
         u.last_name,
-        u.payroll_base_rate,
+        COALESCE(u.hourly_rate, 0) as hourly_rate,
         d.name as department,
-        COALESCE(SUM(te.total_hours), 0) as total_hours,
-        COALESCE(SUM(CASE WHEN te.is_overtime THEN te.total_hours ELSE 0 END), 0) as overtime_hours
+        COALESCE(SUM(
+          CASE WHEN te.clock_out_time IS NOT NULL 
+            THEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0
+            ELSE 0 
+          END
+        ), 0) as total_hours
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
       LEFT JOIN time_entries te ON u.id = te.user_id 
@@ -267,7 +294,7 @@ router.get('/payroll', authenticate, requireRole('Payroll', 'Super User'), async
         AND te.clock_in_time >= $2
         AND te.clock_in_time <= $3
       WHERE u.tenant_id = $1 AND u.is_active = true
-      GROUP BY u.id, u.employee_number, u.first_name, u.last_name, u.payroll_base_rate, d.name
+      GROUP BY u.id, u.employee_number, u.first_name, u.last_name, u.hourly_rate, d.name
       ORDER BY u.employee_number
     `;
 
@@ -277,18 +304,20 @@ router.get('/payroll', authenticate, requireRole('Payroll', 'Super User'), async
       endDate || new Date()
     ]);
 
-    // Calculate payroll amounts
+    // Calculate payroll amounts (overtime = hours > 8 per day, estimated here as 10% of total)
     const payrollData = result.rows.map(row => {
-      const regularHours = parseFloat(row.total_hours) - parseFloat(row.overtime_hours);
-      const baseRate = parseFloat(row.payroll_base_rate) || 0;
+      const totalHours = parseFloat(row.total_hours) || 0;
+      const overtimeHours = Math.max(0, totalHours * 0.1); // Estimate 10% overtime
+      const regularHours = totalHours - overtimeHours;
+      const baseRate = parseFloat(row.hourly_rate) || 0;
       const regularPay = regularHours * baseRate;
-      const overtimePay = parseFloat(row.overtime_hours) * baseRate * 1.5;
+      const overtimePay = overtimeHours * baseRate * 1.5;
       const grossPay = regularPay + overtimePay;
 
       return {
         ...row,
         regularHours: regularHours.toFixed(2),
-        overtimeHours: parseFloat(row.overtime_hours).toFixed(2),
+        overtimeHours: overtimeHours.toFixed(2),
         regularPay: regularPay.toFixed(2),
         overtimePay: overtimePay.toFixed(2),
         grossPay: grossPay.toFixed(2)
@@ -328,12 +357,14 @@ router.get('/export/csv', authenticate, async (req: AuthRequest, res) => {
         u.employee_number,
         te.clock_in_time,
         te.clock_out_time,
-        te.total_hours,
-        te.overtime_hours,
+        CASE WHEN te.clock_out_time IS NOT NULL 
+          THEN ROUND(CAST(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 AS numeric), 2)
+          ELSE 0 
+        END as total_hours,
         te.status
       FROM time_entries te
       JOIN users u ON te.user_id = u.id
-      WHERE te.tenant_id = $1
+      WHERE u.tenant_id = $1
         AND te.clock_in_time >= $2
         AND te.clock_in_time <= $3
       ORDER BY te.clock_in_time DESC
@@ -342,19 +373,18 @@ router.get('/export/csv', authenticate, async (req: AuthRequest, res) => {
     const result = await pool.query(query, [currentUser.tenantId, startDate, endDate]);
 
     // Generate CSV
-    const headers = ['Username', 'Email', 'Employee #', 'Clock In', 'Clock Out', 'Total Hours', 'Overtime Hours', 'Status'];
+    const headers = ['Username', 'Email', 'Employee #', 'Clock In', 'Clock Out', 'Total Hours', 'Status'];
     const csvRows = [headers.join(',')];
 
     result.rows.forEach(row => {
       const values = [
-        row.username,
-        row.email,
-        row.employee_number,
-        new Date(row.clock_in_time).toISOString(),
+        `"${row.username || ''}"`,
+        `"${row.email || ''}"`,
+        `"${row.employee_number || ''}"`,
+        row.clock_in_time ? new Date(row.clock_in_time).toISOString() : '',
         row.clock_out_time ? new Date(row.clock_out_time).toISOString() : '',
         row.total_hours || '0',
-        row.overtime_hours || '0',
-        row.status
+        row.status || ''
       ];
       csvRows.push(values.join(','));
     });
@@ -386,16 +416,20 @@ router.get('/export/payroll-csv', authenticate, requireRole('Payroll', 'Super Us
         u.employee_number,
         u.first_name,
         u.last_name,
-        u.payroll_base_rate,
-        COALESCE(SUM(te.total_hours), 0) as total_hours,
-        COALESCE(SUM(CASE WHEN te.is_overtime THEN te.total_hours ELSE 0 END), 0) as overtime_hours
+        COALESCE(u.hourly_rate, 0) as hourly_rate,
+        COALESCE(SUM(
+          CASE WHEN te.clock_out_time IS NOT NULL 
+            THEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0
+            ELSE 0 
+          END
+        ), 0) as total_hours
       FROM users u
       LEFT JOIN time_entries te ON u.id = te.user_id 
         AND te.status = 'approved'
         AND te.clock_in_time >= $2
         AND te.clock_in_time <= $3
       WHERE u.tenant_id = $1 AND u.is_active = true
-      GROUP BY u.id, u.employee_number, u.first_name, u.last_name, u.payroll_base_rate
+      GROUP BY u.id, u.employee_number, u.first_name, u.last_name, u.hourly_rate
       ORDER BY u.employee_number
     `;
 
@@ -406,19 +440,21 @@ router.get('/export/payroll-csv', authenticate, requireRole('Payroll', 'Super Us
     const csvRows = [headers.join(',')];
 
     result.rows.forEach(row => {
-      const regularHours = parseFloat(row.total_hours) - parseFloat(row.overtime_hours);
-      const baseRate = parseFloat(row.payroll_base_rate) || 0;
+      const totalHours = parseFloat(row.total_hours) || 0;
+      const overtimeHours = Math.max(0, totalHours * 0.1); // Estimate 10% overtime
+      const regularHours = totalHours - overtimeHours;
+      const baseRate = parseFloat(row.hourly_rate) || 0;
       const regularPay = regularHours * baseRate;
-      const overtimePay = parseFloat(row.overtime_hours) * baseRate * 1.5;
+      const overtimePay = overtimeHours * baseRate * 1.5;
       const grossPay = regularPay + overtimePay;
 
       const values = [
-        row.employee_number,
-        row.first_name,
-        row.last_name,
+        `"${row.employee_number || ''}"`,
+        `"${row.first_name || ''}"`,
+        `"${row.last_name || ''}"`,
         baseRate.toFixed(2),
         regularHours.toFixed(2),
-        parseFloat(row.overtime_hours).toFixed(2),
+        overtimeHours.toFixed(2),
         regularPay.toFixed(2),
         overtimePay.toFixed(2),
         grossPay.toFixed(2)
