@@ -58,6 +58,82 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Get pay calculations with pagination - MUST come before /:id route
+router.get('/calculations', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const per_page = parseInt(req.query.per_page as string) || 20;
+    const employee_id = req.query.employee_id as string;
+
+    const mockCalculations = [
+      {
+        id: 1,
+        employee: {
+          id: 1,
+          full_name: 'John Doe',
+          username: 'john.doe'
+        },
+        pay_period_start: '2025-11-01',
+        pay_period_end: '2025-11-15',
+        total_hours: 120,
+        regular_hours: 100,
+        overtime_hours: 20,
+        total_allowances: 500,
+        calculated_at: new Date().toISOString(),
+        calculated_by: {
+          username: 'admin'
+        }
+      },
+      {
+        id: 2,
+        employee: {
+          id: 2,
+          full_name: 'Jane Smith',
+          username: 'jane.smith'
+        },
+        pay_period_start: '2025-11-01',
+        pay_period_end: '2025-11-15',
+        total_hours: 110,
+        regular_hours: 110,
+        overtime_hours: 0,
+        total_allowances: 300,
+        calculated_at: new Date().toISOString(),
+        calculated_by: {
+          username: 'admin'
+        }
+      }
+    ];
+
+    let filteredCalculations = mockCalculations;
+    if (employee_id) {
+      filteredCalculations = mockCalculations.filter(
+        calc => calc.employee.id === parseInt(employee_id)
+      );
+    }
+
+    const total = filteredCalculations.length;
+    const pages = Math.ceil(total / per_page);
+    const start = (page - 1) * per_page;
+    const end = start + per_page;
+    const items = filteredCalculations.slice(start, end);
+
+    res.json({
+      items,
+      page,
+      pages,
+      per_page,
+      total,
+      has_prev: page > 1,
+      has_next: page < pages,
+      prev_num: page > 1 ? page - 1 : null,
+      next_num: page < pages ? page + 1 : null
+    });
+  } catch (error) {
+    console.error('Get calculations error:', error);
+    res.status(500).json({ error: 'Failed to fetch calculations' });
+  }
+});
+
 // Get single pay rule by ID
 router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
@@ -347,82 +423,6 @@ router.post('/calculate-pay', authenticate, requireRole('Payroll', 'Super User')
   } catch (error) {
     console.error('Calculate pay error:', error);
     res.status(500).json({ error: 'Failed to calculate pay' });
-  }
-});
-
-// Get pay calculations with pagination
-router.get('/calculations', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const per_page = parseInt(req.query.per_page as string) || 20;
-    const employee_id = req.query.employee_id as string;
-
-    const mockCalculations = [
-      {
-        id: 1,
-        employee: {
-          id: 1,
-          full_name: 'John Doe',
-          username: 'john.doe'
-        },
-        pay_period_start: '2025-11-01',
-        pay_period_end: '2025-11-15',
-        total_hours: 120,
-        regular_hours: 100,
-        overtime_hours: 20,
-        total_allowances: 500,
-        calculated_at: new Date().toISOString(),
-        calculated_by: {
-          username: 'admin'
-        }
-      },
-      {
-        id: 2,
-        employee: {
-          id: 2,
-          full_name: 'Jane Smith',
-          username: 'jane.smith'
-        },
-        pay_period_start: '2025-11-01',
-        pay_period_end: '2025-11-15',
-        total_hours: 110,
-        regular_hours: 110,
-        overtime_hours: 0,
-        total_allowances: 300,
-        calculated_at: new Date().toISOString(),
-        calculated_by: {
-          username: 'admin'
-        }
-      }
-    ];
-
-    let filteredCalculations = mockCalculations;
-    if (employee_id) {
-      filteredCalculations = mockCalculations.filter(
-        calc => calc.employee.id === parseInt(employee_id)
-      );
-    }
-
-    const total = filteredCalculations.length;
-    const pages = Math.ceil(total / per_page);
-    const start = (page - 1) * per_page;
-    const end = start + per_page;
-    const items = filteredCalculations.slice(start, end);
-
-    res.json({
-      items,
-      page,
-      pages,
-      per_page,
-      total,
-      has_prev: page > 1,
-      has_next: page < pages,
-      prev_num: page > 1 ? page - 1 : null,
-      next_num: page < pages ? page + 1 : null
-    });
-  } catch (error) {
-    console.error('Get calculations error:', error);
-    res.status(500).json({ error: 'Failed to fetch calculations' });
   }
 });
 

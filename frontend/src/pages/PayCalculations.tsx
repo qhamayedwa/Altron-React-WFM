@@ -6,7 +6,9 @@ import api from '../api/client';
 
 interface Employee {
   id: number;
-  full_name: string;
+  full_name?: string;
+  firstName?: string;
+  lastName?: string;
   username: string;
 }
 
@@ -65,7 +67,8 @@ export default function PayCalculations() {
   const loadEmployees = async () => {
     try {
       const response = await api.get('/users');
-      setEmployees(response.data);
+      const users = response.data.users || response.data || [];
+      setEmployees(users);
     } catch (error) {
       console.error('Error fetching employees:', error);
     }
@@ -225,7 +228,7 @@ export default function PayCalculations() {
                     <option value="">All Employees</option>
                     {employees.map((employee) => (
                       <option key={employee.id} value={employee.id}>
-                        {employee.full_name} ({employee.username})
+                        {employee.full_name || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.username} ({employee.username})
                       </option>
                     ))}
                   </Form.Select>
