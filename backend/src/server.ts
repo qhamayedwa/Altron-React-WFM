@@ -70,7 +70,7 @@ app.use('/api/payroll', payrollRoutes);
 app.use('/api/pay-rules', payRulesRoutes);
 app.use('/api/pay-codes', payCodesRoutes);
 app.use('/api/automation', automationRoutes);
-app.use('/ai', aiRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/pulse-survey', pulseSurveyRoutes);
 app.use('/api/tenant', tenantRoutes);
 app.use('/api/integrations', integrationsRoutes);
