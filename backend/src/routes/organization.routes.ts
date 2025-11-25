@@ -7,6 +7,69 @@ const router = Router();
 
 router.use(authenticate);
 
+// Get organization dashboard stats
+router.get('/dashboard-stats', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [companiesCount, regionsCount, sitesCount, departmentsCount, employeesCount] = await Promise.all([
+      query('SELECT COUNT(*) as count FROM companies WHERE tenant_id = $1 AND is_active = true', [req.user!.tenantId]),
+      query('SELECT COUNT(*) as count FROM regions WHERE is_active = true'),
+      query('SELECT COUNT(*) as count FROM sites WHERE is_active = true'),
+      query('SELECT COUNT(*) as count FROM departments WHERE is_active = true'),
+      query('SELECT COUNT(*) as count FROM users WHERE tenant_id = $1 AND is_active = true', [req.user!.tenantId])
+    ]);
+
+    // Get companies with their details
+    const companiesResult = await query(`
+      SELECT c.*,
+             (SELECT COUNT(*) FROM regions r WHERE r.company_id = c.id AND r.is_active = true) as regions,
+             (SELECT COUNT(*) FROM sites s 
+              INNER JOIN regions r ON s.region_id = r.id 
+              WHERE r.company_id = c.id AND s.is_active = true) as sites,
+             (SELECT COUNT(*) FROM departments d 
+              INNER JOIN sites s ON d.site_id = s.id 
+              INNER JOIN regions r ON s.region_id = r.id 
+              WHERE r.company_id = c.id AND d.is_active = true) as departments,
+             (SELECT COUNT(*) FROM users u
+              INNER JOIN departments d ON u.department_id = d.id
+              INNER JOIN sites s ON d.site_id = s.id
+              INNER JOIN regions r ON s.region_id = r.id
+              WHERE r.company_id = c.id AND u.is_active = true) as employees
+      FROM companies c
+      WHERE c.tenant_id = $1 AND c.is_active = true
+      ORDER BY c.name
+    `, [req.user!.tenantId]);
+
+    res.json({
+      stats: {
+        totalCompanies: parseInt(companiesCount.rows[0]?.count) || 0,
+        totalRegions: parseInt(regionsCount.rows[0]?.count) || 0,
+        totalSites: parseInt(sitesCount.rows[0]?.count) || 0,
+        totalDepartments: parseInt(departmentsCount.rows[0]?.count) || 0,
+        totalEmployees: parseInt(employeesCount.rows[0]?.count) || 0
+      },
+      companyDetails: companiesResult.rows.map(company => ({
+        company: {
+          id: company.id,
+          name: company.name,
+          code: company.code,
+          legalName: company.legal_name,
+          city: company.city,
+          country: company.country,
+          timezone: company.timezone,
+          currency: company.currency
+        },
+        regions: parseInt(company.regions) || 0,
+        sites: parseInt(company.sites) || 0,
+        departments: parseInt(company.departments) || 0,
+        employees: parseInt(company.employees) || 0
+      }))
+    });
+  } catch (error) {
+    console.error('Get dashboard stats error:', error);
+    res.status(500).json({ error: 'Failed to retrieve dashboard stats' });
+  }
+});
+
 // Get organization hierarchy
 router.get('/hierarchy', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
