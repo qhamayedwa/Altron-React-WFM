@@ -28,6 +28,8 @@ import AIScheduling from './pages/AIScheduling';
 import OrganizationDashboard from './pages/OrganizationDashboard';
 import CompanyManagement from './pages/CompanyManagement';
 import EmployeeImport from './pages/EmployeeImport';
+import EmployeeImportUpload from './pages/EmployeeImportUpload';
+import EmployeeImportConfirm from './pages/EmployeeImportConfirm';
 import CreateCompany from './pages/CreateCompany';
 import ViewCompany from './pages/ViewCompany';
 import EditCompany from './pages/EditCompany';
@@ -175,6 +177,8 @@ function App() {
           <Route path="organization-dashboard" element={<OrganizationDashboard />} />
           <Route path="company-management" element={<CompanyManagement />} />
           <Route path="employee-import" element={<EmployeeImport />} />
+          <Route path="employee-import/upload" element={<EmployeeImportUpload />} />
+          <Route path="employee-import/confirm" element={<EmployeeImportConfirm />} />
           <Route path="create-company" element={<CreateCompany />} />
           
           {/* Administration */}
