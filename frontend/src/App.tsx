@@ -167,6 +167,7 @@ function App() {
           <Route path="ai-scheduling/results/:id" element={<AISchedulingResults />} />
           <Route path="notifications/triggers/:id" element={<NotificationTriggerDetail />} />
           <Route path="automation/dashboard" element={<AutomationDashboard />} />
+          <Route path="automation/workflows" element={<AutomationWorkflows />} />
           
           {/* Manager Tools - Priority 2 */}
           <Route path="leave/apply-for-employee" element={<ApplyLeaveForEmployee />} />
