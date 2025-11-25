@@ -650,14 +650,14 @@ router.get('/employee-timecards', requireRole('Manager', 'Super User'), async (r
         te.user_id,
         te.clock_in_time,
         te.clock_out_time,
-        te.break_minutes,
+        te.total_break_minutes,
         te.status,
         te.notes,
         te.clock_in_latitude,
         te.clock_in_longitude,
         te.clock_out_latitude,
         te.clock_out_longitude,
-        COALESCE(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0, 0) as total_hours,
+        COALESCE(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0, 0) as total_hours,
         u.username,
         u.first_name,
         u.last_name,
@@ -680,9 +680,9 @@ router.get('/employee-timecards', requireRole('Manager', 'Super User'), async (r
     const summaryResult = await query(
       `SELECT 
         COUNT(*) as total_records,
-        COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0), 0) as total_hours,
+        COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0), 0) as total_hours,
         COALESCE(SUM(
-          (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
+          (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
         ), 0) as total_amount
        FROM time_entries te
        JOIN users u ON te.user_id = u.id
@@ -712,9 +712,9 @@ router.get('/employee-timecards', requireRole('Manager', 'Super User'), async (r
           COALESCE(u.pay_code, 'Standard') as pay_code,
           COALESCE(u.hourly_rate, 0) as rate,
           COUNT(DISTINCT u.id) as employee_count,
-          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0), 0) as total_hours,
+          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0), 0) as total_hours,
           COALESCE(SUM(
-            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
+            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
           ), 0) as total_amount
          FROM time_entries te
          JOIN users u ON te.user_id = u.id
@@ -734,9 +734,9 @@ router.get('/employee-timecards', requireRole('Manager', 'Super User'), async (r
           u.last_name,
           d.name as department_name,
           COALESCE(u.pay_code, 'Standard') as pay_code,
-          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0), 0) as total_hours,
+          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0), 0) as total_hours,
           COALESCE(SUM(
-            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
+            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
           ), 0) as total_amount
          FROM time_entries te
          JOIN users u ON te.user_id = u.id
@@ -753,9 +753,9 @@ router.get('/employee-timecards', requireRole('Manager', 'Super User'), async (r
           d.id as department_id,
           d.name as department_name,
           COUNT(DISTINCT u.id) as employee_count,
-          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0), 0) as total_hours,
+          COALESCE(SUM(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0), 0) as total_hours,
           COALESCE(SUM(
-            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
+            (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - COALESCE(te.total_break_minutes, 0) / 60.0) * COALESCE(u.hourly_rate, 0)
           ), 0) as total_amount
          FROM time_entries te
          JOIN users u ON te.user_id = u.id

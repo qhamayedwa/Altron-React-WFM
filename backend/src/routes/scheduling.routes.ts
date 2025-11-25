@@ -84,11 +84,12 @@ router.get('/team-schedule', requireRole('Manager', 'Super User'), async (req: A
     
     let sql = `
       SELECT s.*, u.first_name, u.last_name, u.employee_number, d.name as department_name,
-             st.name as shift_name, st.code as shift_code, st.color
+             st.name as shift_name, st.description as shift_description,
+             DATE(s.start_time) as schedule_date
       FROM schedules s
       JOIN users u ON s.user_id = u.id
       LEFT JOIN departments d ON u.department_id = d.id
-      JOIN shift_types st ON s.shift_type_id = st.id
+      LEFT JOIN shift_types st ON s.shift_type_id = st.id
       WHERE u.tenant_id = $1
     `;
     const params: any[] = [req.user!.tenantId];
@@ -100,15 +101,15 @@ router.get('/team-schedule', requireRole('Manager', 'Super User'), async (req: A
     
     if (startDate) {
       params.push(startDate);
-      sql += ` AND s.date >= $${params.length}`;
+      sql += ` AND DATE(s.start_time) >= $${params.length}`;
     }
     
     if (endDate) {
       params.push(endDate);
-      sql += ` AND s.date <= $${params.length}`;
+      sql += ` AND DATE(s.start_time) <= $${params.length}`;
     }
     
-    sql += ' ORDER BY s.date, s.start_time';
+    sql += ' ORDER BY s.start_time';
     
     const result = await query(sql, params);
 
@@ -119,12 +120,11 @@ router.get('/team-schedule', requireRole('Manager', 'Super User'), async (req: A
         employeeName: `${row.first_name} ${row.last_name}`,
         employeeNumber: row.employee_number,
         department: row.department_name,
-        date: row.date,
+        date: row.schedule_date,
         shiftName: row.shift_name,
         startTime: row.start_time,
         endTime: row.end_time,
-        status: row.status,
-        color: row.color
+        status: row.status
       }))
     });
   } catch (error) {
@@ -149,13 +149,14 @@ router.post(
       const { userId, shiftTypeId, date, startTime, endTime, notes } = req.body;
       
       const result = await query(
-        `INSERT INTO schedules (user_id, shift_type_id, date, start_time, end_time, status, notes)
-         VALUES ($1, $2, $3, $4, $5, 'scheduled', $6)
+        `INSERT INTO schedules (user_id, shift_type_id, start_time, end_time, status, notes, assigned_by_manager_id)
+         VALUES ($1, $2, $3, $4, 'scheduled', $5, $6)
          RETURNING *`,
-        [userId, shiftTypeId, date, 
+        [userId, shiftTypeId, 
          `${date} ${startTime}`, 
          `${date} ${endTime}`, 
-         notes]
+         notes,
+         req.user!.id]
       );
 
       res.json({
@@ -163,7 +164,7 @@ router.post(
         schedule: {
           id: result.rows[0].id,
           userId: result.rows[0].user_id,
-          date: result.rows[0].date,
+          date: date,
           startTime: result.rows[0].start_time,
           endTime: result.rows[0].end_time,
           status: result.rows[0].status
@@ -180,19 +181,52 @@ router.post(
 router.put('/:id', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { date, startTime, endTime, status, notes } = req.body;
+    const { date, startTime, endTime, status, notes, shiftTypeId } = req.body;
+    
+    let updateFields: string[] = [];
+    let params: any[] = [];
+    let paramIndex = 0;
+    
+    if (date && startTime) {
+      paramIndex++;
+      updateFields.push(`start_time = $${paramIndex}`);
+      params.push(`${date} ${startTime}`);
+    }
+    
+    if (date && endTime) {
+      paramIndex++;
+      updateFields.push(`end_time = $${paramIndex}`);
+      params.push(`${date} ${endTime}`);
+    }
+    
+    if (status) {
+      paramIndex++;
+      updateFields.push(`status = $${paramIndex}`);
+      params.push(status);
+    }
+    
+    if (notes !== undefined) {
+      paramIndex++;
+      updateFields.push(`notes = $${paramIndex}`);
+      params.push(notes);
+    }
+    
+    if (shiftTypeId) {
+      paramIndex++;
+      updateFields.push(`shift_type_id = $${paramIndex}`);
+      params.push(shiftTypeId);
+    }
+    
+    updateFields.push('updated_at = NOW()');
+    paramIndex++;
+    params.push(id);
     
     const result = await query(
       `UPDATE schedules
-       SET date = COALESCE($1, date),
-           start_time = COALESCE($2, start_time),
-           end_time = COALESCE($3, end_time),
-           status = COALESCE($4, status),
-           notes = COALESCE($5, notes),
-           updated_at = NOW()
-       WHERE id = $6
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramIndex}
        RETURNING *`,
-      [date, startTime, endTime, status, notes, id]
+      params
     );
 
     if (result.rows.length === 0) {
