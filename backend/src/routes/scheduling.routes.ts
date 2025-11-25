@@ -18,11 +18,10 @@ router.get('/shift-types', async (req: AuthRequest, res: Response): Promise<void
       shiftTypes: result.rows.map(row => ({
         id: row.id,
         name: row.name,
-        code: row.code,
-        startTime: row.start_time,
-        endTime: row.end_time,
-        duration: row.duration,
-        color: row.color
+        description: row.description,
+        defaultStartTime: row.default_start_time,
+        defaultEndTime: row.default_end_time,
+        isActive: row.is_active
       }))
     });
   } catch (error) {
@@ -37,37 +36,36 @@ router.get('/my-schedule', async (req: AuthRequest, res: Response): Promise<void
     const { startDate, endDate } = req.query;
     
     let sql = `
-      SELECT s.*, st.name as shift_name, st.code as shift_code, st.color
+      SELECT s.*, st.name as shift_name, st.description as shift_description,
+             DATE(s.start_time) as schedule_date
       FROM schedules s
-      JOIN shift_types st ON s.shift_type_id = st.id
+      LEFT JOIN shift_types st ON s.shift_type_id = st.id
       WHERE s.user_id = $1
     `;
     const params: any[] = [req.user!.id];
     
     if (startDate) {
       params.push(startDate);
-      sql += ` AND s.date >= $${params.length}`;
+      sql += ` AND DATE(s.start_time) >= $${params.length}`;
     }
     
     if (endDate) {
       params.push(endDate);
-      sql += ` AND s.date <= $${params.length}`;
+      sql += ` AND DATE(s.start_time) <= $${params.length}`;
     }
     
-    sql += ' ORDER BY s.date, s.start_time';
+    sql += ' ORDER BY s.start_time';
     
     const result = await query(sql, params);
 
     res.json({
       schedules: result.rows.map(row => ({
         id: row.id,
-        date: row.date,
+        date: row.schedule_date,
         shiftName: row.shift_name,
-        shiftCode: row.shift_code,
         startTime: row.start_time,
         endTime: row.end_time,
         status: row.status,
-        color: row.color,
         notes: row.notes
       }))
     });
@@ -395,8 +393,7 @@ router.put('/shift-types/:id', requireRole('Manager', 'Super User'), async (req:
            description = COALESCE($2, description),
            default_start_time = COALESCE($3, default_start_time),
            default_end_time = COALESCE($4, default_end_time),
-           is_active = COALESCE($5, is_active),
-           updated_at = NOW()
+           is_active = COALESCE($5, is_active)
        WHERE id = $6
        RETURNING *`,
       [name, description, defaultStartTime, defaultEndTime, isActive, id]
