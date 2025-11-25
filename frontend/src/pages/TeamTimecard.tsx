@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Table, Form, Row, Col, ButtonGroup, InputGroup, Modal, Badge } from 'react-bootstrap';
-import { Users, Calendar as CalendarIcon, AlertTriangle, Download, Filter, Search, X, Clock, CheckCircle } from 'lucide-react';
+import { Users, Calendar as CalendarIcon, AlertTriangle, Download, Filter, Search, X, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 
 interface TimeEntry {
@@ -33,6 +34,7 @@ interface Employee {
 }
 
 export default function TeamTimecard() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -45,7 +47,6 @@ export default function TeamTimecard() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showExceptionsModal, setShowExceptionsModal] = useState(false);
   const [exceptions, setExceptions] = useState<TimeEntry[]>([]);
 
@@ -261,14 +262,6 @@ export default function TeamTimecard() {
     );
   });
 
-  // Group entries by date for calendar view
-  const entriesByDate = timeEntries.reduce((acc, entry) => {
-    const date = new Date(entry.clock_in_time).toISOString().split('T')[0];
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(entry);
-    return acc;
-  }, {} as Record<string, TimeEntry[]>);
-
   return (
     <div className="py-4">
       {/* Header with Statistics */}
@@ -283,7 +276,7 @@ export default function TeamTimecard() {
           </p>
         </div>
         <ButtonGroup>
-          <Button variant="outline-secondary" onClick={() => setShowCalendarModal(true)}>
+          <Button variant="outline-secondary" onClick={() => navigate('/team-calendar')}>
             <CalendarIcon size={18} className="me-2" />
             Calendar View
           </Button>
@@ -520,59 +513,6 @@ export default function TeamTimecard() {
           )}
         </Card.Body>
       </Card>
-
-      {/* Calendar View Modal */}
-      <Modal show={showCalendarModal} onHide={() => setShowCalendarModal(false)} size="xl">
-        <Modal.Header closeButton style={{ backgroundColor: '#28468D', color: 'white' }}>
-          <Modal.Title>
-            <CalendarIcon size={24} className="me-2" />
-            Calendar View - Team Time Entries
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="mb-3">
-            <strong>Period:</strong> {startDate} to {endDate}
-          </div>
-          {Object.keys(entriesByDate).length === 0 ? (
-            <div className="text-center py-4 text-muted">
-              No time entries for the selected period
-            </div>
-          ) : (
-            <div className="row">
-              {Object.entries(entriesByDate).sort().map(([date, entries]) => (
-                <div key={date} className="col-md-4 mb-3">
-                  <Card>
-                    <Card.Header className="bg-light">
-                      <strong>{formatDate(date)}</strong>
-                      <Badge bg="primary" className="float-end">{entries.length} entries</Badge>
-                    </Card.Header>
-                    <Card.Body style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                      {entries.map(entry => (
-                        <div key={entry.id} className="mb-2 pb-2 border-bottom">
-                          <div className="d-flex justify-content-between">
-                            <strong>{entry.first_name} {entry.last_name}</strong>
-                            {getStatusBadge(entry)}
-                          </div>
-                          <small className="text-muted">
-                            <Clock size={12} className="me-1" />
-                            {formatTime(entry.clock_in_time)} - {formatTime(entry.clock_out_time)}
-                            {entry.total_hours > 0 && ` (${entry.total_hours.toFixed(2)} hrs)`}
-                          </small>
-                        </div>
-                      ))}
-                    </Card.Body>
-                  </Card>
-                </div>
-              ))}
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowCalendarModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
 
       {/* Exceptions Modal */}
       <Modal show={showExceptionsModal} onHide={() => setShowExceptionsModal(false)} size="lg">
