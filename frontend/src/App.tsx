@@ -96,6 +96,7 @@ import AIDashboard from './pages/AIDashboard';
 import AIQuery from './pages/AIQuery';
 import AISchedulingHistory from './pages/AISchedulingHistory';
 import AISchedulingResults from './pages/AISchedulingResults';
+import AIScheduleGenerate from './pages/AIScheduleGenerate';
 import NotificationTriggerDetail from './pages/NotificationTriggerDetail';
 import AutomationDashboard from './pages/AutomationDashboard';
 import CreatePulseSurvey from './pages/CreatePulseSurvey';
@@ -154,6 +155,7 @@ function App() {
           <Route path="shift-types/create" element={<CreateShiftType />} />
           <Route path="shift-types/edit/:id" element={<EditShiftType />} />
           <Route path="ai-scheduling" element={<AIScheduling />} />
+          <Route path="ai-scheduling/generate" element={<AIScheduleGenerate />} />
           
           {/* AI & Advanced Features - Priority 3 */}
           <Route path="ai/dashboard" element={<AIDashboard />} />
