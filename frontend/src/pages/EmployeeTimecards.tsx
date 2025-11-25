@@ -245,7 +245,7 @@ export default function EmployeeTimecards() {
               <Button variant="outline-secondary" onClick={() => navigate('/team-timecard')}>
                 <Clock size={16} className="me-1" /> Team Time Card
               </Button>
-              <Button variant="outline-primary" onClick={() => navigate('/time-attendance/admin')}>
+              <Button variant="outline-primary" onClick={() => navigate('/time-attendance-admin')}>
                 <ArrowLeft size={16} className="me-1" /> Back to Dashboard
               </Button>
             </div>
