@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Plus, Edit, AlertCircle, Users, BarChart, CheckCircle, UserCheck, AlertTriangle, Trash2, List, Clock, Eye } from 'lucide-react';
+import { CreditCard, Plus, Edit, AlertCircle, Users, BarChart, CheckCircle, UserCheck, AlertTriangle, Trash2, List, Clock } from 'lucide-react';
 
 interface PayCode {
   id: number;
@@ -85,7 +85,7 @@ const PayCodes: React.FC = () => {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete pay code "${code.code}"?`)) {
+    if (!confirm(`Are you sure you want to delete this pay code?`)) {
       return;
     }
 
@@ -108,54 +108,49 @@ const PayCodes: React.FC = () => {
 
   const formatCurrency = (amount: number | null): string => {
     if (amount === null) return 'Not set';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (
     <div className="container-fluid py-4">
-      {/* Page Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>
-          <CreditCard className="me-2" size={32} style={{ color: '#28468D', display: 'inline-block', verticalAlign: 'middle' }} />
+          <CreditCard className="me-2" size={24} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
           Pay Code Administration
         </h2>
         <div className="btn-group">
-          <button 
+          <a 
+            href="/pay-codes/create"
             className="btn btn-primary"
-            onClick={() => navigate('/pay-codes/create')}
+            onClick={(e) => { e.preventDefault(); navigate('/pay-codes/create'); }}
             style={{ backgroundColor: '#28468D', borderColor: '#28468D' }}
           >
-            <Plus size={18} className="me-2" />
+            <Plus size={16} className="me-2" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
             Create Pay Code
-          </button>
-          <button 
+          </a>
+          <a 
+            href="/pay-codes/bulk-assign"
             className="btn btn-outline-primary"
-            onClick={() => {
-              alert('Pay Code Assignment page is not yet implemented. This feature will allow you to assign pay codes to employees.');
-            }}
+            onClick={(e) => { e.preventDefault(); navigate('/pay-codes/bulk-assign'); }}
+            style={{ color: '#28468D', borderColor: '#28468D' }}
           >
-            <Users size={18} className="me-2" />
+            <Users size={16} className="me-2" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
             Assign to Employees
-          </button>
-          <button 
+          </a>
+          <a 
+            href="/reports"
             className="btn btn-outline-secondary"
-            onClick={() => {
-              alert('Pay Code Reports page is not yet implemented. This feature will show detailed analytics and reports for pay codes.');
-            }}
+            onClick={(e) => { e.preventDefault(); navigate('/reports'); }}
           >
-            <BarChart size={18} className="me-2" />
+            <BarChart size={16} className="me-2" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
             Reports
-          </button>
+          </a>
         </div>
       </div>
 
-      {/* Statistics Overview */}
       <div className="row mb-4">
         <div className="col-md-3">
-          <div className="card bg-primary text-white">
+          <div className="card text-white" style={{ backgroundColor: '#28468D' }}>
             <div className="card-body">
               <div className="d-flex align-items-center">
                 <div className="flex-grow-1">
@@ -181,7 +176,7 @@ const PayCodes: React.FC = () => {
           </div>
         </div>
         <div className="col-md-3">
-          <div className="card bg-info text-white">
+          <div className="card text-white" style={{ backgroundColor: '#54B8DF' }}>
             <div className="card-body">
               <div className="d-flex align-items-center">
                 <div className="flex-grow-1">
@@ -208,9 +203,8 @@ const PayCodes: React.FC = () => {
         </div>
       </div>
 
-      {/* Pay Codes Table */}
       <div className="card">
-        <div className="card-header">
+        <div className="card-header" style={{ backgroundColor: '#1F4650', color: 'white' }}>
           <h5 className="mb-0">
             <List className="me-2" size={20} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
             Pay Code Management
@@ -286,22 +280,17 @@ const PayCodes: React.FC = () => {
                       </td>
                       <td>
                         <div className="btn-group btn-group-sm">
-                          <button
-                            className="btn btn-outline-info"
-                            onClick={() => navigate(`/pay-codes/view/${code.id}`)}
-                            title="View"
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button
+                          <a
+                            href={`/pay-codes/edit/${code.id}`}
                             className="btn btn-outline-primary"
-                            onClick={() => navigate(`/pay-codes/edit/${code.id}`)}
+                            onClick={(e) => { e.preventDefault(); navigate(`/pay-codes/edit/${code.id}`); }}
                             title="Edit"
                           >
                             <Edit size={14} />
-                          </button>
+                          </a>
                           {code.usage_count === 0 && (
                             <button
+                              type="button"
                               className="btn btn-outline-danger"
                               onClick={() => handleDeleteCode(code)}
                               title="Delete"
