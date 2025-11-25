@@ -80,7 +80,7 @@ export default function ViewCompany() {
     <div className="container-fluid mt-4">
       <div className="bg-light border rounded p-3 mb-3" style={{ fontFamily: 'monospace' }}>
         <i className="fas fa-sitemap"></i>{' '}
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/organization/dashboard'); }} className="text-decoration-none">Organization</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/organization-dashboard'); }} className="text-decoration-none">Organization</a>
         {' → '}
         <strong>{company.name}</strong>
       </div>

@@ -159,7 +159,7 @@ export default function CreateSite() {
         if (regionId) {
           navigate(`/organization/regions/view/${regionId}`);
         } else {
-          navigate('/organization/dashboard');
+          navigate('/organization-dashboard');
         }
       }, 1500);
     } catch (err: any) {

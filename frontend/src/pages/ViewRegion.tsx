@@ -67,7 +67,7 @@ export default function ViewRegion() {
   const handleDelete = async () => {
     try {
       await api.delete(`/organization/regions/${id}`);
-      navigate('/organization/dashboard');
+      navigate('/organization-dashboard');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to delete region');
     }
@@ -91,7 +91,7 @@ export default function ViewRegion() {
               <nav aria-label="breadcrumb">
                 <ol className="breadcrumb mb-0" style={{ background: 'none', padding: 0 }}>
                   <li className="breadcrumb-item">
-                    <a href="#" onClick={(e) => { e.preventDefault(); navigate('/organization/dashboard'); }}>Organization</a>
+                    <a href="#" onClick={(e) => { e.preventDefault(); navigate('/organization-dashboard'); }}>Organization</a>
                   </li>
                   <li className="breadcrumb-item">
                     <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/organization/companies/view/${region.companyId}`); }}>{region.companyName}</a>

@@ -157,7 +157,7 @@ export default function CreateRegion() {
 
       setSuccess('Region created successfully!');
       setTimeout(() => {
-        navigate('/organization/dashboard');
+        navigate('/organization-dashboard');
       }, 1500);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create region');

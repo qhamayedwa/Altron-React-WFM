@@ -92,6 +92,34 @@ router.get('/team', requireRole('Manager', 'Super User'), async (req: AuthReques
   }
 });
 
+// Get managers (users with Manager role)
+router.get('/managers', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await query(
+      `SELECT DISTINCT u.id, u.username, u.first_name, u.last_name, u.email
+       FROM users u
+       INNER JOIN user_roles ur ON u.id = ur.user_id
+       INNER JOIN roles r ON ur.role_id = r.id
+       WHERE r.name IN ('Manager', 'Super User') AND u.is_active = true
+       ORDER BY u.last_name, u.first_name`
+    );
+
+    res.json({
+      managers: result.rows.map(row => ({
+        id: row.id,
+        username: row.username,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.email,
+        fullName: `${row.first_name} ${row.last_name}`
+      }))
+    });
+  } catch (error) {
+    console.error('Get managers error:', error);
+    res.status(500).json({ error: 'Failed to retrieve managers' });
+  }
+});
+
 // Get single user
 router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   try {

@@ -80,7 +80,7 @@ export default function ViewSite() {
               <nav aria-label="breadcrumb">
                 <ol className="breadcrumb mb-0" style={{ background: 'none', padding: 0 }}>
                   <li className="breadcrumb-item">
-                    <a href="#" onClick={(e) => { e.preventDefault(); navigate('/organization/dashboard'); }}>Organization</a>
+                    <a href="#" onClick={(e) => { e.preventDefault(); navigate('/organization-dashboard'); }}>Organization</a>
                   </li>
                   <li className="breadcrumb-item">
                     <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/organization/companies/view/${site.companyId}`); }}>{site.companyName}</a>
