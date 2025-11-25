@@ -168,7 +168,7 @@ router.post('/generate-schedule', async (req: AuthRequest, res: Response): Promi
       SELECT u.id, u.first_name, u.last_name, u.employee_number, d.name as department_name
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
-      WHERE u.organization_id = $1 AND u.is_active = true
+      WHERE u.tenant_id = $1 AND u.is_active = true
     `;
     const params: any[] = [req.user!.tenantId];
     
