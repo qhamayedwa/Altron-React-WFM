@@ -57,6 +57,7 @@ import TestPayRules from './pages/TestPayRules';
 import CalculatePay from './pages/CalculatePay';
 import PayCalculations from './pages/PayCalculations';
 import PayCodeConfiguration from './pages/PayCodeConfiguration';
+import PayCodesManagement from './pages/PayCodesManagement';
 import BulkPayCodeAssignment from './pages/BulkPayCodeAssignment';
 import AbsenceManagement from './pages/AbsenceManagement';
 import TimecardRollup from './pages/TimecardRollup';
@@ -240,6 +241,7 @@ function App() {
           <Route path="pay-rules/calculate" element={<CalculatePay />} />
           <Route path="pay-rules/calculations" element={<PayCalculations />} />
           <Route path="pay-code-configuration" element={<PayCodeConfiguration />} />
+          <Route path="pay-codes-management" element={<PayCodesManagement />} />
           <Route path="pay-codes/bulk-assign" element={<BulkPayCodeAssignment />} />
           <Route path="pay-codes/absences" element={<AbsenceManagement />} />
           <Route path="timecard-rollup" element={<TimecardRollupDashboard />} />
