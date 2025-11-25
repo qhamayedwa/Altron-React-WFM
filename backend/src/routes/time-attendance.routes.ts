@@ -279,6 +279,92 @@ router.post(
   }
 );
 
+// Export team time entries to CSV
+router.get('/team-entries/export', requireRole('Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { departmentId, status, startDate, endDate } = req.query;
+    
+    let sql = `
+      SELECT 
+        u.username,
+        u.first_name,
+        u.last_name,
+        u.employee_number,
+        u.email,
+        d.name as department_name,
+        te.clock_in_time,
+        te.clock_out_time,
+        te.total_break_minutes,
+        CASE WHEN te.clock_out_time IS NOT NULL 
+          THEN ROUND(CAST(EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 AS numeric), 2)
+          ELSE 0 
+        END as total_hours,
+        te.status,
+        te.notes
+      FROM time_entries te
+      JOIN users u ON te.user_id = u.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.tenant_id = $1
+    `;
+    const params: any[] = [req.user!.tenantId];
+    
+    if (departmentId) {
+      params.push(departmentId);
+      sql += ` AND u.department_id = $${params.length}`;
+    }
+    
+    if (status) {
+      params.push(status);
+      sql += ` AND te.status = $${params.length}`;
+    }
+    
+    if (startDate) {
+      params.push(startDate);
+      sql += ` AND te.clock_in_time >= $${params.length}`;
+    }
+    
+    if (endDate) {
+      params.push(endDate);
+      sql += ` AND te.clock_in_time <= $${params.length}`;
+    }
+    
+    sql += ' ORDER BY te.clock_in_time DESC';
+    
+    const result = await query(sql, params);
+
+    // Generate CSV
+    const headers = ['Username', 'First Name', 'Last Name', 'Employee #', 'Email', 'Department', 'Clock In', 'Clock Out', 'Break (min)', 'Total Hours', 'Status', 'Notes'];
+    const csvRows = [headers.join(',')];
+
+    result.rows.forEach(row => {
+      const values = [
+        `"${row.username || ''}"`,
+        `"${row.first_name || ''}"`,
+        `"${row.last_name || ''}"`,
+        `"${row.employee_number || ''}"`,
+        `"${row.email || ''}"`,
+        `"${row.department_name || ''}"`,
+        row.clock_in_time ? new Date(row.clock_in_time).toISOString() : '',
+        row.clock_out_time ? new Date(row.clock_out_time).toISOString() : '',
+        row.total_break_minutes || '0',
+        row.total_hours || '0',
+        row.status || '',
+        `"${(row.notes || '').replace(/"/g, '""')}"`
+      ];
+      csvRows.push(values.join(','));
+    });
+
+    const csv = csvRows.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=team-timecard-export.csv');
+    res.send(csv);
+  } catch (error) {
+    console.error('Export team entries error:', error);
+    res.status(500).json({ error: 'Failed to export team time entries' });
+  }
+});
+
 // Get Recent Time Entries (Admin/Manager)
 router.get('/recent-entries', requireRole('Admin', 'Manager', 'Super User'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
