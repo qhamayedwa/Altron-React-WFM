@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Form, Row, Col, Alert } from 'react-bootstrap';
-import { CreditCard, ArrowLeft, X, FileText, CheckCircle, Plus } from 'lucide-react';
+import { CreditCard, ArrowLeft, X, FileText, CheckCircle, Plus, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 
 interface Employee {
   id: number;
-  full_name: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   username: string;
-  roles?: Array<{ name: string }>;
+  roles?: Array<{ name: string } | string>;
 }
 
 export default function CalculatePay() {
@@ -35,6 +37,18 @@ export default function CalculatePay() {
     } catch (error) {
       console.error('Error fetching employees:', error);
     }
+  };
+
+  const getEmployeeName = (employee: Employee): string => {
+    if (employee.full_name) return employee.full_name;
+    if (employee.first_name || employee.last_name) {
+      return `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
+    }
+    return employee.username;
+  };
+
+  const getRoleName = (role: { name: string } | string): string => {
+    return typeof role === 'string' ? role : role.name;
   };
 
   const setDefaultDates = () => {
@@ -177,14 +191,14 @@ export default function CalculatePay() {
                                 onChange={() => handleEmployeeToggle(employee.id)}
                                 label={
                                   <>
-                                    {employee.full_name} ({employee.username})
+                                    {getEmployeeName(employee)} ({employee.username})
                                     {employee.roles && employee.roles.length > 0 && (
                                       <>
                                         <br />
                                         <small className="text-muted">
                                           {employee.roles.map((role, idx) => (
                                             <span key={idx} className="badge bg-secondary me-1">
-                                              {role.name}
+                                              {getRoleName(role)}
                                             </span>
                                           ))}
                                         </small>
@@ -199,6 +213,7 @@ export default function CalculatePay() {
                       </>
                     ) : (
                       <Alert variant="warning">
+                        <AlertTriangle size={16} className="me-2" />
                         No active employees found.
                       </Alert>
                     )}
@@ -262,6 +277,10 @@ export default function CalculatePay() {
                 <li>Entries must fall within the selected date range</li>
                 <li>All approved overtime is included</li>
               </ul>
+
+              <Alert variant="info" className="small mt-3">
+                <strong>Note:</strong> Calculations use all active pay rules. Deactivate rules you don't want to apply.
+              </Alert>
             </Card.Body>
           </Card>
 
@@ -269,7 +288,7 @@ export default function CalculatePay() {
             <Card.Header>
               <h6 className="mb-0">Quick Actions</h6>
             </Card.Header>
-            <Card.Body className="d-flex flex-column gap-2">
+            <Card.Body className="d-grid gap-2">
               <Button
                 variant="outline-primary"
                 size="sm"
@@ -279,15 +298,15 @@ export default function CalculatePay() {
                 View Past Calculations
               </Button>
               <Button
-                variant="outline-primary"
+                variant="outline-info"
                 size="sm"
                 onClick={() => navigate('/pay-rules/test')}
               >
                 <CheckCircle size={16} className="me-2" />
-                Test Rules
+                Test Rules First
               </Button>
               <Button
-                variant="outline-primary"
+                variant="outline-success"
                 size="sm"
                 onClick={() => navigate('/pay-rules/create')}
               >
