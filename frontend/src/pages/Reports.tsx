@@ -68,12 +68,58 @@ export default function Reports() {
     }
   };
 
-  const exportCSV = () => {
-    window.location.href = `/api/reports/export/csv?start_date=${startDate}&end_date=${endDate}`;
+  const exportCSV = async () => {
+    if (!startDate || !endDate) {
+      alert('Please select date range first');
+      return;
+    }
+    
+    try {
+      const response = await api.get('/reports/export/csv', {
+        params: { start_date: startDate, end_date: endDate },
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `attendance-report-${startDate}-to-${endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+      alert('Failed to export attendance CSV');
+    }
   };
 
-  const exportPayrollCSV = () => {
-    window.location.href = `/api/reports/export/payroll-csv?start_date=${startDate}&end_date=${endDate}`;
+  const exportPayrollCSV = async () => {
+    if (!startDate || !endDate) {
+      alert('Please select date range first');
+      return;
+    }
+    
+    try {
+      const response = await api.get('/reports/export/payroll-csv', {
+        params: { start_date: startDate, end_date: endDate },
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `payroll-report-${startDate}-to-${endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export payroll CSV:', error);
+      alert('Failed to export payroll CSV. You may need Payroll or Super User role.');
+    }
   };
 
   const printReport = () => {
