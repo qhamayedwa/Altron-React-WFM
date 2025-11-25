@@ -179,36 +179,7 @@ router.put('/:id', authenticate, requireRole('Payroll', 'Super User'), async (re
   }
 });
 
-// Get single pay code by ID
-router.get('/:id', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await pool.query(
-      `SELECT 
-        pc.*,
-        pc.description as name,
-        NULL::numeric as hourly_rate,
-        false as is_overtime,
-        NULL::numeric as overtime_multiplier
-      FROM pay_codes pc
-      WHERE pc.id = $1`,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: 'Pay code not found' });
-      return;
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Get pay code error:', error);
-    res.status(500).json({ error: 'Failed to fetch pay code' });
-  }
-});
-
-// Get pay code statistics
+// Get pay code statistics - MUST be before /:id route
 router.get('/statistics', authenticate, async (req: AuthRequest, res) => {
   try {
     // Check if pay_codes table exists
@@ -323,6 +294,35 @@ router.get('/configurations', authenticate, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Get pay code configurations error:', error);
     res.status(500).json({ error: 'Failed to fetch pay code configurations' });
+  }
+});
+
+// Get single pay code by ID - MUST be after /statistics and /configurations routes
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT 
+        pc.*,
+        pc.description as name,
+        NULL::numeric as hourly_rate,
+        false as is_overtime,
+        NULL::numeric as overtime_multiplier
+      FROM pay_codes pc
+      WHERE pc.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Pay code not found' });
+      return;
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Get pay code error:', error);
+    res.status(500).json({ error: 'Failed to fetch pay code' });
   }
 });
 
