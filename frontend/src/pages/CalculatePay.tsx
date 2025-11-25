@@ -36,7 +36,8 @@ export default function CalculatePay() {
   const loadEmployees = async () => {
     try {
       const response = await api.get('/users');
-      const activeEmployees = response.data.filter((user: any) => 
+      const users = response.data.users || response.data || [];
+      const activeEmployees = users.filter((user: any) => 
         user.isActive === true || user.is_active === true
       );
       setEmployees(activeEmployees);
