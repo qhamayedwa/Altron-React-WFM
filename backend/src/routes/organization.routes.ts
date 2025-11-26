@@ -871,4 +871,451 @@ router.put('/sites/:id', requireSuperUser, async (req: AuthRequest, res: Respons
   }
 });
 
+// ============================================
+// HOLIDAYS
+// ============================================
+
+router.get('/holidays', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { year } = req.query;
+    const yearNum = year ? parseInt(year as string) : new Date().getFullYear();
+
+    const result = await query(
+      `SELECT * FROM holidays 
+       WHERE tenant_id = $1 AND EXTRACT(YEAR FROM date) = $2
+       ORDER BY date ASC`,
+      [req.user!.tenantId, yearNum]
+    );
+
+    res.json({
+      holidays: result.rows.map(h => ({
+        id: h.id,
+        name: h.name,
+        date: h.date,
+        holidayType: h.holiday_type,
+        isRecurring: h.is_recurring,
+        recurringDay: h.recurring_day,
+        recurringMonth: h.recurring_month,
+        appliesToAll: h.applies_to_all,
+        departmentIds: h.department_ids,
+        isPaid: h.is_paid,
+        description: h.description,
+        isActive: h.is_active
+      }))
+    });
+  } catch (error) {
+    console.error('Get holidays error:', error);
+    res.status(500).json({ error: 'Failed to load holidays' });
+  }
+});
+
+router.post('/holidays', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, date, holidayType, isRecurring, recurringDay, recurringMonth, appliesToAll, departmentIds, isPaid, description } = req.body;
+
+    const result = await query(
+      `INSERT INTO holidays (tenant_id, name, date, holiday_type, is_recurring, recurring_day, recurring_month, applies_to_all, department_ids, is_paid, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING *`,
+      [req.user!.tenantId, name, date, holidayType, isRecurring, recurringDay, recurringMonth, appliesToAll, departmentIds, isPaid, description]
+    );
+
+    res.status(201).json({ holiday: result.rows[0] });
+  } catch (error) {
+    console.error('Create holiday error:', error);
+    res.status(500).json({ error: 'Failed to create holiday' });
+  }
+});
+
+router.put('/holidays/:id', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, date, holidayType, isRecurring, recurringDay, recurringMonth, appliesToAll, departmentIds, isPaid, description } = req.body;
+
+    const result = await query(
+      `UPDATE holidays SET 
+        name = $1, date = $2, holiday_type = $3, is_recurring = $4, 
+        recurring_day = $5, recurring_month = $6, applies_to_all = $7, 
+        department_ids = $8, is_paid = $9, description = $10, updated_at = NOW()
+       WHERE id = $11 AND tenant_id = $12
+       RETURNING *`,
+      [name, date, holidayType, isRecurring, recurringDay, recurringMonth, appliesToAll, departmentIds, isPaid, description, id, req.user!.tenantId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Holiday not found' });
+      return;
+    }
+
+    res.json({ holiday: result.rows[0] });
+  } catch (error) {
+    console.error('Update holiday error:', error);
+    res.status(500).json({ error: 'Failed to update holiday' });
+  }
+});
+
+router.delete('/holidays/:id', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      'DELETE FROM holidays WHERE id = $1 AND tenant_id = $2 RETURNING id',
+      [id, req.user!.tenantId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Holiday not found' });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete holiday error:', error);
+    res.status(500).json({ error: 'Failed to delete holiday' });
+  }
+});
+
+router.post('/holidays/copy-year', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { fromYear, toYear } = req.body;
+
+    const holidays = await query(
+      `SELECT * FROM holidays 
+       WHERE tenant_id = $1 AND EXTRACT(YEAR FROM date) = $2`,
+      [req.user!.tenantId, fromYear]
+    );
+
+    for (const h of holidays.rows) {
+      const newDate = new Date(h.date);
+      newDate.setFullYear(toYear);
+
+      await query(
+        `INSERT INTO holidays (tenant_id, name, date, holiday_type, is_recurring, recurring_day, recurring_month, applies_to_all, department_ids, is_paid, description)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT DO NOTHING`,
+        [req.user!.tenantId, h.name, newDate, h.holiday_type, h.is_recurring, h.recurring_day, h.recurring_month, h.applies_to_all, h.department_ids, h.is_paid, h.description]
+      );
+    }
+
+    res.json({ success: true, copied: holidays.rows.length });
+  } catch (error) {
+    console.error('Copy holidays error:', error);
+    res.status(500).json({ error: 'Failed to copy holidays' });
+  }
+});
+
+// ============================================
+// AUDIT LOGS
+// ============================================
+
+router.get('/audit-logs', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { page = '1', per_page = '50', action, entity_type, user_id, start_date, end_date, search } = req.query;
+    const pageNum = parseInt(page as string);
+    const perPageNum = parseInt(per_page as string);
+    const offset = (pageNum - 1) * perPageNum;
+
+    let whereConditions = ['al.tenant_id = $1'];
+    const params: any[] = [req.user!.tenantId];
+    let paramIndex = 1;
+
+    if (action) {
+      paramIndex++;
+      whereConditions.push(`al.action = $${paramIndex}`);
+      params.push(action);
+    }
+
+    if (entity_type) {
+      paramIndex++;
+      whereConditions.push(`al.entity_type = $${paramIndex}`);
+      params.push(entity_type);
+    }
+
+    if (user_id) {
+      paramIndex++;
+      whereConditions.push(`al.user_id = $${paramIndex}`);
+      params.push(user_id);
+    }
+
+    if (start_date) {
+      paramIndex++;
+      whereConditions.push(`al.created_at >= $${paramIndex}`);
+      params.push(start_date);
+    }
+
+    if (end_date) {
+      paramIndex++;
+      whereConditions.push(`al.created_at <= $${paramIndex}`);
+      params.push(end_date);
+    }
+
+    if (search) {
+      paramIndex++;
+      whereConditions.push(`(u.username ILIKE $${paramIndex} OR al.ip_address ILIKE $${paramIndex})`);
+      params.push(`%${search}%`);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    const countResult = await query(
+      `SELECT COUNT(*) FROM audit_logs al LEFT JOIN users u ON al.user_id = u.id WHERE ${whereClause}`,
+      params
+    );
+
+    const logsResult = await query(
+      `SELECT al.*, u.username, u.first_name, u.last_name
+       FROM audit_logs al
+       LEFT JOIN users u ON al.user_id = u.id
+       WHERE ${whereClause}
+       ORDER BY al.created_at DESC
+       LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}`,
+      [...params, perPageNum, offset]
+    );
+
+    res.json({
+      logs: logsResult.rows.map(l => ({
+        id: l.id,
+        tenantId: l.tenant_id,
+        userId: l.user_id,
+        username: l.username,
+        userFullName: l.first_name && l.last_name ? `${l.first_name} ${l.last_name}` : null,
+        sessionId: l.session_id,
+        action: l.action,
+        entityType: l.entity_type,
+        entityId: l.entity_id,
+        oldValue: l.old_value,
+        newValue: l.new_value,
+        changedFields: l.changed_fields,
+        ipAddress: l.ip_address,
+        userAgent: l.user_agent,
+        metadata: l.metadata,
+        createdAt: l.created_at
+      })),
+      total: parseInt(countResult.rows[0].count),
+      page: pageNum,
+      perPage: perPageNum
+    });
+  } catch (error) {
+    console.error('Get audit logs error:', error);
+    res.status(500).json({ error: 'Failed to load audit logs' });
+  }
+});
+
+router.get('/audit-logs/export', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { action, entity_type, start_date, end_date } = req.query;
+
+    let whereConditions = ['al.tenant_id = $1'];
+    const params: any[] = [req.user!.tenantId];
+    let paramIndex = 1;
+
+    if (action) {
+      paramIndex++;
+      whereConditions.push(`al.action = $${paramIndex}`);
+      params.push(action);
+    }
+
+    if (entity_type) {
+      paramIndex++;
+      whereConditions.push(`al.entity_type = $${paramIndex}`);
+      params.push(entity_type);
+    }
+
+    if (start_date) {
+      paramIndex++;
+      whereConditions.push(`al.created_at >= $${paramIndex}`);
+      params.push(start_date);
+    }
+
+    if (end_date) {
+      paramIndex++;
+      whereConditions.push(`al.created_at <= $${paramIndex}`);
+      params.push(end_date);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    const logsResult = await query(
+      `SELECT al.*, u.username, u.first_name, u.last_name
+       FROM audit_logs al
+       LEFT JOIN users u ON al.user_id = u.id
+       WHERE ${whereClause}
+       ORDER BY al.created_at DESC
+       LIMIT 10000`,
+      params
+    );
+
+    const headers = ['Timestamp', 'User', 'Action', 'Entity Type', 'Entity ID', 'IP Address', 'Changed Fields'];
+    const csvRows = [headers.join(',')];
+
+    logsResult.rows.forEach(log => {
+      const values = [
+        log.created_at ? new Date(log.created_at).toISOString() : '',
+        `"${log.username || 'System'}"`,
+        log.action,
+        log.entity_type,
+        log.entity_id || '',
+        log.ip_address || '',
+        `"${(log.changed_fields || '').replace(/"/g, '""')}"`
+      ];
+      csvRows.push(values.join(','));
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=audit-log-export.csv');
+    res.send(csvRows.join('\n'));
+  } catch (error) {
+    console.error('Export audit logs error:', error);
+    res.status(500).json({ error: 'Failed to export audit logs' });
+  }
+});
+
+// ============================================
+// COMPLIANCE
+// ============================================
+
+router.get('/compliance/metrics', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // Generate compliance metrics based on time entries and rules
+    const overtimeResult = await query(
+      `SELECT COUNT(*) as count FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       WHERE u.tenant_id = $1 
+       AND te.clock_in_time >= date_trunc('month', CURRENT_DATE)
+       AND EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 > 10`,
+      [req.user!.tenantId]
+    );
+
+    const lateArrivalsResult = await query(
+      `SELECT COUNT(*) as count FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       LEFT JOIN schedules s ON s.user_id = u.id AND DATE(te.clock_in_time) = s.shift_date
+       WHERE u.tenant_id = $1 
+       AND te.clock_in_time >= date_trunc('month', CURRENT_DATE)
+       AND s.id IS NOT NULL
+       AND te.clock_in_time > (s.shift_date + s.start_time + interval '15 minutes')`,
+      [req.user!.tenantId]
+    );
+
+    const metrics = [
+      { 
+        id: '1', 
+        name: 'Overtime Limit', 
+        category: 'Time', 
+        score: Math.max(0, 100 - parseInt(overtimeResult.rows[0].count) * 5),
+        threshold: 90, 
+        status: parseInt(overtimeResult.rows[0].count) < 3 ? 'compliant' : 'warning',
+        trend: 'stable', 
+        violations: parseInt(overtimeResult.rows[0].count),
+        description: 'Employees exceeding daily hour limits' 
+      },
+      { 
+        id: '2', 
+        name: 'Late Arrivals', 
+        category: 'Attendance', 
+        score: Math.max(0, 100 - parseInt(lateArrivalsResult.rows[0].count) * 2),
+        threshold: 85, 
+        status: parseInt(lateArrivalsResult.rows[0].count) < 10 ? 'compliant' : 'warning',
+        trend: 'stable', 
+        violations: parseInt(lateArrivalsResult.rows[0].count),
+        description: 'Employees clocking in after shift start' 
+      }
+    ];
+
+    res.json({ metrics });
+  } catch (error) {
+    console.error('Get compliance metrics error:', error);
+    res.status(500).json({ error: 'Failed to load compliance metrics' });
+  }
+});
+
+router.get('/compliance/violations', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // Get violations based on time entries with issues
+    const result = await query(
+      `SELECT te.id, te.user_id, te.clock_in_time, te.clock_out_time, te.status,
+              u.first_name, u.last_name, u.username,
+              EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 as hours
+       FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       WHERE u.tenant_id = $1
+       AND te.clock_in_time >= date_trunc('month', CURRENT_DATE)
+       AND (
+         EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 > 10
+         OR te.status = 'exception'
+       )
+       ORDER BY te.clock_in_time DESC
+       LIMIT 100`,
+      [req.user!.tenantId]
+    );
+
+    res.json({
+      violations: result.rows.map(v => ({
+        id: v.id,
+        userId: v.user_id,
+        userName: v.first_name && v.last_name ? `${v.first_name} ${v.last_name}` : v.username,
+        ruleId: 1,
+        ruleName: parseFloat(v.hours) > 10 ? 'Excessive Hours' : 'Exception',
+        severity: parseFloat(v.hours) > 12 ? 'critical' : 'warning',
+        date: v.clock_in_time,
+        status: 'open',
+        description: `Worked ${parseFloat(v.hours).toFixed(1)} hours`,
+        costImpact: null
+      }))
+    });
+  } catch (error) {
+    console.error('Get violations error:', error);
+    res.status(500).json({ error: 'Failed to load violations' });
+  }
+});
+
+router.get('/compliance/costs', requireSuperUser, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // Calculate overtime costs
+    const overtimeResult = await query(
+      `SELECT COALESCE(SUM(
+        CASE WHEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 > 8 
+          THEN (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - 8) * COALESCE(u.hourly_rate, 100) * 1.5
+          ELSE 0 
+        END
+      ), 0) as total
+       FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       WHERE u.tenant_id = $1 
+       AND te.clock_in_time >= date_trunc('month', CURRENT_DATE)
+       AND te.clock_out_time IS NOT NULL`,
+      [req.user!.tenantId]
+    );
+
+    const previousResult = await query(
+      `SELECT COALESCE(SUM(
+        CASE WHEN EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 > 8 
+          THEN (EXTRACT(EPOCH FROM (te.clock_out_time - te.clock_in_time)) / 3600.0 - 8) * COALESCE(u.hourly_rate, 100) * 1.5
+          ELSE 0 
+        END
+      ), 0) as total
+       FROM time_entries te
+       JOIN users u ON te.user_id = u.id
+       WHERE u.tenant_id = $1 
+       AND te.clock_in_time >= date_trunc('month', CURRENT_DATE) - interval '1 month'
+       AND te.clock_in_time < date_trunc('month', CURRENT_DATE)
+       AND te.clock_out_time IS NOT NULL`,
+      [req.user!.tenantId]
+    );
+
+    res.json({
+      summary: {
+        totalOvertimeCost: parseFloat(overtimeResult.rows[0].total) || 0,
+        projectedOvertimeCost: (parseFloat(overtimeResult.rows[0].total) || 0) * 1.15,
+        compliancePenaltyCost: 0,
+        labourCostVariance: Math.abs((parseFloat(overtimeResult.rows[0].total) || 0) - (parseFloat(previousResult.rows[0].total) || 0)),
+        previousPeriodCost: parseFloat(previousResult.rows[0].total) || 0
+      }
+    });
+  } catch (error) {
+    console.error('Get compliance costs error:', error);
+    res.status(500).json({ error: 'Failed to load costs' });
+  }
+});
+
 export default router;
