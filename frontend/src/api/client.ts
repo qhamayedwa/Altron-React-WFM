@@ -13,9 +13,14 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('API Error:', error.config?.url, error.response?.status, error.response?.data);
     if (error.response?.status === 401) {
-      useAuthStore.getState().logout();
-      window.location.href = '/login';
+      // Don't logout on login failures
+      if (!error.config?.url?.includes('/auth/login')) {
+        console.log('401 detected, logging out');
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
