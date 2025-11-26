@@ -72,3 +72,9 @@ externalPort = 5000
 [[ports]]
 localPort = 43333
 externalPort = 8000
+
+[userenv]
+
+[userenv.shared]
+JWT_SECRET = "timelogic-ai-jwt-secret-key-2024-super-secure-random-string"
+JWT_EXPIRES_IN = "7d"
