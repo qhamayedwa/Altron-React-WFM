@@ -1,8 +1,8 @@
-# WFM24/7 Workforce Management System
+# Timelogic Workforce Management System
 
 ## Overview
 
-WFM24/7 is a comprehensive workforce management platform built with Flask and PostgreSQL, designed for 24/7 operations with multi-tenant support. The system handles time tracking, employee scheduling, leave management, payroll processing, and organizational hierarchy management with South African business standards (ZAR currency, SAST timezone).
+Timelogic is a comprehensive workforce management platform built with React/Node.js and PostgreSQL, designed for 24/7 operations with multi-tenant support. The system handles time tracking, employee scheduling, leave management, payroll processing, and organizational hierarchy management with South African business standards (ZAR currency, SAST timezone).
 
 **Core Capabilities:**
 - GPS-enabled time tracking with clock in/out functionality

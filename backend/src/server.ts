@@ -28,7 +28,7 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    service: 'WFM24/7 Backend'
+    service: 'Timelogic Backend'
   });
 });
 

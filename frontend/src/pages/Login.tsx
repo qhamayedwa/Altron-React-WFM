@@ -37,7 +37,7 @@ export default function Login() {
           <Col lg={5} className="d-none d-lg-block">
             <div className="text-white pe-4">
               <h1 className="display-4 fw-bold mb-4" style={{ position: 'relative', zIndex: 1 }}>
-                Altron WFM24/7
+                Timelogic
               </h1>
               <p className="lead mb-5" style={{ position: 'relative', zIndex: 1, opacity: 0.9 }}>
                 Complete Workforce Management for 24/7 Operations
