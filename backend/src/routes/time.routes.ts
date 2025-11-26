@@ -17,7 +17,7 @@ router.get('/current-status', authenticate, async (req: AuthRequest, res: Respon
     const result = await query(
       `SELECT id, clock_in_time, clock_out_time, status, break_start_time, break_end_time
        FROM time_entries 
-       WHERE user_id = $1 AND status = 'Open'
+       WHERE user_id = $1 AND (status = 'Open' OR status = 'clocked_in')
        ORDER BY clock_in_time DESC
        LIMIT 1`,
       [userId]
@@ -60,8 +60,8 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
 
     // Check if user already has an open time entry
     const openEntry = await query(
-      'SELECT id FROM time_entries WHERE user_id = $1 AND status = $2',
-      [userId, 'Open']
+      `SELECT id FROM time_entries WHERE user_id = $1 AND (status = 'Open' OR status = 'clocked_in')`,
+      [userId]
     );
 
     if (openEntry.rows.length > 0) {
@@ -76,9 +76,9 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
     const result = await query(
       `INSERT INTO time_entries 
        (user_id, clock_in_time, status, clock_in_latitude, clock_in_longitude, notes, created_at, updated_at, is_overtime_approved)
-       VALUES ($1, NOW(), $2, $3, $4, $5, NOW(), NOW(), false)
+       VALUES ($1, NOW(), 'clocked_in', $2, $3, $4, NOW(), NOW(), false)
        RETURNING id, clock_in_time`,
-      [userId, 'Open', latitude, longitude, notes || null]
+      [userId, latitude, longitude, notes || null]
     );
 
     res.json({
@@ -114,8 +114,8 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
 
     // Find the open time entry
     const openEntry = await query(
-      'SELECT id, notes FROM time_entries WHERE user_id = $1 AND status = $2',
-      [userId, 'Open']
+      `SELECT id, notes FROM time_entries WHERE user_id = $1 AND (status = 'Open' OR status = 'clocked_in')`,
+      [userId]
     );
 
     if (openEntry.rows.length === 0) {
@@ -136,14 +136,14 @@ router.post('/clock-out', authenticate, async (req: AuthRequest, res: Response):
     const result = await query(
       `UPDATE time_entries 
        SET clock_out_time = NOW(), 
-           status = $1, 
-           clock_out_latitude = $2, 
-           clock_out_longitude = $3, 
-           notes = $4,
+           status = 'clocked_out', 
+           clock_out_latitude = $1, 
+           clock_out_longitude = $2, 
+           notes = $3,
            updated_at = NOW()
-       WHERE id = $5
+       WHERE id = $4
        RETURNING clock_out_time`,
-      ['Closed', latitude, longitude, updatedNotes, entryId]
+      [latitude, longitude, updatedNotes, entryId]
     );
 
     res.json({
@@ -174,8 +174,8 @@ router.post('/break/start', authenticate, async (req: AuthRequest, res: Response
 
     // Find the open time entry
     const openEntry = await query(
-      'SELECT id, break_start_time FROM time_entries WHERE user_id = $1 AND status = $2',
-      [userId, 'Open']
+      `SELECT id, break_start_time FROM time_entries WHERE user_id = $1 AND (status = 'Open' OR status = 'clocked_in')`,
+      [userId]
     );
 
     if (openEntry.rows.length === 0) {
@@ -235,8 +235,8 @@ router.post('/break/end', authenticate, async (req: AuthRequest, res: Response):
     const openEntry = await query(
       `SELECT id, break_start_time, break_end_time, total_break_minutes 
        FROM time_entries 
-       WHERE user_id = $1 AND status = $2 AND break_start_time IS NOT NULL`,
-      [userId, 'Open']
+       WHERE user_id = $1 AND (status = 'Open' OR status = 'clocked_in') AND break_start_time IS NOT NULL`,
+      [userId]
     );
 
     if (openEntry.rows.length === 0) {

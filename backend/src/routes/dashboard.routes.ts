@@ -242,18 +242,19 @@ router.get('/activity', authenticate, async (req: AuthRequest, res) => {
         id,
         clock_in_time as timestamp,
         status,
-        total_hours as details
+        CAST(EXTRACT(EPOCH FROM (clock_out_time - clock_in_time)) / 3600 AS VARCHAR) as details
        FROM time_entries
        WHERE user_id = $1
        UNION ALL
        SELECT 
         'leave_request' as type,
-        id,
-        created_at as timestamp,
-        status,
-        CONCAT(leave_type, ': ', days, ' days') as details
-       FROM leave_requests
-       WHERE user_id = $1
+        la.id,
+        la.created_at as timestamp,
+        la.status,
+        CONCAT(lt.name, ': ', la.end_date - la.start_date + 1, ' days') as details
+       FROM leave_applications la
+       LEFT JOIN leave_types lt ON la.leave_type_id = lt.id
+       WHERE la.user_id = $1
        ORDER BY timestamp DESC
        LIMIT $2`,
       [userId, limit]
