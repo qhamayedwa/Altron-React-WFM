@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Row, Col, Card, Button } from 'react-bootstrap';
-import { Clock, Calendar, Users, TrendingUp, DollarSign } from 'lucide-react';
+import { Clock, Calendar, Users, TrendingUp, DollarSign, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
@@ -17,7 +17,6 @@ export default function Dashboard() {
   const { user, isSuperUser } = useAuthStore();
   const navigate = useNavigate();
 
-  // Show Super Admin Dashboard for super users
   if (isSuperUser()) {
     return <SuperAdminDashboard />;
   }
@@ -42,53 +41,108 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 className="mb-4">Welcome, {user?.firstName}!</h2>
+      {/* Welcome Banner with Gradient */}
+      <div className="welcome-banner mb-4">
+        <Row className="align-items-center">
+          <Col lg={8}>
+            <h2 className="fw-bold mb-2">Welcome back, {user?.firstName}!</h2>
+            <p className="mb-0" style={{ opacity: 0.9 }}>
+              Here's what's happening with your workforce today
+            </p>
+          </Col>
+          <Col lg={4} className="text-lg-end mt-3 mt-lg-0">
+            <Button 
+              variant="light" 
+              onClick={() => navigate('/quick-actions')}
+              className="d-inline-flex align-items-center gap-2"
+              style={{ 
+                background: 'rgba(255, 255, 255, 0.9)',
+                color: '#28468D',
+                border: 'none',
+                fontWeight: 600
+              }}
+            >
+              Quick Actions
+              <ArrowRight size={18} />
+            </Button>
+          </Col>
+        </Row>
+      </div>
 
+      {/* Stats Cards with Gradient Backgrounds */}
       <Row className="g-4 mb-4">
         <Col md={6} lg={3}>
-          <Card className="text-center h-100">
-            <Card.Body>
-              <div className="mb-3">
-                <Clock size={48} color="#28468D" />
+          <Card className="text-center h-100 stats-card blue border-0">
+            <Card.Body className="py-4">
+              <div 
+                className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                style={{ 
+                  width: 64, 
+                  height: 64, 
+                  background: 'linear-gradient(135deg, #28468D, #1F4650)'
+                }}
+              >
+                <Clock size={28} color="#fff" />
               </div>
-              <h3>{stats.timeEntriesToday}</h3>
-              <p className="text-muted mb-0">Clock Entries Today</p>
+              <h2 className="fw-bold mb-1" style={{ color: '#28468D' }}>{stats.timeEntriesToday}</h2>
+              <p className="text-muted mb-0 small fw-medium">Clock Entries Today</p>
             </Card.Body>
           </Card>
         </Col>
 
         <Col md={6} lg={3}>
-          <Card className="text-center h-100">
-            <Card.Body>
-              <div className="mb-3">
-                <Calendar size={48} color="#54B8DF" />
+          <Card className="text-center h-100 stats-card teal border-0">
+            <Card.Body className="py-4">
+              <div 
+                className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                style={{ 
+                  width: 64, 
+                  height: 64, 
+                  background: 'linear-gradient(135deg, #54DADF, #54B8DF)'
+                }}
+              >
+                <Calendar size={28} color="#fff" />
               </div>
-              <h3>{stats.pendingLeaveRequests}</h3>
-              <p className="text-muted mb-0">Pending Leave Requests</p>
+              <h2 className="fw-bold mb-1" style={{ color: '#1F4650' }}>{stats.pendingLeaveRequests}</h2>
+              <p className="text-muted mb-0 small fw-medium">Pending Leave Requests</p>
             </Card.Body>
           </Card>
         </Col>
 
         <Col md={6} lg={3}>
-          <Card className="text-center h-100">
-            <Card.Body>
-              <div className="mb-3">
-                <Calendar size={48} color="#1F4650" />
+          <Card className="text-center h-100 stats-card mint border-0">
+            <Card.Body className="py-4">
+              <div 
+                className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                style={{ 
+                  width: 64, 
+                  height: 64, 
+                  background: 'linear-gradient(135deg, #C0F2D7, #28A745)'
+                }}
+              >
+                <CheckCircle2 size={28} color="#fff" />
               </div>
-              <h3>{stats.upcomingShifts}</h3>
-              <p className="text-muted mb-0">Upcoming Shifts</p>
+              <h2 className="fw-bold mb-1" style={{ color: '#1F4650' }}>{stats.upcomingShifts}</h2>
+              <p className="text-muted mb-0 small fw-medium">Upcoming Shifts</p>
             </Card.Body>
           </Card>
         </Col>
 
         <Col md={6} lg={3}>
-          <Card className="text-center h-100">
-            <Card.Body>
-              <div className="mb-3">
-                <Users size={48} color="#54DADF" />
+          <Card className="text-center h-100 stats-card orange border-0">
+            <Card.Body className="py-4">
+              <div 
+                className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                style={{ 
+                  width: 64, 
+                  height: 64, 
+                  background: 'linear-gradient(135deg, #EF865B, #EBF982)'
+                }}
+              >
+                <Users size={28} color="#1F4650" />
               </div>
-              <h3>{stats.teamMembers}</h3>
-              <p className="text-muted mb-0">Team Members</p>
+              <h2 className="fw-bold mb-1" style={{ color: '#1F4650' }}>{stats.teamMembers}</h2>
+              <p className="text-muted mb-0 small fw-medium">Team Members</p>
             </Card.Body>
           </Card>
         </Col>
@@ -96,40 +150,112 @@ export default function Dashboard() {
 
       <Row className="g-4">
         <Col lg={8}>
-          <Card>
-            <Card.Header>
-              <h5 className="mb-0">Recent Activity</h5>
+          <Card className="h-100">
+            <Card.Header className="gradient-blue py-3">
+              <h5 className="mb-0 fw-semibold">Recent Activity</h5>
             </Card.Header>
             <Card.Body>
-              <p className="text-muted">No recent activity to display.</p>
+              <div className="text-center py-5">
+                <div 
+                  className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                  style={{ 
+                    width: 64, 
+                    height: 64, 
+                    background: 'linear-gradient(135deg, rgba(84, 184, 223, 0.2), rgba(40, 70, 141, 0.2))'
+                  }}
+                >
+                  <AlertCircle size={28} color="#28468D" />
+                </div>
+                <p className="text-muted mb-0">No recent activity to display</p>
+                <small className="text-muted">Activity will appear here as you use the system</small>
+              </div>
             </Card.Body>
           </Card>
         </Col>
 
         <Col lg={4}>
-          <Card>
-            <Card.Header>
-              <h5 className="mb-0">Quick Actions</h5>
+          <Card className="h-100">
+            <Card.Header className="gradient-teal py-3">
+              <h5 className="mb-0 fw-semibold">Quick Actions</h5>
             </Card.Header>
-            <Card.Body className="d-flex flex-column gap-2">
-              <Button variant="primary" className="w-100" onClick={() => navigate('/my-timecard')}>
-                <Clock size={16} className="me-2" />
-                Clock In
+            <Card.Body className="d-flex flex-column gap-3 p-4">
+              <Button 
+                variant="primary" 
+                className="w-100 py-3 d-flex align-items-center justify-content-center gap-2" 
+                onClick={() => navigate('/my-timecard')}
+              >
+                <Clock size={20} />
+                <span className="fw-semibold">Clock In</span>
               </Button>
-              <Button variant="outline-primary" className="w-100" onClick={() => navigate('/apply-leave')}>
-                <Calendar size={16} className="me-2" />
-                Request Leave
+              <Button 
+                variant="outline-primary" 
+                className="w-100 py-2 d-flex align-items-center justify-content-center gap-2" 
+                onClick={() => navigate('/apply-leave')}
+              >
+                <Calendar size={18} />
+                <span>Request Leave</span>
               </Button>
-              <Button variant="outline-primary" className="w-100" onClick={() => navigate('/my-schedule')}>
-                <TrendingUp size={16} className="me-2" />
-                View Schedule
+              <Button 
+                variant="outline-primary" 
+                className="w-100 py-2 d-flex align-items-center justify-content-center gap-2" 
+                onClick={() => navigate('/my-schedule')}
+              >
+                <TrendingUp size={18} />
+                <span>View Schedule</span>
               </Button>
-              <Button variant="outline-success" className="w-100" onClick={() => navigate('/payroll/processing')}>
-                <DollarSign size={16} className="me-2" />
-                View Payroll
+              <Button 
+                variant="outline-primary" 
+                className="w-100 py-2 d-flex align-items-center justify-content-center gap-2" 
+                onClick={() => navigate('/payroll/processing')}
+                style={{ 
+                  borderColor: '#C0F2D7',
+                  color: '#1F4650'
+                }}
+              >
+                <DollarSign size={18} />
+                <span>View Payroll</span>
               </Button>
             </Card.Body>
           </Card>
+        </Col>
+      </Row>
+
+      {/* Section Divider */}
+      <hr className="section-divider my-4" />
+
+      {/* Additional Info Section */}
+      <Row className="g-4">
+        <Col md={6}>
+          <div className="highlight-section">
+            <h6 className="fw-bold mb-2" style={{ color: '#28468D' }}>Today's Schedule</h6>
+            <p className="text-muted mb-0 small">
+              Check your schedule and upcoming shifts to stay on top of your work.
+            </p>
+            <Button 
+              variant="link" 
+              className="p-0 mt-2"
+              onClick={() => navigate('/my-schedule')}
+              style={{ color: '#54B8DF' }}
+            >
+              View full schedule <ArrowRight size={14} />
+            </Button>
+          </div>
+        </Col>
+        <Col md={6}>
+          <div className="highlight-section teal">
+            <h6 className="fw-bold mb-2" style={{ color: '#1F4650' }}>Leave Balance</h6>
+            <p className="text-muted mb-0 small">
+              Review your available leave days and plan your time off.
+            </p>
+            <Button 
+              variant="link" 
+              className="p-0 mt-2"
+              onClick={() => navigate('/my-leave')}
+              style={{ color: '#54DADF' }}
+            >
+              Check leave balance <ArrowRight size={14} />
+            </Button>
+          </div>
         </Col>
       </Row>
     </div>
