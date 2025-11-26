@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: WFM24/7 Workforce Management API
+  title: TimeLogic AI Workforce Management API
   version: 1.0.0
   description: |
-    Comprehensive REST API for WFM24/7 - A multi-tenant workforce management platform designed for 24/7 operations.
+    Comprehensive REST API for TimeLogic AI - A multi-tenant workforce management platform designed for 24/7 operations.
     
     ## Features
     - GPS-enabled time tracking with clock in/out
@@ -21,8 +21,8 @@ info:
     - Timezone: SAST (UTC+2)
     - Date Format: YYYY-MM-DD (ISO 8601)
   contact:
-    name: Altron WFM Support
-    email: support@altron-wfm.com
+    name: TimeLogic AI Support
+    email: support@timelogic.ai
   license:
     name: Proprietary
     

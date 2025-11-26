@@ -1,8 +1,8 @@
 #!/bin/bash
-# Altron WFM24/7 - Setup and Start Script
+# TimeLogic AI - Setup and Start Script
 
 echo "=========================================="
-echo "🚀 Altron WFM24/7 - React + Node.js Stack"
+echo "🚀 TimeLogic AI - React + Node.js Stack"
 echo "=========================================="
 
 # Install backend dependencies if needed
