@@ -15,7 +15,7 @@ router.get('/current-status', authenticate, async (req: AuthRequest, res: Respon
     }
 
     const result = await query(
-      `SELECT id, clock_in_time, clock_out_time, status, break_start_time, break_end_time
+      `SELECT id, clock_in_time, clock_out_time, status, total_break_minutes, notes
        FROM time_entries 
        WHERE user_id = $1 AND (status = 'Open' OR status = 'clocked_in')
        ORDER BY clock_in_time DESC
@@ -29,8 +29,8 @@ router.get('/current-status', authenticate, async (req: AuthRequest, res: Respon
         status: 'clocked_in',
         entry_id: entry.id,
         clock_in_time: entry.clock_in_time,
-        on_break: entry.break_start_time && !entry.break_end_time,
-        break_start_time: entry.break_start_time
+        total_break_minutes: entry.total_break_minutes || 0,
+        notes: entry.notes
       });
       return;
     } else {
@@ -75,8 +75,8 @@ router.post('/clock-in', authenticate, async (req: AuthRequest, res: Response): 
     // Create new time entry
     const result = await query(
       `INSERT INTO time_entries 
-       (user_id, clock_in_time, status, clock_in_latitude, clock_in_longitude, notes, created_at, updated_at, is_overtime_approved)
-       VALUES ($1, NOW(), 'clocked_in', $2, $3, $4, NOW(), NOW(), false)
+       (user_id, clock_in_time, status, clock_in_latitude, clock_in_longitude, notes, created_at, updated_at)
+       VALUES ($1, NOW(), 'clocked_in', $2, $3, $4, NOW(), NOW())
        RETURNING id, clock_in_time`,
       [userId, latitude, longitude, notes || null]
     );
