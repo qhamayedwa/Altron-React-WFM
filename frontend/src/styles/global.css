@@ -144,16 +144,18 @@ body {
 
 /* Navbar with Gradient */
 .navbar {
-  background: var(--grad-navy-teal-h) !important;
+  background: linear-gradient(90deg, #28468D 0%, #1F4650 100%) !important;
   box-shadow: 0 2px 8px rgba(31, 70, 80, 0.3);
+  border-bottom: 3px solid #54DADF;
 }
 
-/* Sidebar with Gradient */
+/* Sidebar with Gradient - Altron CI 2024 */
 .sidebar {
-  background: var(--grad-navy-teal-v);
+  background: linear-gradient(180deg, #28468D 0%, #1F4650 50%, #162F36 100%);
   min-height: 100vh;
   color: white;
   position: relative;
+  box-shadow: 2px 0 12px rgba(31, 70, 80, 0.3);
 }
 
 .sidebar::before {
@@ -163,20 +165,131 @@ body {
   left: 0;
   right: 0;
   height: 4px;
-  background: var(--grad-teal-yellow-h);
+  background: linear-gradient(90deg, #54DADF, #EBF982, #C0F2D7);
 }
 
-.sidebar a {
+/* Sidebar Brand/Logo Area */
+.sidebar-brand {
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid rgba(84, 218, 223, 0.2);
+  margin-bottom: 1rem;
+  background: linear-gradient(180deg, rgba(84, 184, 223, 0.15), transparent);
+}
+
+.sidebar-brand h4 {
+  color: #FFFFFF;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sidebar-brand h4::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 24px;
+  background: linear-gradient(180deg, #54DADF, #C0F2D7);
+  border-radius: 4px;
+}
+
+/* Sidebar Navigation Links */
+.sidebar a,
+.sidebar button.nav-link {
   color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   border-radius: 8px;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
 }
 
 .sidebar a:hover,
-.sidebar a.active {
-  color: white;
-  background: linear-gradient(90deg, rgba(84, 184, 223, 0.3), transparent);
+.sidebar button.nav-link:hover {
+  color: #FFFFFF;
+  background: linear-gradient(90deg, rgba(84, 218, 223, 0.25), rgba(192, 242, 215, 0.1), transparent);
+  transform: translateX(4px);
+}
+
+.sidebar a.active,
+.sidebar a:focus {
+  color: #FFFFFF;
+  background: linear-gradient(90deg, rgba(84, 184, 223, 0.4), rgba(84, 218, 223, 0.2), transparent);
+  border-left: 3px solid #54DADF;
+  padding-left: calc(0.5rem + 3px) !important;
+}
+
+/* Sidebar Submenu Items */
+.sidebar .ms-4 a {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
+  border-left: 2px solid rgba(84, 218, 223, 0.3);
+  margin-left: 0.5rem;
+  border-radius: 0 8px 8px 0;
+}
+
+.sidebar .ms-4 a:hover {
+  color: #FFFFFF;
+  background: linear-gradient(90deg, rgba(192, 242, 215, 0.2), transparent);
+  border-left-color: #C0F2D7;
+}
+
+.sidebar .ms-4 a.active {
+  border-left-color: #54DADF;
+  background: linear-gradient(90deg, rgba(84, 218, 223, 0.3), transparent);
+}
+
+/* Sidebar Section Dividers */
+.sidebar-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(84, 218, 223, 0.3), transparent);
+  margin: 1rem 0;
+}
+
+/* Sidebar Dropdown Toggle */
+.sidebar button.nav-link {
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar button.nav-link:hover {
+  background: linear-gradient(90deg, rgba(84, 218, 223, 0.2), transparent);
+}
+
+/* Sidebar Icon Styling */
+.sidebar svg {
+  opacity: 0.9;
+  transition: all 0.25s ease;
+}
+
+.sidebar a:hover svg,
+.sidebar button.nav-link:hover svg {
+  opacity: 1;
+  color: #54DADF;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem;
+  border-top: 1px solid rgba(84, 218, 223, 0.2);
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.2), transparent);
+}
+
+/* Logout Button Special Styling */
+.sidebar .logout-btn {
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.25s ease;
+}
+
+.sidebar .logout-btn:hover {
+  color: #EF865B;
+  background: linear-gradient(90deg, rgba(239, 134, 91, 0.2), transparent);
 }
 
 /* Card Styles with Gradient Accents */

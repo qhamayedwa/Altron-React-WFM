@@ -32,13 +32,22 @@ export default function Layout() {
       <div 
         className={`sidebar ${!sidebarOpen && 'd-none'}`}
         style={{ 
-          width: '250px',
+          width: '260px',
           transition: 'all 0.3s ease',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
-        <div className="p-3">
-          <h4 className="text-white mb-4">Altron WFM24/7</h4>
+        {/* Brand Header */}
+        <div className="sidebar-brand">
+          <h4>Altron WFM24/7</h4>
+          <small style={{ color: 'rgba(84, 218, 223, 0.8)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+            Workforce Management
+          </small>
+        </div>
+        
+        <div className="p-3 flex-grow-1" style={{ overflowY: 'auto' }}>
           <Nav className="flex-column">
             {/* 1. Dashboard */}
             <Link to="/" className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1">
@@ -330,6 +339,9 @@ export default function Layout() {
               </div>
             )}
 
+            {/* Divider before Profile/Logout */}
+            <div className="sidebar-divider"></div>
+
             {/* 9. My Profile */}
             <Link to="/profile" className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1">
               <User size={20} />
@@ -339,7 +351,7 @@ export default function Layout() {
             {/* 10. Sign Out */}
             <button 
               onClick={handleLogout}
-              className="nav-link d-flex align-items-center gap-2 p-2 rounded mb-1 border-0 bg-transparent text-start w-100"
+              className="nav-link logout-btn d-flex align-items-center gap-2 p-2 rounded mb-1 border-0 bg-transparent text-start w-100"
             >
               <LogOut size={20} />
               <span>Sign Out</span>
