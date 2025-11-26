@@ -41,7 +41,7 @@ export default function Layout() {
       >
         {/* Brand Header */}
         <div className="sidebar-brand">
-          <h4>Timelogic</h4>
+          <h4>TimeLogic AI</h4>
           <small style={{ color: 'rgba(84, 218, 223, 0.8)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
             Workforce Management
           </small>
