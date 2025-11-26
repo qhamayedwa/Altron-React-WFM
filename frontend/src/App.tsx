@@ -74,6 +74,20 @@ import Notifications from './pages/Notifications';
 import Register from './pages/Register';
 import ImportTimeData from './pages/ImportTimeData';
 import CreateSchedule from './pages/CreateSchedule';
+
+import ClockInOut from './pages/ClockInOut';
+import HolidayManagement from './pages/HolidayManagement';
+import AuditTrail from './pages/AuditTrail';
+import ComplianceDashboard from './pages/ComplianceDashboard';
+import OpenShifts from './pages/OpenShifts';
+import RealTimeAttendance from './pages/RealTimeAttendance';
+import LeavePolicyBuilder from './pages/LeavePolicyBuilder';
+import WorkflowBuilder from './pages/WorkflowBuilder';
+import DeviceManagement from './pages/DeviceManagement';
+import InternationalisationSettings from './pages/InternationalisationSettings';
+import AIConfigurationWizard from './pages/AIConfigurationWizard';
+import SupportHelpCentre from './pages/SupportHelpCentre';
+import TeamChat from './pages/TeamChat';
 import EditSchedule from './pages/EditSchedule';
 import CreateShiftType from './pages/CreateShiftType';
 import EditShiftType from './pages/EditShiftType';
@@ -135,6 +149,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           
           {/* Personal */}
+          <Route path="clock-in-out" element={<ClockInOut />} />
           <Route path="my-timecard" element={<MyTimecard />} />
           <Route path="my-schedule" element={<MySchedule />} />
           <Route path="my-leave" element={<MyLeave />} />
