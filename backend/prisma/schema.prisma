@@ -412,7 +412,7 @@ model PayRule {
   description String?  @db.Text
   priority    Int      @default(0)
   isActive    Boolean  @default(true) @map("is_active")
-  config      String   @db.Json
+  config      Json
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   
@@ -626,7 +626,7 @@ model Device {
   lastHeartbeat   DateTime? @map("last_heartbeat")
   status          String    @default("active") @db.VarChar(20) // active, inactive, maintenance, offline
   isActive        Boolean   @default(true) @map("is_active")
-  config          String?   @db.Json // Device-specific configuration
+  config          Json?
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
@@ -727,7 +727,7 @@ model AuditLog {
   changedFields   String?   @map("changed_fields") @db.Text // JSON array of field names
   ipAddress       String?   @map("ip_address") @db.VarChar(45)
   userAgent       String?   @map("user_agent") @db.VarChar(500)
-  metadata        String?   @db.Json // Additional context
+  metadata        Json?
   createdAt       DateTime  @default(now()) @map("created_at")
   
   @@index([userId, createdAt])
@@ -854,7 +854,7 @@ model IntegrationEndpoint {
   authType        String    @map("auth_type") @db.VarChar(30) // none, basic, bearer, api_key, oauth2
   credentials     String?   @db.Text // Encrypted JSON credentials
   headers         String?   @db.Text // JSON custom headers
-  config          String?   @db.Json // Integration-specific configuration
+  config          Json?
   syncFrequency   String?   @map("sync_frequency") @db.VarChar(30) // manual, hourly, daily, weekly
   lastSyncAt      DateTime? @map("last_sync_at")
   lastSyncStatus  String?   @map("last_sync_status") @db.VarChar(20)
