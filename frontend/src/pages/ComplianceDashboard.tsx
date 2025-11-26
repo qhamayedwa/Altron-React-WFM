@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Badge, Spinner, Alert, Form, Button, ProgressBar } from 'react-bootstrap';
-import { Shield, AlertTriangle, CheckCircle, XCircle, TrendingUp, TrendingDown, DollarSign, Clock, Users, FileText } from 'lucide-react';
+import { Container, Row, Col, Card, Table, Badge, Spinner, Alert, Form, ProgressBar } from 'react-bootstrap';
+import { Shield, AlertTriangle, CheckCircle, XCircle, TrendingUp, TrendingDown, DollarSign, Clock, Users } from 'lucide-react';
 import api from '../api/client';
 
 interface ComplianceMetric {

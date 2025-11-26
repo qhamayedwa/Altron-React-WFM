@@ -7,6 +7,53 @@ const router = Router();
 
 router.use(authenticate);
 
+// Get current shift for the logged-in user
+router.get('/my-current-shift', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const result = await query(
+      `SELECT s.id, s.start_time, s.end_time, s.status, s.notes,
+              st.name as shift_type, si.name as site_name,
+              DATE(s.start_time) as shift_date
+       FROM schedules s
+       LEFT JOIN shift_types st ON s.shift_type_id = st.id
+       LEFT JOIN users u ON s.user_id = u.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       LEFT JOIN sites si ON d.site_id = si.id
+       WHERE s.user_id = $1 AND DATE(s.start_time) = $2
+       ORDER BY s.start_time ASC
+       LIMIT 1`,
+      [req.user!.id, today]
+    );
+
+    if (result.rows.length === 0) {
+      res.json({ shift: null });
+      return;
+    }
+
+    const row = result.rows[0];
+    res.json({
+      shift: {
+        id: row.id,
+        shiftDate: row.shift_date,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        shiftType: row.shift_type || 'Standard',
+        siteName: row.site_name,
+        status: row.status,
+        notes: row.notes
+      }
+    });
+  } catch (error) {
+    console.error('Get current shift error:', error);
+    res.status(500).json({ 
+      error: 'Failed to retrieve schedule information',
+      message: 'Unable to load your shift details. Please refresh the page.'
+    });
+  }
+});
+
 // Get shift types
 router.get('/shift-types', async (req: AuthRequest, res: Response): Promise<void> => {
   try {

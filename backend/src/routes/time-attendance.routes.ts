@@ -8,6 +8,124 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
+// Get active time entry for current user
+router.get('/active-entry', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await query(
+      `SELECT id, clock_in_time, clock_in_latitude, clock_in_longitude, status, notes
+       FROM time_entries 
+       WHERE user_id = $1 AND (status = 'clocked_in' OR status = 'Open')
+       ORDER BY clock_in_time DESC
+       LIMIT 1`,
+      [req.user!.id]
+    );
+
+    if (result.rows.length === 0) {
+      res.json({ activeEntry: null, status: 'clocked_out' });
+      return;
+    }
+
+    const entry = result.rows[0];
+    res.json({
+      activeEntry: {
+        id: entry.id,
+        clockInTime: entry.clock_in_time,
+        clockInLatitude: entry.clock_in_latitude,
+        clockInLongitude: entry.clock_in_longitude,
+        status: entry.status,
+        notes: entry.notes
+      },
+      status: 'clocked_in'
+    });
+  } catch (error) {
+    console.error('Get active entry error:', error);
+    res.status(500).json({ 
+      error: 'Failed to retrieve active time entry',
+      message: 'Unable to check your clock status. Please refresh the page.'
+    });
+  }
+});
+
+// Check geofence status for given coordinates
+router.post('/check-geofence', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { latitude, longitude, skipValidation } = req.body;
+    
+    // Check for null/undefined explicitly (not falsy) to allow valid 0° coordinates
+    const hasLatitude = latitude !== null && latitude !== undefined;
+    const hasLongitude = longitude !== null && longitude !== undefined;
+    
+    if (!hasLatitude || !hasLongitude) {
+      if (skipValidation) {
+        res.json({
+          isInside: true,
+          message: 'Location not provided - geofence validation skipped by user choice'
+        });
+        return;
+      }
+      res.status(400).json({
+        isInside: false,
+        error: 'Location coordinates required for geofence check',
+        message: 'Please enable location services to clock in'
+      });
+      return;
+    }
+
+    // Get user's department and site to find associated geofences
+    const userResult = await query(
+      `SELECT u.department_id, d.site_id, s.name as site_name,
+              s.geofence_latitude, s.geofence_longitude, s.geofence_radius
+       FROM users u
+       LEFT JOIN departments d ON u.department_id = d.id
+       LEFT JOIN sites s ON d.site_id = s.id
+       WHERE u.id = $1`,
+      [req.user!.id]
+    );
+
+    if (userResult.rows.length === 0 || !userResult.rows[0].geofence_latitude) {
+      res.json({
+        isInside: true,
+        message: 'No geofence configured for this location'
+      });
+      return;
+    }
+
+    const site = userResult.rows[0];
+    
+    // Calculate distance using Haversine formula
+    const R = 6371000; // Earth's radius in meters
+    const lat1 = latitude * Math.PI / 180;
+    const lat2 = site.geofence_latitude * Math.PI / 180;
+    const deltaLat = (site.geofence_latitude - latitude) * Math.PI / 180;
+    const deltaLng = (site.geofence_longitude - longitude) * Math.PI / 180;
+
+    const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+              Math.cos(lat1) * Math.cos(lat2) *
+              Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    const radius = site.geofence_radius || 100; // Default 100m radius
+    const isInside = distance <= radius;
+
+    res.json({
+      isInside,
+      distance: Math.round(distance),
+      geofenceName: site.site_name,
+      message: isInside 
+        ? `You are within ${site.site_name} geofence` 
+        : `You are ${Math.round(distance)}m from ${site.site_name} (limit: ${radius}m)`
+    });
+  } catch (error) {
+    console.error('Check geofence error:', error);
+    res.status(500).json({
+      isInside: false,
+      error: 'Geofence service temporarily unavailable',
+      message: 'Unable to verify location. Please try again.'
+    });
+  }
+});
+
 // Clock In
 router.post(
   '/clock-in',

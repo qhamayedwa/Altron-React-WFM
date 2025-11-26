@@ -29,7 +29,7 @@ interface GeofenceStatus {
 }
 
 export default function ClockInOut() {
-  const { user } = useAuthStore();
+  const { user: _user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
   const [currentShift, setCurrentShift] = useState<CurrentShift | null>(null);
