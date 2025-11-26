@@ -246,23 +246,29 @@ model Job {
 // ============================================
 
 model TimeEntry {
-  id              Int       @id @default(autoincrement())
-  userId          Int       @map("user_id")
-  departmentId    Int?      @map("department_id")
-  clockInTime     DateTime  @map("clock_in_time")
-  clockOutTime    DateTime? @map("clock_out_time")
-  clockInLatitude Float?    @map("clock_in_latitude")
-  clockInLongitude Float?   @map("clock_in_longitude")
-  clockOutLatitude Float?   @map("clock_out_latitude")
-  clockOutLongitude Float?  @map("clock_out_longitude")
-  breakMinutes    Int       @default(0) @map("break_minutes")
-  totalHours      Float?    @map("total_hours")
-  status          String    @default("clocked_in") @db.VarChar(20)
-  approvedBy      Int?      @map("approved_by")
-  approvedAt      DateTime? @map("approved_at")
-  notes           String?   @db.Text
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                Int       @id @default(autoincrement())
+  userId            Int       @map("user_id")
+  departmentId      Int?      @map("department_id")
+  clockInTime       DateTime  @map("clock_in_time")
+  clockOutTime      DateTime? @map("clock_out_time")
+  clockInLatitude   Float?    @map("clock_in_latitude")
+  clockInLongitude  Float?    @map("clock_in_longitude")
+  clockOutLatitude  Float?    @map("clock_out_latitude")
+  clockOutLongitude Float?    @map("clock_out_longitude")
+  clockInDeviceId   Int?      @map("clock_in_device_id")
+  clockOutDeviceId  Int?      @map("clock_out_device_id")
+  clockInGeofenceId Int?      @map("clock_in_geofence_id")
+  geofenceStatus    String?   @map("geofence_status") @db.VarChar(20) // inside, outside, unknown
+  breakMinutes      Int       @default(0) @map("break_minutes")
+  totalHours        Float?    @map("total_hours")
+  status            String    @default("clocked_in") @db.VarChar(20)
+  approvedBy        Int?      @map("approved_by")
+  approvedAt        DateTime? @map("approved_at")
+  exceptionFlag     Boolean   @default(false) @map("exception_flag")
+  complianceStatus  String?   @map("compliance_status") @db.VarChar(20) // compliant, warning, violation
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
   
   // Relationships
   user            User      @relation(fields: [userId], references: [id])
@@ -271,6 +277,7 @@ model TimeEntry {
   @@index([userId, status])
   @@index([departmentId])
   @@index([status])
+  @@index([exceptionFlag])
   @@map("time_entries")
 }
 
@@ -295,6 +302,7 @@ model LeaveType {
   // Relationships
   leaveRequests   LeaveRequest[]
   leaveBalances   LeaveBalance[]
+  leavePolicies   LeavePolicy[]
   
   @@map("leave_types")
 }
@@ -363,16 +371,23 @@ model ShiftType {
 }
 
 model Schedule {
-  id          Int       @id @default(autoincrement())
-  userId      Int       @map("user_id")
-  shiftTypeId Int       @map("shift_type_id")
-  date        DateTime  @db.Date
-  startTime   DateTime  @map("start_time")
-  endTime     DateTime  @map("end_time")
-  status      String    @default("scheduled") @db.VarChar(20)
-  notes       String?   @db.Text
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id              Int       @id @default(autoincrement())
+  userId          Int       @map("user_id")
+  shiftTypeId     Int       @map("shift_type_id")
+  date            DateTime  @db.Date
+  startTime       DateTime  @map("start_time")
+  endTime         DateTime  @map("end_time")
+  status          String    @default("scheduled") @db.VarChar(20)
+  isOpenShift     Boolean   @default(false) @map("is_open_shift")
+  swapStatus      String?   @map("swap_status") @db.VarChar(20) // null, requested, approved, rejected
+  swapRequestedBy Int?      @map("swap_requested_by")
+  swapRequestedTo Int?      @map("swap_requested_to")
+  swapApprovedBy  Int?      @map("swap_approved_by")
+  swapApprovedAt  DateTime? @map("swap_approved_at")
+  originalUserId  Int?      @map("original_user_id") // for tracking swaps
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
   
   // Relationships
   user        User      @relation(fields: [userId], references: [id])
@@ -380,6 +395,8 @@ model Schedule {
   
   @@index([userId, date])
   @@index([date])
+  @@index([isOpenShift])
+  @@index([swapStatus])
   @@map("schedules")
 }
 
@@ -400,6 +417,124 @@ model PayRule {
   updatedAt   DateTime @updatedAt @map("updated_at")
   
   @@map("pay_rules")
+}
+
+model PayCode {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  code            String    @unique @db.VarChar(20)
+  name            String    @db.VarChar(100)
+  description     String?   @db.Text
+  codeType        String    @map("code_type") @db.VarChar(30) // earning, deduction, allowance, bonus
+  category        String?   @db.VarChar(50) // regular, overtime, leave, bonus, deduction
+  multiplier      Float     @default(1.0)
+  isTaxable       Boolean   @default(true) @map("is_taxable")
+  isActive        Boolean   @default(true) @map("is_active")
+  glAccountCode   String?   @map("gl_account_code") @db.VarChar(50)
+  sageVipCode     String?   @map("sage_vip_code") @db.VarChar(50)
+  displayOrder    Int       @default(0) @map("display_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relationships
+  timesheetLines  TimesheetLine[]
+  overtimeEntries OvertimeEntry[]
+  
+  @@index([codeType])
+  @@index([isActive])
+  @@map("pay_codes")
+}
+
+model Timesheet {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @map("user_id")
+  periodStart     DateTime  @map("period_start") @db.Date
+  periodEnd       DateTime  @map("period_end") @db.Date
+  totalHours      Float     @default(0) @map("total_hours")
+  regularHours    Float     @default(0) @map("regular_hours")
+  overtimeHours   Float     @default(0) @map("overtime_hours")
+  doubleTimeHours Float     @default(0) @map("double_time_hours")
+  leaveHours      Float     @default(0) @map("leave_hours")
+  status          String    @default("draft") @db.VarChar(20) // draft, submitted, approved, rejected, processed
+  submittedAt     DateTime? @map("submitted_at")
+  approvedBy      Int?      @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relationships
+  lines           TimesheetLine[]
+  
+  @@unique([userId, periodStart, periodEnd])
+  @@index([userId, periodStart])
+  @@index([status])
+  @@map("timesheets")
+}
+
+model TimesheetLine {
+  id            Int       @id @default(autoincrement())
+  timesheetId   Int       @map("timesheet_id")
+  payCodeId     Int       @map("pay_code_id")
+  date          DateTime  @db.Date
+  hours         Float
+  rate          Float?
+  amount        Float?
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  
+  // Relationships
+  timesheet     Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  payCode       PayCode   @relation(fields: [payCodeId], references: [id])
+  
+  @@index([timesheetId])
+  @@index([payCodeId])
+  @@map("timesheet_lines")
+}
+
+model OvertimeEntry {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  timeEntryId   Int?      @map("time_entry_id")
+  payCodeId     Int       @map("pay_code_id")
+  date          DateTime  @db.Date
+  hours         Float
+  multiplier    Float     @default(1.5)
+  reason        String?   @db.Text
+  status        String    @default("pending") @db.VarChar(20) // pending, approved, rejected
+  approvedBy    Int?      @map("approved_by")
+  approvedAt    DateTime? @map("approved_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  // Relationships
+  payCode       PayCode   @relation(fields: [payCodeId], references: [id])
+  
+  @@index([userId, date])
+  @@index([status])
+  @@map("overtime_entries")
+}
+
+model PayrollExportBatch {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  batchNumber     String    @unique @map("batch_number") @db.VarChar(50)
+  periodStart     DateTime  @map("period_start") @db.Date
+  periodEnd       DateTime  @map("period_end") @db.Date
+  exportType      String    @map("export_type") @db.VarChar(30) // sage_vip, csv, excel
+  status          String    @default("pending") @db.VarChar(20) // pending, processing, completed, failed
+  employeeCount   Int       @default(0) @map("employee_count")
+  totalAmount     Float     @default(0) @map("total_amount")
+  filePath        String?   @map("file_path") @db.VarChar(500)
+  exportedBy      Int       @map("exported_by")
+  exportedAt      DateTime? @map("exported_at")
+  errorMessage    String?   @map("error_message") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@index([periodStart, periodEnd])
+  @@index([status])
+  @@map("payroll_export_batches")
 }
 
 // ============================================
@@ -425,4 +560,309 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt(sort: Desc)])
   @@map("notifications")
+}
+
+// ============================================
+// HOLIDAYS & CALENDAR
+// ============================================
+
+model Holiday {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  name            String    @db.VarChar(100)
+  date            DateTime  @db.Date
+  holidayType     String    @map("holiday_type") @db.VarChar(30) // public, company, regional
+  isRecurring     Boolean   @default(false) @map("is_recurring")
+  recurringDay    Int?      @map("recurring_day") // 1-31
+  recurringMonth  Int?      @map("recurring_month") // 1-12
+  appliesToAll    Boolean   @default(true) @map("applies_to_all")
+  departmentIds   String?   @map("department_ids") @db.Text // JSON array of department IDs
+  isPaid          Boolean   @default(true) @map("is_paid")
+  description     String?   @db.Text
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@index([date])
+  @@index([holidayType])
+  @@map("holidays")
+}
+
+model Announcement {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  title           String    @db.VarChar(200)
+  content         String    @db.Text
+  priority        String    @default("normal") @db.VarChar(20) // low, normal, high, urgent
+  targetAudience  String    @default("all") @map("target_audience") @db.VarChar(50) // all, department, role
+  targetIds       String?   @map("target_ids") @db.Text // JSON array of target IDs
+  publishedAt     DateTime? @map("published_at")
+  expiresAt       DateTime? @map("expires_at")
+  isPinned        Boolean   @default(false) @map("is_pinned")
+  createdBy       Int       @map("created_by")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@index([publishedAt])
+  @@index([isActive])
+  @@map("announcements")
+}
+
+// ============================================
+// DEVICES & GEOFENCING
+// ============================================
+
+model Device {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  siteId          Int?      @map("site_id")
+  name            String    @db.VarChar(100)
+  deviceType      String    @map("device_type") @db.VarChar(30) // biometric, kiosk, mobile, web
+  serialNumber    String?   @unique @map("serial_number") @db.VarChar(100)
+  ipAddress       String?   @map("ip_address") @db.VarChar(45)
+  macAddress      String?   @map("mac_address") @db.VarChar(17)
+  firmwareVersion String?   @map("firmware_version") @db.VarChar(50)
+  lastHeartbeat   DateTime? @map("last_heartbeat")
+  status          String    @default("active") @db.VarChar(20) // active, inactive, maintenance, offline
+  isActive        Boolean   @default(true) @map("is_active")
+  config          String?   @db.Json // Device-specific configuration
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@index([siteId])
+  @@index([deviceType])
+  @@index([status])
+  @@map("devices")
+}
+
+model Geofence {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  siteId          Int?      @map("site_id")
+  name            String    @db.VarChar(100)
+  description     String?   @db.Text
+  latitude        Float
+  longitude       Float
+  radiusMeters    Int       @map("radius_meters") @default(100)
+  geofenceType    String    @map("geofence_type") @db.VarChar(30) // circle, polygon
+  polygonPoints   String?   @map("polygon_points") @db.Text // JSON array for polygon geofences
+  isClockInAllowed  Boolean @default(true) @map("is_clock_in_allowed")
+  isClockOutAllowed Boolean @default(true) @map("is_clock_out_allowed")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@index([siteId])
+  @@index([isActive])
+  @@map("geofences")
+}
+
+// ============================================
+// COMPLIANCE & AUDIT
+// ============================================
+
+model ComplianceRule {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  name            String    @db.VarChar(100)
+  code            String    @unique @db.VarChar(30)
+  ruleType        String    @map("rule_type") @db.VarChar(50) // max_hours, min_break, overtime_limit, late_arrival, early_departure
+  description     String?   @db.Text
+  condition       String    @db.Text // JSON condition definition
+  threshold       Float?    // Threshold value for the rule
+  thresholdUnit   String?   @map("threshold_unit") @db.VarChar(20) // hours, minutes, days, percentage
+  severity        String    @default("warning") @db.VarChar(20) // info, warning, violation, critical
+  autoResolve     Boolean   @default(false) @map("auto_resolve")
+  notifyManager   Boolean   @default(true) @map("notify_manager")
+  notifyEmployee  Boolean   @default(true) @map("notify_employee")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relationships
+  exceptions      Exception[]
+  
+  @@index([ruleType])
+  @@index([isActive])
+  @@map("compliance_rules")
+}
+
+model Exception {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @map("user_id")
+  complianceRuleId Int      @map("compliance_rule_id")
+  timeEntryId     Int?      @map("time_entry_id")
+  scheduleId      Int?      @map("schedule_id")
+  exceptionDate   DateTime  @map("exception_date") @db.Date
+  exceptionType   String    @map("exception_type") @db.VarChar(50)
+  description     String?   @db.Text
+  severity        String    @default("warning") @db.VarChar(20)
+  status          String    @default("open") @db.VarChar(20) // open, acknowledged, resolved, dismissed
+  resolvedBy      Int?      @map("resolved_by")
+  resolvedAt      DateTime? @map("resolved_at")
+  resolution      String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relationships
+  complianceRule  ComplianceRule @relation(fields: [complianceRuleId], references: [id])
+  
+  @@index([userId, exceptionDate])
+  @@index([complianceRuleId])
+  @@index([status])
+  @@map("exceptions")
+}
+
+model AuditLog {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  userId          Int?      @map("user_id")
+  sessionId       String?   @map("session_id") @db.VarChar(100)
+  action          String    @db.VarChar(50) // create, update, delete, login, logout, approve, reject
+  entityType      String    @map("entity_type") @db.VarChar(50) // user, time_entry, leave_request, schedule, etc.
+  entityId        Int?      @map("entity_id")
+  oldValue        String?   @map("old_value") @db.Text // JSON of previous state
+  newValue        String?   @map("new_value") @db.Text // JSON of new state
+  changedFields   String?   @map("changed_fields") @db.Text // JSON array of field names
+  ipAddress       String?   @map("ip_address") @db.VarChar(45)
+  userAgent       String?   @map("user_agent") @db.VarChar(500)
+  metadata        String?   @db.Json // Additional context
+  createdAt       DateTime  @default(now()) @map("created_at")
+  
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// ============================================
+// LEAVE POLICIES
+// ============================================
+
+model LeavePolicy {
+  id                  Int       @id @default(autoincrement())
+  tenantId            Int?      @map("tenant_id")
+  name                String    @db.VarChar(100)
+  leaveTypeId         Int       @map("leave_type_id")
+  departmentId        Int?      @map("department_id") // null = applies to all
+  employmentType      String?   @map("employment_type") @db.VarChar(30) // null = all types
+  accrualRate         Float     @map("accrual_rate") // days per month
+  accrualFrequency    String    @map("accrual_frequency") @db.VarChar(20) // monthly, annually, on_hire
+  maxAccrual          Float     @map("max_accrual") // maximum days that can be accrued
+  maxCarryOver        Float     @default(0) @map("max_carry_over") // days that can carry over
+  carryOverExpiry     Int?      @map("carry_over_expiry_months") // months until carryover expires
+  waitingPeriodDays   Int       @default(0) @map("waiting_period_days") // days before leave can be taken
+  minServiceMonths    Int       @default(0) @map("min_service_months") // months of service required
+  approvalLevels      Int       @default(1) @map("approval_levels") // number of approval levels
+  autoApprove         Boolean   @default(false) @map("auto_approve")
+  requiresAttachment  Boolean   @default(false) @map("requires_attachment")
+  effectiveFrom       DateTime  @map("effective_from") @db.Date
+  effectiveTo         DateTime? @map("effective_to") @db.Date
+  isActive            Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  
+  // Relationships
+  leaveType           LeaveType @relation(fields: [leaveTypeId], references: [id])
+  
+  @@index([leaveTypeId])
+  @@index([departmentId])
+  @@index([isActive])
+  @@map("leave_policies")
+}
+
+// ============================================
+// APPROVAL WORKFLOWS
+// ============================================
+
+model ApprovalWorkflow {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  name            String    @db.VarChar(100)
+  entityType      String    @map("entity_type") @db.VarChar(50) // leave_request, time_entry, overtime, schedule_swap
+  description     String?   @db.Text
+  stepsConfig     String    @map("steps_config") @db.Text // JSON array of approval steps
+  escalationRules String?   @map("escalation_rules") @db.Text // JSON escalation configuration
+  isDefault       Boolean   @default(false) @map("is_default")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relationships
+  approvalInstances ApprovalInstance[]
+  
+  @@index([entityType])
+  @@index([isActive])
+  @@map("approval_workflows")
+}
+
+model ApprovalInstance {
+  id                  Int       @id @default(autoincrement())
+  workflowId          Int       @map("workflow_id")
+  entityType          String    @map("entity_type") @db.VarChar(50)
+  entityId            Int       @map("entity_id")
+  requestedBy         Int       @map("requested_by")
+  currentStep         Int       @default(1) @map("current_step")
+  totalSteps          Int       @map("total_steps")
+  status              String    @default("pending") @db.VarChar(20) // pending, in_progress, approved, rejected, cancelled
+  startedAt           DateTime  @default(now()) @map("started_at")
+  completedAt         DateTime? @map("completed_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  
+  // Relationships
+  workflow            ApprovalWorkflow @relation(fields: [workflowId], references: [id])
+  steps               ApprovalStep[]
+  
+  @@index([entityType, entityId])
+  @@index([status])
+  @@map("approval_instances")
+}
+
+model ApprovalStep {
+  id                  Int       @id @default(autoincrement())
+  instanceId          Int       @map("instance_id")
+  stepNumber          Int       @map("step_number")
+  approverType        String    @map("approver_type") @db.VarChar(30) // user, role, manager
+  approverId          Int?      @map("approver_id") // user_id or role_id
+  status              String    @default("pending") @db.VarChar(20) // pending, approved, rejected, skipped
+  actionBy            Int?      @map("action_by")
+  actionAt            DateTime? @map("action_at")
+  comments            String?   @db.Text
+  createdAt           DateTime  @default(now()) @map("created_at")
+  
+  // Relationships
+  instance            ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  
+  @@index([instanceId])
+  @@index([status])
+  @@map("approval_steps")
+}
+
+// ============================================
+// INTEGRATIONS
+// ============================================
+
+model IntegrationEndpoint {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int?      @map("tenant_id")
+  name            String    @db.VarChar(100)
+  integrationType String    @map("integration_type") @db.VarChar(50) // sage_vip, rest_api, sftp, webhook
+  baseUrl         String?   @map("base_url") @db.VarChar(500)
+  authType        String    @map("auth_type") @db.VarChar(30) // none, basic, bearer, api_key, oauth2
+  credentials     String?   @db.Text // Encrypted JSON credentials
+  headers         String?   @db.Text // JSON custom headers
+  config          String?   @db.Json // Integration-specific configuration
+  syncFrequency   String?   @map("sync_frequency") @db.VarChar(30) // manual, hourly, daily, weekly
+  lastSyncAt      DateTime? @map("last_sync_at")
+  lastSyncStatus  String?   @map("last_sync_status") @db.VarChar(20)
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@index([integrationType])
+  @@index([isActive])
+  @@map("integration_endpoints")
 }
