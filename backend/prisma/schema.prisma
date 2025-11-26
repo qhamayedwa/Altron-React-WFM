@@ -25,6 +25,17 @@ model Tenant {
   // Relationships
   companies   Company[]
   users       User[]
+  payCodes    PayCode[]
+  holidays    Holiday[]
+  announcements Announcement[]
+  devices     Device[]
+  geofences   Geofence[]
+  complianceRules ComplianceRule[]
+  auditLogs   AuditLog[]
+  leavePolicies LeavePolicy[]
+  approvalWorkflows ApprovalWorkflow[]
+  payrollExportBatches PayrollExportBatch[]
+  integrationEndpoints IntegrationEndpoint[]
   
   @@map("tenants")
 }
@@ -246,38 +257,43 @@ model Job {
 // ============================================
 
 model TimeEntry {
-  id                Int       @id @default(autoincrement())
-  userId            Int       @map("user_id")
-  departmentId      Int?      @map("department_id")
-  clockInTime       DateTime  @map("clock_in_time")
-  clockOutTime      DateTime? @map("clock_out_time")
-  clockInLatitude   Float?    @map("clock_in_latitude")
-  clockInLongitude  Float?    @map("clock_in_longitude")
-  clockOutLatitude  Float?    @map("clock_out_latitude")
-  clockOutLongitude Float?    @map("clock_out_longitude")
-  clockInDeviceId   Int?      @map("clock_in_device_id")
-  clockOutDeviceId  Int?      @map("clock_out_device_id")
-  clockInGeofenceId Int?      @map("clock_in_geofence_id")
-  geofenceStatus    String?   @map("geofence_status") @db.VarChar(20) // inside, outside, unknown
-  breakMinutes      Int       @default(0) @map("break_minutes")
-  totalHours        Float?    @map("total_hours")
-  status            String    @default("clocked_in") @db.VarChar(20)
-  approvedBy        Int?      @map("approved_by")
-  approvedAt        DateTime? @map("approved_at")
-  exceptionFlag     Boolean   @default(false) @map("exception_flag")
-  complianceStatus  String?   @map("compliance_status") @db.VarChar(20) // compliant, warning, violation
-  notes             String?   @db.Text
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  id                  Int       @id @default(autoincrement())
+  userId              Int       @map("user_id")
+  departmentId        Int?      @map("department_id")
+  clockInTime         DateTime  @map("clock_in_time")
+  clockOutTime        DateTime? @map("clock_out_time")
+  clockInLatitude     Float?    @map("clock_in_latitude")
+  clockInLongitude    Float?    @map("clock_in_longitude")
+  clockOutLatitude    Float?    @map("clock_out_latitude")
+  clockOutLongitude   Float?    @map("clock_out_longitude")
+  clockInDeviceId     Int?      @map("clock_in_device_id")
+  clockOutDeviceId    Int?      @map("clock_out_device_id")
+  clockInGeofenceId   Int?      @map("clock_in_geofence_id")
+  geofenceStatus      String?   @map("geofence_status") @db.VarChar(20) // inside, outside, unknown
+  totalBreakMinutes   Int       @default(0) @map("total_break_minutes")
+  totalHours          Float?    @map("total_hours")
+  status              String    @default("clocked_in") @db.VarChar(20)
+  approvedBy          Int?      @map("approved_by")
+  approvedAt          DateTime? @map("approved_at")
+  exceptionFlag       Boolean   @default(false) @map("exception_flag")
+  complianceStatus    String?   @map("compliance_status") @db.VarChar(20) // compliant, warning, violation
+  notes               String?   @db.Text
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
   
   // Relationships
-  user            User      @relation(fields: [userId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
+  clockInDevice     Device?   @relation("ClockInDevice", fields: [clockInDeviceId], references: [id])
+  clockOutDevice    Device?   @relation("ClockOutDevice", fields: [clockOutDeviceId], references: [id])
+  clockInGeofence   Geofence? @relation(fields: [clockInGeofenceId], references: [id])
   
   @@index([userId, clockInTime(sort: Desc)])
   @@index([userId, status])
   @@index([departmentId])
   @@index([status])
   @@index([exceptionFlag])
+  @@index([clockInDeviceId])
+  @@index([clockInGeofenceId])
   @@map("time_entries")
 }
 
@@ -421,8 +437,8 @@ model PayRule {
 
 model PayCode {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
-  code            String    @unique @db.VarChar(20)
+  tenantId        Int       @map("tenant_id")
+  code            String    @db.VarChar(20)
   name            String    @db.VarChar(100)
   description     String?   @db.Text
   codeType        String    @map("code_type") @db.VarChar(30) // earning, deduction, allowance, bonus
@@ -437,9 +453,12 @@ model PayCode {
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
   // Relationships
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   timesheetLines  TimesheetLine[]
   overtimeEntries OvertimeEntry[]
   
+  @@unique([tenantId, code], name: "uq_tenant_pay_code")
+  @@index([tenantId])
   @@index([codeType])
   @@index([isActive])
   @@map("pay_codes")
@@ -517,8 +536,8 @@ model OvertimeEntry {
 
 model PayrollExportBatch {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
-  batchNumber     String    @unique @map("batch_number") @db.VarChar(50)
+  tenantId        Int       @map("tenant_id")
+  batchNumber     String    @map("batch_number") @db.VarChar(50)
   periodStart     DateTime  @map("period_start") @db.Date
   periodEnd       DateTime  @map("period_end") @db.Date
   exportType      String    @map("export_type") @db.VarChar(30) // sage_vip, csv, excel
@@ -532,6 +551,11 @@ model PayrollExportBatch {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
+  // Relationships
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@unique([tenantId, batchNumber], name: "uq_tenant_batch_number")
+  @@index([tenantId])
   @@index([periodStart, periodEnd])
   @@index([status])
   @@map("payroll_export_batches")
@@ -568,7 +592,7 @@ model Notification {
 
 model Holiday {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
+  tenantId        Int       @map("tenant_id")
   name            String    @db.VarChar(100)
   date            DateTime  @db.Date
   holidayType     String    @map("holiday_type") @db.VarChar(30) // public, company, regional
@@ -583,6 +607,10 @@ model Holiday {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
+  // Relationships
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
   @@index([date])
   @@index([holidayType])
   @@map("holidays")
@@ -590,7 +618,7 @@ model Holiday {
 
 model Announcement {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
+  tenantId        Int       @map("tenant_id")
   title           String    @db.VarChar(200)
   content         String    @db.Text
   priority        String    @default("normal") @db.VarChar(20) // low, normal, high, urgent
@@ -604,6 +632,10 @@ model Announcement {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
+  // Relationships
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
   @@index([publishedAt])
   @@index([isActive])
   @@map("announcements")
@@ -615,7 +647,7 @@ model Announcement {
 
 model Device {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
+  tenantId        Int       @map("tenant_id")
   siteId          Int?      @map("site_id")
   name            String    @db.VarChar(100)
   deviceType      String    @map("device_type") @db.VarChar(30) // biometric, kiosk, mobile, web
@@ -630,6 +662,12 @@ model Device {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
+  // Relationships
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clockInEntries  TimeEntry[] @relation("ClockInDevice")
+  clockOutEntries TimeEntry[] @relation("ClockOutDevice")
+  
+  @@index([tenantId])
   @@index([siteId])
   @@index([deviceType])
   @@index([status])
@@ -637,22 +675,27 @@ model Device {
 }
 
 model Geofence {
-  id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
-  siteId          Int?      @map("site_id")
-  name            String    @db.VarChar(100)
-  description     String?   @db.Text
-  latitude        Float
-  longitude       Float
-  radiusMeters    Int       @map("radius_meters") @default(100)
-  geofenceType    String    @map("geofence_type") @db.VarChar(30) // circle, polygon
-  polygonPoints   String?   @map("polygon_points") @db.Text // JSON array for polygon geofences
-  isClockInAllowed  Boolean @default(true) @map("is_clock_in_allowed")
-  isClockOutAllowed Boolean @default(true) @map("is_clock_out_allowed")
-  isActive        Boolean   @default(true) @map("is_active")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                Int       @id @default(autoincrement())
+  tenantId          Int       @map("tenant_id")
+  siteId            Int?      @map("site_id")
+  name              String    @db.VarChar(100)
+  description       String?   @db.Text
+  latitude          Float
+  longitude         Float
+  radiusMeters      Int       @map("radius_meters") @default(100)
+  geofenceType      String    @map("geofence_type") @db.VarChar(30) // circle, polygon
+  polygonPoints     String?   @map("polygon_points") @db.Text // JSON array for polygon geofences
+  isClockInAllowed  Boolean   @default(true) @map("is_clock_in_allowed")
+  isClockOutAllowed Boolean   @default(true) @map("is_clock_out_allowed")
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
   
+  // Relationships
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  timeEntries       TimeEntry[]
+  
+  @@index([tenantId])
   @@index([siteId])
   @@index([isActive])
   @@map("geofences")
@@ -664,9 +707,9 @@ model Geofence {
 
 model ComplianceRule {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
+  tenantId        Int       @map("tenant_id")
   name            String    @db.VarChar(100)
-  code            String    @unique @db.VarChar(30)
+  code            String    @db.VarChar(30)
   ruleType        String    @map("rule_type") @db.VarChar(50) // max_hours, min_break, overtime_limit, late_arrival, early_departure
   description     String?   @db.Text
   condition       String    @db.Text // JSON condition definition
@@ -681,8 +724,11 @@ model ComplianceRule {
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
   // Relationships
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   exceptions      Exception[]
   
+  @@unique([tenantId, code], name: "uq_tenant_compliance_rule_code")
+  @@index([tenantId])
   @@index([ruleType])
   @@index([isActive])
   @@map("compliance_rules")
@@ -716,7 +762,7 @@ model Exception {
 
 model AuditLog {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
+  tenantId        Int       @map("tenant_id")
   userId          Int?      @map("user_id")
   sessionId       String?   @map("session_id") @db.VarChar(100)
   action          String    @db.VarChar(50) // create, update, delete, login, logout, approve, reject
@@ -730,6 +776,10 @@ model AuditLog {
   metadata        Json?
   createdAt       DateTime  @default(now()) @map("created_at")
   
+  // Relationships
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
   @@index([userId, createdAt])
   @@index([entityType, entityId])
   @@index([action])
@@ -743,7 +793,7 @@ model AuditLog {
 
 model LeavePolicy {
   id                  Int       @id @default(autoincrement())
-  tenantId            Int?      @map("tenant_id")
+  tenantId            Int       @map("tenant_id")
   name                String    @db.VarChar(100)
   leaveTypeId         Int       @map("leave_type_id")
   departmentId        Int?      @map("department_id") // null = applies to all
@@ -765,8 +815,10 @@ model LeavePolicy {
   updatedAt           DateTime  @updatedAt @map("updated_at")
   
   // Relationships
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   leaveType           LeaveType @relation(fields: [leaveTypeId], references: [id])
   
+  @@index([tenantId])
   @@index([leaveTypeId])
   @@index([departmentId])
   @@index([isActive])
@@ -779,7 +831,7 @@ model LeavePolicy {
 
 model ApprovalWorkflow {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
+  tenantId        Int       @map("tenant_id")
   name            String    @db.VarChar(100)
   entityType      String    @map("entity_type") @db.VarChar(50) // leave_request, time_entry, overtime, schedule_swap
   description     String?   @db.Text
@@ -791,8 +843,10 @@ model ApprovalWorkflow {
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
   // Relationships
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   approvalInstances ApprovalInstance[]
   
+  @@index([tenantId])
   @@index([entityType])
   @@index([isActive])
   @@map("approval_workflows")
@@ -847,7 +901,7 @@ model ApprovalStep {
 
 model IntegrationEndpoint {
   id              Int       @id @default(autoincrement())
-  tenantId        Int?      @map("tenant_id")
+  tenantId        Int       @map("tenant_id")
   name            String    @db.VarChar(100)
   integrationType String    @map("integration_type") @db.VarChar(50) // sage_vip, rest_api, sftp, webhook
   baseUrl         String?   @map("base_url") @db.VarChar(500)
@@ -862,6 +916,10 @@ model IntegrationEndpoint {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
+  // Relationships
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
   @@index([integrationType])
   @@index([isActive])
   @@map("integration_endpoints")

@@ -595,7 +595,7 @@ async function main() {
       clockOutLatitude: -26.1076,
       clockOutLongitude: 28.0567,
       geofenceStatus: 'inside',
-      breakMinutes: 60,
+      totalBreakMinutes: 60,
       totalHours: 8,
       status: 'approved',
       approvedBy: manager.id,
