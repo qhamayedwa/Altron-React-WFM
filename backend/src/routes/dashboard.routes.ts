@@ -472,7 +472,7 @@ router.get('/employee-home', authenticate, async (req: AuthRequest, res) => {
 
     const unreadNotificationsResult = await pool.query(
       `SELECT COUNT(*) as count FROM notifications 
-       WHERE user_id = $1 AND read_at IS NULL`,
+       WHERE user_id = $1 AND is_read = false`,
       [userId]
     );
 
@@ -504,7 +504,7 @@ router.get('/employee-home', authenticate, async (req: AuthRequest, res) => {
 
     // Get leave balance (annual leave)
     const leaveBalanceResult = await pool.query(
-      `SELECT COALESCE(SUM(balance), 0) as balance
+      `SELECT COALESCE(SUM(remaining_days), 0) as balance
        FROM leave_balances lb
        JOIN leave_types lt ON lb.leave_type_id = lt.id
        WHERE lb.user_id = $1 AND lt.code = 'AL'`,
