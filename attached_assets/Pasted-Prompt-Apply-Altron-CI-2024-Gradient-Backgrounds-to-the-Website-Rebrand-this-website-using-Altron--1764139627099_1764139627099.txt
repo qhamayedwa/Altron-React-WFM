@@ -1,0 +1,92 @@
+Prompt: Apply Altron CI 2024 Gradient Backgrounds to the Website
+
+Rebrand this website using Altron Corporate Identity (CI) 2024 gradient rules.
+Focus specifically on implementing gradient backgrounds according to the official approved combinations.
+
+1. Use Only Approved Gradient Colour Combinations
+
+Based on the Altron CI gradient rules, apply gradients only using the approved pairs below:
+
+Approved Altron gradient pairs:
+
+#54B8DF → #28468D
+
+#54DADF → #EBF982
+
+#EF865B → #EBF982
+
+#C0F2D7 → #EBF982
+
+#54DADF → #FFFFFF
+
+#EBF982 → #FFFFFF
+
+#EF865B → #FFFFFF
+
+#C0F2D7 → #FFFFFF
+
+#54B8DF → #FFFFFF
+
+#28468D → #1F4650
+
+Use clean linear gradients, e.g.:
+
+background: linear-gradient(135deg, #54B8DF, #28468D);
+
+2. Brand Behaviour for Gradients
+
+Follow the brand rules:
+
+Keep gradients subtle, modern, and not overpowering.
+
+Use gradients sparingly—not as full-page fills unless appropriate.
+
+Combine gradients with ample whitespace to maintain the Altron look.
+
+Gradients must not clash with text; apply WCAG AA contrast rules.
+
+Do not mix colours in ways not approved in the CI.
+
+3. Where to Apply Gradients
+
+Apply gradients to:
+
+Hero / masthead backgrounds
+
+Section dividers or highlight sections
+
+Button backgrounds (only if aligned to CI contrast rules)
+
+Viewfinder device backgrounds (solid or gradient allowed per CI)
+
+Do NOT apply gradients to:
+
+Body backgrounds
+
+Large text backgrounds
+
+Logos
+
+Icons
+
+4. Implementation Requirements
+
+Replace all existing background colours with brand-compliant gradients where appropriate.
+
+Create reusable CSS variables for all approved gradient combinations. Example:
+
+:root {
+  --grad-blue-navy: linear-gradient(135deg, #54B8DF, #28468D);
+  --grad-teal-yellow: linear-gradient(135deg, #54DADF, #EBF982);
+}
+
+
+Ensure gradients work responsively and look clean on high-resolution screens.
+
+Maintain Altron’s clean, optimistic, modern aesthetic.
+
+5. Output Expectations
+
+Update all CSS/HTML files accordingly.
+
+Ensure all gradient usage matches the official brand CI from the uploaded guide.

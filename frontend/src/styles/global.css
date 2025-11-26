@@ -1,11 +1,11 @@
 :root {
-  /* Altron WFM Brand Colors */
+  /* Altron WFM Brand Colors - CI 2024 */
   --primary-blue: #28468D;
   --light-blue: #54B8DF;
   --dark-teal: #1F4650;
   --accent-cyan: #54DADF;
   --accent-green: #C0F2D7;
-  --accent-orange: #EFB65B;
+  --accent-orange: #EF865B;
   --accent-yellow: #EBF982;
   
   /* UI Colors */
@@ -18,6 +18,32 @@
   --warning: #FFC107;
   --danger: #DC3545;
   --info: var(--light-blue);
+
+  /* Altron CI 2024 Approved Gradient Combinations */
+  --grad-blue-navy: linear-gradient(135deg, #54B8DF, #28468D);
+  --grad-teal-yellow: linear-gradient(135deg, #54DADF, #EBF982);
+  --grad-orange-yellow: linear-gradient(135deg, #EF865B, #EBF982);
+  --grad-mint-yellow: linear-gradient(135deg, #C0F2D7, #EBF982);
+  --grad-teal-white: linear-gradient(135deg, #54DADF, #FFFFFF);
+  --grad-yellow-white: linear-gradient(135deg, #EBF982, #FFFFFF);
+  --grad-orange-white: linear-gradient(135deg, #EF865B, #FFFFFF);
+  --grad-mint-white: linear-gradient(135deg, #C0F2D7, #FFFFFF);
+  --grad-blue-white: linear-gradient(135deg, #54B8DF, #FFFFFF);
+  --grad-navy-teal: linear-gradient(135deg, #28468D, #1F4650);
+  
+  /* Horizontal Gradients */
+  --grad-blue-navy-h: linear-gradient(90deg, #54B8DF, #28468D);
+  --grad-navy-teal-h: linear-gradient(90deg, #28468D, #1F4650);
+  --grad-teal-yellow-h: linear-gradient(90deg, #54DADF, #EBF982);
+  
+  /* Vertical Gradients */
+  --grad-blue-navy-v: linear-gradient(180deg, #54B8DF, #28468D);
+  --grad-navy-teal-v: linear-gradient(180deg, #28468D, #1F4650);
+
+  /* Subtle Background Gradients */
+  --grad-subtle-blue: linear-gradient(135deg, rgba(84, 184, 223, 0.1), rgba(40, 70, 141, 0.1));
+  --grad-subtle-teal: linear-gradient(135deg, rgba(84, 218, 223, 0.1), rgba(235, 249, 130, 0.1));
+  --grad-subtle-mint: linear-gradient(135deg, rgba(192, 242, 215, 0.1), rgba(235, 249, 130, 0.1));
 }
 
 * {
@@ -27,8 +53,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -36,55 +62,285 @@ body {
   color: var(--text-primary);
 }
 
-/* Override Bootstrap primary color with Altron brand */
+/* Primary Button with Gradient */
 .btn-primary {
-  background-color: var(--primary-blue);
-  border-color: var(--primary-blue);
+  background: var(--grad-blue-navy);
+  border: none;
+  color: #FFFFFF;
+  transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
-  background-color: var(--dark-teal);
-  border-color: var(--dark-teal);
+  background: var(--grad-navy-teal);
+  border: none;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 70, 141, 0.3);
+}
+
+.btn-primary:focus,
+.btn-primary:active {
+  background: var(--grad-navy-teal) !important;
+  border: none !important;
+  box-shadow: 0 0 0 3px rgba(84, 184, 223, 0.3) !important;
+}
+
+/* Secondary Button with Gradient Border */
+.btn-outline-primary {
+  border: 2px solid var(--primary-blue);
+  color: var(--primary-blue);
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+  background: var(--grad-blue-navy);
+  border-color: transparent;
+  color: #FFFFFF;
+}
+
+/* Success Button with Gradient */
+.btn-success {
+  background: linear-gradient(135deg, #C0F2D7, #28A745);
+  border: none;
+  color: var(--dark-teal);
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #28A745, #1F4650);
+  color: #FFFFFF;
+}
+
+/* Info Button with Gradient */
+.btn-info {
+  background: var(--grad-teal-yellow);
+  border: none;
+  color: var(--dark-teal);
+}
+
+.btn-info:hover {
+  background: linear-gradient(135deg, #54DADF, #C0F2D7);
+  color: var(--dark-teal);
+}
+
+/* Warning Button with Gradient */
+.btn-warning {
+  background: var(--grad-orange-yellow);
+  border: none;
+  color: var(--dark-teal);
+}
+
+.btn-warning:hover {
+  background: linear-gradient(135deg, #EF865B, #EBF982);
+  color: var(--dark-teal);
 }
 
 .bg-primary {
-  background-color: var(--primary-blue) !important;
+  background: var(--grad-blue-navy) !important;
 }
 
 .text-primary {
   color: var(--primary-blue) !important;
 }
 
+/* Navbar with Gradient */
 .navbar {
-  background-color: var(--primary-blue) !important;
+  background: var(--grad-navy-teal-h) !important;
+  box-shadow: 0 2px 8px rgba(31, 70, 80, 0.3);
 }
 
+/* Sidebar with Gradient */
 .sidebar {
-  background-color: var(--dark-teal);
+  background: var(--grad-navy-teal-v);
   min-height: 100vh;
   color: white;
+  position: relative;
+}
+
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--grad-teal-yellow-h);
 }
 
 .sidebar a {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  border-radius: 8px;
 }
 
 .sidebar a:hover,
 .sidebar a.active {
   color: white;
-  background-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(90deg, rgba(84, 184, 223, 0.3), transparent);
 }
 
+/* Card Styles with Gradient Accents */
 .card {
   border: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
+.card:hover {
+  box-shadow: 0 4px 16px rgba(40, 70, 141, 0.15);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+}
+
+/* Gradient Card Headers */
+.card-header.gradient-blue {
+  background: var(--grad-blue-navy);
+  color: #FFFFFF;
+  border: none;
+}
+
+.card-header.gradient-teal {
+  background: var(--grad-teal-yellow);
+  color: var(--dark-teal);
+  border: none;
+}
+
+.card-header.gradient-mint {
+  background: var(--grad-mint-yellow);
+  color: var(--dark-teal);
+  border: none;
+}
+
+.card-header.gradient-orange {
+  background: var(--grad-orange-yellow);
+  color: var(--dark-teal);
+  border: none;
+}
+
+/* Stats Cards with Gradient Backgrounds */
+.stats-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-card.blue {
+  background: var(--grad-blue-white);
+}
+
+.stats-card.teal {
+  background: var(--grad-teal-white);
+}
+
+.stats-card.mint {
+  background: var(--grad-mint-white);
+}
+
+.stats-card.orange {
+  background: var(--grad-orange-white);
+}
+
+.stats-card.yellow {
+  background: var(--grad-yellow-white);
+}
+
+/* Hero Section */
+.hero-section {
+  background: var(--grad-blue-navy);
+  color: #FFFFFF;
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(84, 218, 223, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-section h1,
+.hero-section h2 {
+  position: relative;
+  z-index: 1;
+}
+
+/* Section Dividers with Gradient */
+.section-divider {
+  height: 4px;
+  background: var(--grad-teal-yellow-h);
+  border: none;
+  margin: 2rem 0;
+  border-radius: 2px;
+}
+
+.section-divider.blue {
+  background: var(--grad-blue-navy-h);
+}
+
+.section-divider.mint {
+  background: linear-gradient(90deg, #C0F2D7, #EBF982);
+}
+
+/* Page Headers with Gradient Accent */
+.page-header {
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+
+.page-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 80px;
+  height: 4px;
+  background: var(--grad-blue-navy);
+  border-radius: 2px;
+}
+
+/* Highlight Sections */
+.highlight-section {
+  background: var(--grad-subtle-blue);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.highlight-section.teal {
+  background: var(--grad-subtle-teal);
+}
+
+.highlight-section.mint {
+  background: var(--grad-subtle-mint);
+}
+
+/* Table Styles */
 .table {
   background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table thead th {
+  background: var(--grad-subtle-blue);
+  border-bottom: 2px solid var(--primary-blue);
+  color: var(--dark-teal);
+  font-weight: 600;
 }
 
 /* Custom scrollbar */
@@ -98,12 +354,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--primary-blue);
+  background: var(--grad-blue-navy);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--dark-teal);
+  background: var(--grad-navy-teal);
 }
 
 /* Loading spinner */
@@ -113,12 +369,13 @@ body {
 
 /* Badge colors */
 .badge-pending {
-  background-color: var(--accent-orange);
-  color: var(--text-primary);
+  background: var(--grad-orange-yellow);
+  color: var(--dark-teal);
 }
 
 .badge-approved {
-  background-color: var(--success);
+  background: linear-gradient(135deg, #C0F2D7, #28A745);
+  color: #1F4650;
 }
 
 .badge-rejected {
@@ -126,9 +383,266 @@ body {
 }
 
 .badge-clocked-in {
-  background-color: var(--info);
+  background: var(--grad-teal-yellow);
+  color: var(--dark-teal);
 }
 
 .badge-clocked-out {
   background-color: var(--text-secondary);
+}
+
+/* Form Controls */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--light-blue);
+  box-shadow: 0 0 0 3px rgba(84, 184, 223, 0.2);
+}
+
+/* Progress Bar with Gradient */
+.progress-bar {
+  background: var(--grad-blue-navy);
+}
+
+.progress-bar.success {
+  background: linear-gradient(90deg, #C0F2D7, #28A745);
+}
+
+.progress-bar.warning {
+  background: var(--grad-orange-yellow);
+}
+
+/* Alert Styles with Gradient Accents */
+.alert-primary {
+  background: var(--grad-subtle-blue);
+  border-left: 4px solid var(--primary-blue);
+  color: var(--dark-teal);
+}
+
+.alert-success {
+  background: linear-gradient(135deg, rgba(192, 242, 215, 0.3), rgba(40, 167, 69, 0.1));
+  border-left: 4px solid #28A745;
+  color: var(--dark-teal);
+}
+
+.alert-info {
+  background: var(--grad-subtle-teal);
+  border-left: 4px solid var(--accent-cyan);
+  color: var(--dark-teal);
+}
+
+.alert-warning {
+  background: linear-gradient(135deg, rgba(239, 134, 91, 0.2), rgba(235, 249, 130, 0.2));
+  border-left: 4px solid var(--accent-orange);
+  color: var(--dark-teal);
+}
+
+/* Login Page Hero */
+.login-hero {
+  background: var(--grad-blue-navy);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-hero::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -20%;
+  width: 60%;
+  height: 160%;
+  background: radial-gradient(ellipse, rgba(84, 218, 223, 0.2) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.login-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -20%;
+  width: 60%;
+  height: 160%;
+  background: radial-gradient(ellipse, rgba(192, 242, 215, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(31, 70, 80, 0.3);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--grad-teal-yellow-h);
+}
+
+/* Dashboard Welcome Banner */
+.welcome-banner {
+  background: var(--grad-blue-navy);
+  color: #FFFFFF;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-banner::before {
+  content: '';
+  position: absolute;
+  top: -100%;
+  right: -50%;
+  width: 100%;
+  height: 300%;
+  background: radial-gradient(circle, rgba(84, 218, 223, 0.2) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.welcome-banner h2,
+.welcome-banner p {
+  position: relative;
+  z-index: 1;
+}
+
+/* Viewfinder Device Background (per CI) */
+.viewfinder-bg {
+  background: var(--grad-blue-navy);
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: #FFFFFF;
+}
+
+.viewfinder-bg.teal {
+  background: var(--grad-teal-yellow);
+  color: var(--dark-teal);
+}
+
+/* Quick Action Cards */
+.quick-action-card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 1px solid var(--border-color);
+}
+
+.quick-action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(40, 70, 141, 0.15);
+  border-color: var(--light-blue);
+}
+
+.quick-action-card .icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  background: var(--grad-subtle-blue);
+  color: var(--primary-blue);
+}
+
+/* Nav Tabs with Gradient */
+.nav-tabs .nav-link.active {
+  background: var(--grad-subtle-blue);
+  border-color: var(--light-blue) var(--light-blue) #fff;
+  color: var(--primary-blue);
+  font-weight: 600;
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+  border-color: transparent transparent var(--light-blue);
+  color: var(--primary-blue);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  border: none;
+  box-shadow: 0 4px 16px rgba(31, 70, 80, 0.15);
+  border-radius: 8px;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--grad-subtle-blue);
+  color: var(--primary-blue);
+}
+
+/* Modal Header with Gradient */
+.modal-header {
+  background: var(--grad-blue-navy);
+  color: #FFFFFF;
+  border-bottom: none;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+}
+
+/* Pagination with Gradient */
+.page-link {
+  color: var(--primary-blue);
+}
+
+.page-item.active .page-link {
+  background: var(--grad-blue-navy);
+  border-color: var(--primary-blue);
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  background: var(--grad-subtle-blue);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}
+
+.breadcrumb-item a {
+  color: var(--primary-blue);
+}
+
+/* Tooltip */
+.tooltip .tooltip-inner {
+  background: var(--grad-navy-teal);
+}
+
+/* Animation utilities */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-animated {
+  background-size: 200% 200%;
+  animation: gradientShift 5s ease infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 2rem 1rem;
+  }
+  
+  .welcome-banner {
+    padding: 1.5rem;
+  }
+  
+  .sidebar {
+    width: 100% !important;
+  }
 }
