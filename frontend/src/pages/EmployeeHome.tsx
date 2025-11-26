@@ -46,6 +46,7 @@ export default function EmployeeHome() {
   const [clockLoading, setClockLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [clockDuration, setClockDuration] = useState<string>('');
   const [data, setData] = useState<EmployeeHomeData>({
     currentShift: null,
     nextShift: null,
@@ -59,6 +60,26 @@ export default function EmployeeHome() {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (data.clockStatus.status === 'clocked_in' && data.clockStatus.clockInTime) {
+      const updateDuration = () => {
+        const clockIn = new Date(data.clockStatus.clockInTime!);
+        const now = new Date();
+        const diffMs = now.getTime() - clockIn.getTime();
+        const hours = Math.floor(diffMs / 3600000);
+        const minutes = Math.floor((diffMs % 3600000) / 60000);
+        const seconds = Math.floor((diffMs % 60000) / 1000);
+        setClockDuration(`${hours}h ${minutes}m ${seconds}s`);
+      };
+      
+      updateDuration();
+      const interval = setInterval(updateDuration, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setClockDuration('');
+    }
+  }, [data.clockStatus.status, data.clockStatus.clockInTime]);
 
   const loadDashboardData = async () => {
     try {
@@ -207,15 +228,6 @@ export default function EmployeeHome() {
     return date.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
-  const getClockDuration = () => {
-    if (!data.clockStatus.clockInTime) return '';
-    const clockIn = new Date(data.clockStatus.clockInTime);
-    const now = new Date();
-    const diffMs = now.getTime() - clockIn.getTime();
-    const hours = Math.floor(diffMs / 3600000);
-    const minutes = Math.floor((diffMs % 3600000) / 60000);
-    return `${hours}h ${minutes}m`;
-  };
 
   if (loading) {
     return (
@@ -250,7 +262,7 @@ export default function EmployeeHome() {
                   </h5>
                   <p className="text-muted mb-0 small">
                     {data.clockStatus.status === 'clocked_in' 
-                      ? `Clocked in for ${getClockDuration()}`
+                      ? `Clocked in for ${clockDuration}`
                       : 'You are currently clocked out'}
                   </p>
                 </div>
