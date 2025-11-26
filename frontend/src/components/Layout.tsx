@@ -229,7 +229,7 @@ export default function Layout() {
                       <FileSpreadsheet size={16} />
                       <span>Timecard Rollup</span>
                     </Link>
-                    <Link to="/automation-workflows" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                    <Link to="/automation/workflows" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
                       <Workflow size={16} />
                       <span>Automation & Workflows</span>
                     </Link>
