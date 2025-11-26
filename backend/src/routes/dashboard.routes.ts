@@ -373,4 +373,162 @@ router.post('/config', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Employee Home Dashboard - Quick actions, current/next shift, pending counts
+router.get('/employee-home', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Get current clock status
+    const clockStatusResult = await pool.query(
+      `SELECT id, clock_in_time, total_break_minutes, status
+       FROM time_entries 
+       WHERE user_id = $1 AND (status = 'clocked_in' OR status = 'Open')
+       ORDER BY clock_in_time DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    let clockStatus: { status: string; entryId?: number; clockInTime?: string; totalBreakMinutes?: number } = { 
+      status: 'clocked_out' 
+    };
+    
+    if (clockStatusResult.rows.length > 0) {
+      const entry = clockStatusResult.rows[0];
+      clockStatus = {
+        status: 'clocked_in',
+        entryId: entry.id,
+        clockInTime: entry.clock_in_time,
+        totalBreakMinutes: entry.total_break_minutes || 0
+      };
+    }
+
+    // Get current shift (today)
+    const currentShiftResult = await pool.query(
+      `SELECT s.id, s.start_time, s.end_time, s.status, s.notes,
+              st.name as shift_type, si.name as site_name, d.name as department_name,
+              DATE(s.start_time) as shift_date
+       FROM schedules s
+       LEFT JOIN shift_types st ON s.shift_type_id = st.id
+       LEFT JOIN users u ON s.user_id = u.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       LEFT JOIN sites si ON d.site_id = si.id
+       WHERE s.user_id = $1 AND DATE(s.start_time) = $2
+       ORDER BY s.start_time ASC
+       LIMIT 1`,
+      [userId, today]
+    );
+
+    let currentShift = null;
+    if (currentShiftResult.rows.length > 0) {
+      const row = currentShiftResult.rows[0];
+      currentShift = {
+        id: row.id,
+        shiftDate: row.shift_date,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        shiftType: row.shift_type || 'Standard',
+        siteName: row.site_name,
+        departmentName: row.department_name
+      };
+    }
+
+    // Get next shift (after today)
+    const nextShiftResult = await pool.query(
+      `SELECT s.id, s.start_time, s.end_time, s.status,
+              st.name as shift_type, si.name as site_name, d.name as department_name,
+              DATE(s.start_time) as shift_date
+       FROM schedules s
+       LEFT JOIN shift_types st ON s.shift_type_id = st.id
+       LEFT JOIN users u ON s.user_id = u.id
+       LEFT JOIN departments d ON u.department_id = d.id
+       LEFT JOIN sites si ON d.site_id = si.id
+       WHERE s.user_id = $1 AND DATE(s.start_time) > $2
+       ORDER BY s.start_time ASC
+       LIMIT 1`,
+      [userId, today]
+    );
+
+    let nextShift = null;
+    if (nextShiftResult.rows.length > 0) {
+      const row = nextShiftResult.rows[0];
+      nextShift = {
+        id: row.id,
+        shiftDate: row.shift_date,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        shiftType: row.shift_type || 'Standard',
+        siteName: row.site_name,
+        departmentName: row.department_name
+      };
+    }
+
+    // Get pending counts
+    const pendingLeaveResult = await pool.query(
+      `SELECT COUNT(*) as count FROM leave_applications 
+       WHERE user_id = $1 AND status = 'pending'`,
+      [userId]
+    );
+
+    const unreadNotificationsResult = await pool.query(
+      `SELECT COUNT(*) as count FROM notifications 
+       WHERE user_id = $1 AND read_at IS NULL`,
+      [userId]
+    );
+
+    const upcomingShiftsResult = await pool.query(
+      `SELECT COUNT(*) as count FROM schedules 
+       WHERE user_id = $1 AND DATE(start_time) >= $2 
+       AND DATE(start_time) <= $2::date + INTERVAL '7 days'`,
+      [userId, today]
+    );
+
+    // Get hours worked this week
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+
+    const weekHoursResult = await pool.query(
+      `SELECT COALESCE(SUM(total_hours), 0) as total_hours
+       FROM time_entries 
+       WHERE user_id = $1 AND DATE(clock_in_time) >= $2`,
+      [userId, weekStartStr]
+    );
+
+    const todayHoursResult = await pool.query(
+      `SELECT COALESCE(SUM(total_hours), 0) as total_hours
+       FROM time_entries 
+       WHERE user_id = $1 AND DATE(clock_in_time) = $2`,
+      [userId, today]
+    );
+
+    // Get leave balance (annual leave)
+    const leaveBalanceResult = await pool.query(
+      `SELECT COALESCE(SUM(balance), 0) as balance
+       FROM leave_balances lb
+       JOIN leave_types lt ON lb.leave_type_id = lt.id
+       WHERE lb.user_id = $1 AND lt.code = 'AL'`,
+      [userId]
+    );
+
+    res.json({
+      currentShift,
+      nextShift,
+      clockStatus,
+      pendingCounts: {
+        pendingLeaveRequests: parseInt(pendingLeaveResult.rows[0].count) || 0,
+        unreadNotifications: parseInt(unreadNotificationsResult.rows[0].count) || 0,
+        upcomingShifts: parseInt(upcomingShiftsResult.rows[0].count) || 0,
+        pendingApprovals: 0
+      },
+      todayHours: parseFloat(todayHoursResult.rows[0].total_hours) || 0,
+      weekHours: parseFloat(weekHoursResult.rows[0].total_hours) || 0,
+      leaveBalance: parseFloat(leaveBalanceResult.rows[0].balance) || 0
+    });
+  } catch (error) {
+    console.error('Employee home dashboard error:', error);
+    res.status(500).json({ error: 'Failed to fetch employee home data' });
+  }
+});
+
 export default router;

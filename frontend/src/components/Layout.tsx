@@ -75,6 +75,14 @@ export default function Layout() {
               </button>
               {openDropdown === 'personal' && (
                 <div className="ms-4 mt-1">
+                  <Link to="/employee-home" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                    <Home size={16} />
+                    <span>Employee Home</span>
+                  </Link>
+                  <Link to="/clock-in-out" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
+                    <Clock size={16} />
+                    <span>Clock In/Out</span>
+                  </Link>
                   <Link to="/my-timecard" className="nav-link d-flex align-items-center gap-2 p-2 ps-3 rounded mb-1">
                     <ClipboardList size={16} />
                     <span>My Timecard</span>

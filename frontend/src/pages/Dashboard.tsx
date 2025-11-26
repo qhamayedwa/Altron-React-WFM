@@ -14,22 +14,23 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-  const { user, isSuperUser } = useAuthStore();
+  const { user, isSuperUser, hasRole } = useAuthStore();
   const navigate = useNavigate();
-
-  if (isSuperUser()) {
-    return <SuperAdminDashboard />;
-  }
+  
   const [stats, setStats] = useState<DashboardStats>({
     timeEntriesToday: 0,
     pendingLeaveRequests: 0,
     upcomingShifts: 0,
     teamMembers: 0
   });
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  
+  const [redirected, setRedirected] = useState(false);
 
+  // Check if user is a manager or admin role
+  const isManager = hasRole('Manager') || hasRole('Admin') || hasRole('HR') || hasRole('Payroll');
+  const superUser = isSuperUser();
+  
+  // Define loadDashboardData before any early returns
   const loadDashboardData = async () => {
     try {
       const response = await api.get('/dashboard/stats');
@@ -38,6 +39,31 @@ export default function Dashboard() {
       console.error('Failed to load dashboard data:', error);
     }
   };
+  
+  // Redirect employees to Employee Home
+  useEffect(() => {
+    if (user && !superUser && !isManager && !redirected) {
+      setRedirected(true);
+      navigate('/employee-home', { replace: true });
+    }
+  }, [user, superUser, isManager, redirected, navigate]);
+  
+  // Load dashboard data for managers/super users
+  useEffect(() => {
+    if (user && (superUser || isManager)) {
+      loadDashboardData();
+    }
+  }, [user, superUser, isManager]);
+
+  // Super Users see the full admin dashboard
+  if (superUser) {
+    return <SuperAdminDashboard />;
+  }
+  
+  // If redirecting or no user yet, show nothing
+  if (!user || (!isManager && !superUser)) {
+    return null;
+  }
 
   return (
     <div>

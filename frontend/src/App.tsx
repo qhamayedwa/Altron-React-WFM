@@ -126,6 +126,7 @@ import TenantDashboard from './pages/TenantDashboard';
 import SageVIPDashboard from './pages/SageVIPDashboard';
 import UserEdit from './pages/UserEdit';
 import QuickActions from './pages/QuickActions';
+import EmployeeHome from './pages/EmployeeHome';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -149,6 +150,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           
           {/* Personal */}
+          <Route path="employee-home" element={<EmployeeHome />} />
           <Route path="clock-in-out" element={<ClockInOut />} />
           <Route path="my-timecard" element={<MyTimecard />} />
           <Route path="my-schedule" element={<MySchedule />} />
