@@ -8,7 +8,7 @@ const TenantDashboard = () => {
 
   const tenant = {
     id: 1,
-    name: 'Altron Technologies',
+    name: 'Demo Corporation',
     max_users: 50,
     timezone: 'Africa/Johannesburg',
     currency: 'ZAR',

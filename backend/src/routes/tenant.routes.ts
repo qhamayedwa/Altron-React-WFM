@@ -7,10 +7,10 @@ router.get('/organizations', async (req: Request, res: Response) => {
     const tenants = [
       {
         id: 1,
-        name: 'Altron Technologies',
-        subdomain: 'altron',
-        domain: 'altron.com',
-        admin_email: 'admin@altron.com',
+        name: 'Demo Corporation',
+        subdomain: 'demo',
+        domain: 'democorp.com',
+        admin_email: 'admin@democorp.com',
         user_count: 45,
         max_users: 50,
         subscription_plan: 'enterprise',
@@ -49,10 +49,10 @@ router.get('/organizations/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const tenant = {
       id: parseInt(id),
-      name: 'Altron Technologies',
-      subdomain: 'altron',
-      domain: 'altron.com',
-      admin_email: 'admin@altron.com',
+      name: 'Demo Corporation',
+      subdomain: 'demo',
+      domain: 'democorp.com',
+      admin_email: 'admin@democorp.com',
       phone: '+27 11 123 4567',
       address: '123 Business St, Johannesburg, South Africa',
       user_count: 45,
@@ -144,7 +144,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
     const dashboardData = {
       tenant: {
         id: 1,
-        name: 'Altron Technologies',
+        name: 'Demo Corporation',
         max_users: 50,
         timezone: 'Africa/Johannesburg',
         currency: 'ZAR',

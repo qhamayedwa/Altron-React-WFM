@@ -1,4 +1,4 @@
-// Prisma schema for Altron WFM24/7
+// Prisma schema for TimeLogic AI
 // Database: PostgreSQL with multi-tenant support
 
 generator client {

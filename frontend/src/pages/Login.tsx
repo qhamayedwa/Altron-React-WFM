@@ -191,7 +191,7 @@ export default function Login() {
 
                 <div className="text-center mt-4 pt-3" style={{ borderTop: '1px solid #dee2e6' }}>
                   <small className="text-muted">
-                    © {new Date().getFullYear()} Altron. All rights reserved.
+                    © {new Date().getFullYear()} TimeLogic AI. All rights reserved.
                   </small>
                 </div>
               </Card.Body>

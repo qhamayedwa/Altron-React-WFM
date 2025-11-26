@@ -80,7 +80,7 @@ app.use('/api/employee-import', employeeImportRoutes);
 
 app.get('/api', (_req: Request, res: Response) => {
   res.json({
-    message: 'Altron WFM24/7 API',
+    message: 'TimeLogic AI API',
     version: '1.0.0',
     endpoints: {
       auth: '/api/auth',
@@ -116,7 +116,7 @@ app.use((req: Request, res: Response) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Altron WFM24/7 Backend running on port ${PORT}`);
+  console.log(`🚀 TimeLogic AI Backend running on port ${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API: http://localhost:${PORT}/api`);
 });

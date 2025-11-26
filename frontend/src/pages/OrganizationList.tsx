@@ -8,10 +8,10 @@ const OrganizationList = () => {
   const tenants = [
     {
       id: 1,
-      name: 'Altron Technologies',
-      subdomain: 'altron',
-      domain: 'altron.com',
-      admin_email: 'admin@altron.com',
+      name: 'Demo Corporation',
+      subdomain: 'demo',
+      domain: 'democorp.com',
+      admin_email: 'admin@democorp.com',
       user_count: 45,
       max_users: 50,
       subscription_plan: 'enterprise',

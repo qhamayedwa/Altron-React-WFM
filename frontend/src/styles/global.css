@@ -1,5 +1,5 @@
 :root {
-  /* Timelogic Brand Colors - Altron CI 2024 */
+  /* TimeLogic AI Brand Colors */
   --primary-blue: #28468D;
   --light-blue: #54B8DF;
   --dark-teal: #1F4650;
@@ -19,7 +19,7 @@
   --danger: #DC3545;
   --info: var(--light-blue);
 
-  /* Altron CI 2024 Approved Gradient Combinations */
+  /* Approved Gradient Combinations */
   --grad-blue-navy: linear-gradient(135deg, #54B8DF, #28468D);
   --grad-teal-yellow: linear-gradient(135deg, #54DADF, #EBF982);
   --grad-orange-yellow: linear-gradient(135deg, #EF865B, #EBF982);
@@ -149,7 +149,7 @@ body {
   border-bottom: 3px solid #54DADF;
 }
 
-/* Sidebar with Gradient - Altron CI 2024 */
+/* Sidebar with Gradient */
 .sidebar {
   background: linear-gradient(180deg, #28468D 0%, #1F4650 50%, #162F36 100%);
   min-height: 100vh;
